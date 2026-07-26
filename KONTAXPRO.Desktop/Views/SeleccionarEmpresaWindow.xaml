@@ -317,6 +317,7 @@
                      ================================================= -->
 
                 <ListBox Grid.Row="2"
+                         AutomationProperties.Name="Empresas disponibles"
                          ItemsSource="{Binding Empresas}"
                          SelectedItem="{Binding EmpresaActual}"
                          ItemContainerStyle="{StaticResource EmpresaListItemStyle}"
@@ -448,6 +449,7 @@
                 <Button Grid.Row="4"
                         Width="180"
                         Height="46"
+                        AutomationProperties.Name="Continuar"
                         Command="{Binding SeleccionarEmpresaCommand}"
                         Style="{DynamicResource PrimaryButtonStyle}"
                         HorizontalAlignment="Right"

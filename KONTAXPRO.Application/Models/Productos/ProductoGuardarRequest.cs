@@ -12,7 +12,7 @@ public class ProductoGuardarRequest
 
     public long UnidadMedidaBaseId { get; set; }
 
-    public long TarifaImpuestoId { get; set; }
+    public List<long> TarifasImpuestoIds { get; set; } = [];
 
     public string Nombre { get; set; } = string.Empty;
 
@@ -32,15 +32,11 @@ public class ProductoGuardarRequest
 
     public bool ManejaInventario { get; set; } = true;
 
-    public bool PermiteVentaSinStock { get; set; }
-
     public bool ManejaLotes { get; set; }
 
     public bool ManejaSeries { get; set; }
 
     public bool ManejaFechaCaducidad { get; set; }
-
-    public bool AlertaStockMinimo { get; set; } = true;
 
     public bool AlertaCaducidad { get; set; } = true;
 
@@ -49,4 +45,8 @@ public class ProductoGuardarRequest
     public int DiasAlertaCaducidad { get; set; } = 30;
 
     public string? Observacion { get; set; }
+
+    public List<ProductoPresentacionDto> Presentaciones { get; set; } = [];
+
+    public List<ProductoExistenciaDto> Existencias { get; set; } = [];
 }

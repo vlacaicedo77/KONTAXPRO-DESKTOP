@@ -1,4 +1,4 @@
-﻿using KONTAXPRO.Application.Interfaces;
+using KONTAXPRO.Application.Interfaces;
 using KONTAXPRO.Application.Models.Inventario;
 using KONTAXPRO.Domain.Entities.Inventario;
 using KONTAXPRO.Infrastructure.Persistence;
@@ -6,520 +6,363 @@ using Microsoft.EntityFrameworkCore;
 
 namespace KONTAXPRO.Infrastructure.Inventory;
 
-public class InventoryService : IInventoryService
+public sealed class InventoryService(
+    IDbContextFactory<KontaxDbContext> dbContextFactory) : IInventoryService
 {
-    private readonly IDbContextFactory<KontaxDbContext> _dbContextFactory;
-
-    public InventoryService(
-        IDbContextFactory<KontaxDbContext> dbContextFactory)
-    {
-        _dbContextFactory = dbContextFactory;
-    }
-
     public async Task<InventoryOperationResult> RegistrarIngresoInicialAsync(
         IngresoInventarioRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (request.EmpresaId <= 0)
-        {
+        if (request.EmpresaId <= 0 || request.BodegaId <= 0)
             return InventoryOperationResult.Fail(
-                "La empresa no es válida.");
-        }
-
-        if (request.BodegaId <= 0)
-        {
+                "La empresa y la bodega son obligatorias.");
+        if (!request.UsuarioId.HasValue || request.UsuarioId <= 0)
             return InventoryOperationResult.Fail(
-                "Debe seleccionar una bodega.");
-        }
-
+                "El usuario que registra el movimiento es obligatorio.");
         if (request.Detalles.Count == 0)
-        {
             return InventoryOperationResult.Fail(
                 "Debe agregar al menos un producto.");
-        }
 
         await using var context =
-            await _dbContextFactory.CreateDbContextAsync(
-                cancellationToken);
-
-        var bodega = await context.Bodegas
-            .AsNoTracking()
-            .FirstOrDefaultAsync(
-                x => x.Id == request.BodegaId
-                     && x.EmpresaId == request.EmpresaId
-                     && x.Estado == 1,
-                cancellationToken);
-
-        if (bodega is null)
-        {
-            return InventoryOperationResult.Fail(
-                "La bodega seleccionada no pertenece a la empresa activa.");
-        }
-
+            await dbContextFactory.CreateDbContextAsync(cancellationToken);
         await using var transaction =
-            await context.Database.BeginTransactionAsync(
-                cancellationToken);
+            await context.Database.BeginTransactionAsync(cancellationToken);
 
         try
         {
+            var bodega = await context.Bodegas
+                .Include(x => x.Establecimiento)
+                .SingleOrDefaultAsync(
+                    x => x.Id == request.BodegaId &&
+                         x.Estado == 1 &&
+                         x.Establecimiento!.EmpresaId == request.EmpresaId,
+                    cancellationToken)
+                ?? throw new InvalidOperationException(
+                    "La bodega no pertenece a la empresa activa.");
+
+            var tipo = await context.TiposMovimientoInventario
+                .SingleAsync(x => x.Codigo == "INVENTARIO_INICIAL" &&
+                                  x.Estado == 1, cancellationToken);
+            var origen = await context.TiposOrigenMovimientoInventario
+                .SingleAsync(x => x.Codigo == "INVENTARIO_INICIAL" &&
+                                  x.Estado == 1, cancellationToken);
+
+            var numero = await ObtenerSiguienteNumeroAsync(
+                context,
+                request.EmpresaId,
+                bodega.EstablecimientoId,
+                "MOVIMIENTO_INVENTARIO",
+                cancellationToken);
+
+            var now = DateTime.UtcNow;
             var movimiento = new MovimientoInventario
             {
                 EmpresaId = request.EmpresaId,
-                BodegaDestinoId = request.BodegaId,
-                TipoMovimiento = "INGRESO_INICIAL",
-                FechaMovimiento = request.FechaMovimiento,
-                NumeroDocumento = request.NumeroDocumento,
-                Referencia = request.Referencia,
-                Observacion = request.Observacion,
-                UsuarioId = request.UsuarioId,
-                Estado = "PROCESADO",
-                CreatedAt = DateTime.Now
+                NumeroMovimiento = numero,
+                TipoMovimientoId = tipo.Id,
+                FechaMovimiento = request.FechaMovimiento.ToUniversalTime(),
+                BodegaId = request.BodegaId,
+                OrigenTipoId = origen.Id,
+                OrigenId = 0,
+                NumeroDocumento = Normalize(request.NumeroDocumento),
+                Referencia = Normalize(request.Referencia),
+                Observacion = Normalize(request.Observacion),
+                UsuarioId = request.UsuarioId.Value,
+                Estado = "CONFIRMADO",
+                CreatedAt = now,
+                UpdatedAt = now
             };
-
             context.MovimientosInventario.Add(movimiento);
-
-            foreach (var detalleRequest in request.Detalles)
-            {
-                await ProcesarDetalleIngresoInicialAsync(
-                    context,
-                    movimiento,
-                    request,
-                    detalleRequest,
-                    cancellationToken);
-            }
-
             await context.SaveChangesAsync(cancellationToken);
 
-            await transaction.CommitAsync(cancellationToken);
+            // El inventario inicial es su propio documento de origen.
+            movimiento.OrigenId = movimiento.Id;
 
+            foreach (var detail in request.Detalles)
+                await AddInitialDetailAsync(
+                    context, movimiento, detail, now, cancellationToken);
+
+            await context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
             return InventoryOperationResult.Ok(
                 movimiento.Id,
-                "El ingreso inicial se registró correctamente.");
+                $"Inventario inicial registrado con número {numero}.");
         }
         catch (InvalidOperationException ex)
         {
             await transaction.RollbackAsync(cancellationToken);
-
             return InventoryOperationResult.Fail(ex.Message);
         }
-        catch
+        catch (DbUpdateException)
         {
             await transaction.RollbackAsync(cancellationToken);
-
             return InventoryOperationResult.Fail(
-                "Ocurrió un error al registrar el ingreso inicial.");
+                "No fue posible registrar el movimiento por un conflicto de integridad.");
         }
     }
 
-    private async Task ProcesarDetalleIngresoInicialAsync(
+    private static async Task AddInitialDetailAsync(
         KontaxDbContext context,
-        MovimientoInventario movimiento,
-        IngresoInventarioRequest request,
-        IngresoInventarioDetalleRequest detalleRequest,
+        MovimientoInventario movement,
+        IngresoInventarioDetalleRequest request,
+        DateTime now,
         CancellationToken cancellationToken)
     {
-        if (detalleRequest.Cantidad <= 0)
-        {
+        if (request.Cantidad <= 0)
             throw new InvalidOperationException(
-                "La cantidad del producto debe ser mayor que cero.");
-        }
-
-        if (detalleRequest.CostoTotal < 0)
-        {
+                "La cantidad debe ser mayor que cero.");
+        if (request.CostoTotal < 0)
             throw new InvalidOperationException(
                 "El costo total no puede ser negativo.");
-        }
 
-        var producto = await context.Productos
-            .FirstOrDefaultAsync(
-                x => x.Id == detalleRequest.ProductoId
-                     && x.EmpresaId == request.EmpresaId
-                     && x.Estado == 1,
+        var presentation = await context.ProductosPresentaciones
+            .Include(x => x.Producto)
+            .SingleOrDefaultAsync(
+                x => x.Id == request.ProductoPresentacionId &&
+                     x.ProductoId == request.ProductoId &&
+                     x.EmpresaId == movement.EmpresaId &&
+                     x.Estado == 1,
+                cancellationToken)
+            ?? throw new InvalidOperationException(
+                "La presentación no pertenece al producto o a la empresa.");
+        var product = presentation.Producto!;
+        if (!product.ManejaInventario)
+            throw new InvalidOperationException(
+                $"'{product.Nombre}' no maneja inventario.");
+        if (!presentation.PermiteCompra)
+            throw new InvalidOperationException(
+                $"La presentación '{presentation.Nombre}' no permite ingresos.");
+
+        var baseQuantity = request.Cantidad * presentation.FactorConversion;
+        var unitCost = request.CostoTotal / baseQuantity;
+
+        var existence = await context.ProductosExistencias
+            .SingleOrDefaultAsync(
+                x => x.ProductoId == product.Id &&
+                     x.BodegaId == movement.BodegaId,
                 cancellationToken);
-
-        if (producto is null)
+        if (existence is null)
         {
-            throw new InvalidOperationException(
-                $"No se encontró el producto con ID {detalleRequest.ProductoId}.");
-        }
-
-        if (!producto.ManejaInventario)
-        {
-            throw new InvalidOperationException(
-                $"El producto '{producto.Nombre}' no maneja inventario.");
-        }
-
-        var presentacion = await context.ProductosPresentaciones
-            .FirstOrDefaultAsync(
-                x => x.Id == detalleRequest.ProductoPresentacionId
-                     && x.ProductoId == producto.Id
-                     && x.Estado == 1,
-                cancellationToken);
-
-        if (presentacion is null)
-        {
-            throw new InvalidOperationException(
-                $"La presentación seleccionada no pertenece al producto '{producto.Nombre}'.");
-        }
-
-        if (!presentacion.PermiteCompra)
-        {
-            throw new InvalidOperationException(
-                $"La presentación '{presentacion.Nombre}' no permite ingresos por compra/inventario.");
-        }
-
-        var cantidadBase =
-            detalleRequest.Cantidad * presentacion.FactorConversion;
-
-        if (cantidadBase <= 0)
-        {
-            throw new InvalidOperationException(
-                $"La cantidad base de '{producto.Nombre}' no es válida.");
-        }
-
-        var costoUnitarioBase =
-            detalleRequest.CostoTotal / cantidadBase;
-
-        var existencia =
-            await ObtenerOCrearExistenciaAsync(
-                context,
-                producto.Id,
-                request.BodegaId,
-                cancellationToken);
-
-        var stockAnterior =
-            await context.ProductosExistencias
-                .Where(x => x.ProductoId == producto.Id)
-                .SumAsync(
-                    x => x.StockActual,
-                    cancellationToken);
-
-        var productoCosto =
-            await ObtenerOCrearProductoCostoAsync(
-                context,
-                producto.Id,
-                cancellationToken);
-
-        var costoPromedioAnterior =
-            productoCosto.CostoPromedio;
-
-        var valorInventarioAnterior =
-            stockAnterior * costoPromedioAnterior;
-
-        existencia.StockActual += cantidadBase;
-        existencia.UpdatedAt = DateTime.Now;
-
-        var nuevoValorInventario =
-            valorInventarioAnterior + detalleRequest.CostoTotal;
-
-        var nuevoStockTotal =
-            stockAnterior + cantidadBase;
-
-        var nuevoCostoPromedio =
-            nuevoStockTotal > 0
-            ? nuevoValorInventario / nuevoStockTotal
-            : 0;
-
-        productoCosto.UltimoPrecioCompra =
-            costoUnitarioBase;
-
-        productoCosto.UltimoCostoEfectivo =
-            costoUnitarioBase;
-
-        productoCosto.CostoPromedio =
-            nuevoCostoPromedio;
-
-        productoCosto.CostoMaximoExistencia =
-            Math.Max(
-                productoCosto.CostoMaximoExistencia,
-                costoUnitarioBase);
-
-        productoCosto.UpdatedAt = DateTime.Now;
-
-        ProductoLote? lote = null;
-
-        if (producto.ManejaLotes)
-        {
-            lote = await ObtenerOCrearLoteAsync(
-                context,
-                producto,
-                detalleRequest,
-                costoUnitarioBase,
-                cancellationToken);
-
-            var loteExistencia =
-                await ObtenerOCrearLoteExistenciaAsync(
-                    context,
-                    lote.Id,
-                    request.BodegaId,
-                    cancellationToken);
-
-            loteExistencia.StockActual += cantidadBase;
-            loteExistencia.UpdatedAt = DateTime.Now;
-        }
-        else if (!string.IsNullOrWhiteSpace(detalleRequest.NumeroLote))
-        {
-            throw new InvalidOperationException(
-                $"El producto '{producto.Nombre}' no está configurado para manejar lotes.");
-        }
-
-        if (producto.ManejaSeries)
-        {
-            await RegistrarSeriesAsync(
-                context,
-                producto,
-                lote,
-                request.BodegaId,
-                detalleRequest,
-                cantidadBase,
-                costoUnitarioBase,
-                cancellationToken);
-        }
-        else if (detalleRequest.NumerosSerie.Count > 0)
-        {
-            throw new InvalidOperationException(
-                $"El producto '{producto.Nombre}' no está configurado para manejar series.");
-        }
-
-        var detalleMovimiento =
-            new MovimientoInventarioDetalle
+            existence = new ProductoExistencia
             {
-                ProductoId = producto.Id,
-                ProductoPresentacionId = presentacion.Id,
-                ProductoLote = lote,
-                CantidadPresentacion = detalleRequest.Cantidad,
-                FactorConversion = presentacion.FactorConversion,
-                CantidadBase = cantidadBase,
-                CostoUnitarioBase = costoUnitarioBase,
-                CostoTotal = detalleRequest.CostoTotal,
-                EsBonificacion = false,
-                Observacion = detalleRequest.Observacion,
-                CreatedAt = DateTime.Now
+                ProductoId = product.Id,
+                BodegaId = movement.BodegaId,
+                StockActual = 0,
+                StockReservado = 0,
+                StockMinimo = 0,
+                CreatedAt = now,
+                UpdatedAt = now
             };
-
-        movimiento.Detalles.Add(detalleMovimiento);
-    }
-
-    private async Task<ProductoExistencia> ObtenerOCrearExistenciaAsync(
-        KontaxDbContext context,
-        long productoId,
-        long bodegaId,
-        CancellationToken cancellationToken)
-    {
-        var existencia =
-            await context.ProductosExistencias
-                .FirstOrDefaultAsync(
-                    x => x.ProductoId == productoId
-                         && x.BodegaId == bodegaId,
-                    cancellationToken);
-
-        if (existencia is not null)
-        {
-            return existencia;
+            context.ProductosExistencias.Add(existence);
         }
 
-        existencia = new ProductoExistencia
+        var stockBefore = existence.StockActual;
+        var totalStockBefore = await context.ProductosExistencias
+            .Where(x => x.ProductoId == product.Id)
+            .SumAsync(x => x.StockActual, cancellationToken);
+        var cost = await context.ProductosCostos
+            .SingleOrDefaultAsync(x => x.ProductoId == product.Id,
+                cancellationToken);
+        if (cost is null)
         {
-            ProductoId = productoId,
-            BodegaId = bodegaId,
-            StockActual = 0,
-            StockReservado = 0,
-            CreatedAt = DateTime.Now
-        };
-
-        context.ProductosExistencias.Add(existencia);
-
-        return existencia;
-    }
-
-    private async Task<ProductoCosto> ObtenerOCrearProductoCostoAsync(
-        KontaxDbContext context,
-        long productoId,
-        CancellationToken cancellationToken)
-    {
-        var costo =
-            await context.ProductosCostos
-                .FirstOrDefaultAsync(
-                    x => x.ProductoId == productoId,
-                    cancellationToken);
-
-        if (costo is not null)
-        {
-            return costo;
-        }
-
-        costo = new ProductoCosto
-        {
-            ProductoId = productoId,
-            UltimoPrecioCompra = 0,
-            UltimoCostoEfectivo = 0,
-            CostoPromedio = 0,
-            CostoMaximoExistencia = 0,
-            CreatedAt = DateTime.Now
-        };
-
-        context.ProductosCostos.Add(costo);
-
-        return costo;
-    }
-
-    private async Task<ProductoLote> ObtenerOCrearLoteAsync(
-        KontaxDbContext context,
-        Producto producto,
-        IngresoInventarioDetalleRequest detalleRequest,
-        decimal costoUnitarioBase,
-        CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(detalleRequest.NumeroLote))
-        {
-            throw new InvalidOperationException(
-                $"Debe ingresar el lote del producto '{producto.Nombre}'.");
-        }
-
-        var numeroLote =
-            detalleRequest.NumeroLote.Trim();
-
-        var lote =
-            await context.ProductosLotes
-                .FirstOrDefaultAsync(
-                    x => x.ProductoId == producto.Id
-                         && x.NumeroLote == numeroLote,
-                    cancellationToken);
-
-        if (lote is not null)
-        {
-            return lote;
-        }
-
-        if (producto.ManejaFechaCaducidad &&
-            detalleRequest.FechaCaducidad is null)
-        {
-            throw new InvalidOperationException(
-                $"Debe ingresar la fecha de caducidad del producto '{producto.Nombre}'.");
-        }
-
-        if (detalleRequest.FechaFabricacion.HasValue &&
-            detalleRequest.FechaCaducidad.HasValue &&
-            detalleRequest.FechaCaducidad.Value <
-            detalleRequest.FechaFabricacion.Value)
-        {
-            throw new InvalidOperationException(
-                $"La fecha de caducidad de '{producto.Nombre}' no puede ser anterior a la fecha de fabricación.");
-        }
-
-        lote = new ProductoLote
-        {
-            ProductoId = producto.Id,
-            NumeroLote = numeroLote,
-            FechaFabricacion = detalleRequest.FechaFabricacion,
-            FechaCaducidad = detalleRequest.FechaCaducidad,
-            CostoUnitarioBase = costoUnitarioBase,
-            Observacion = detalleRequest.Observacion,
-            Estado = 1,
-            CreatedAt = DateTime.Now
-        };
-
-        context.ProductosLotes.Add(lote);
-
-        /*
-         * Necesitamos el Id del lote antes de crear
-         * productos_lotes_existencias.
-         */
-        await context.SaveChangesAsync(cancellationToken);
-
-        return lote;
-    }
-
-    private async Task<ProductoLoteExistencia>
-        ObtenerOCrearLoteExistenciaAsync(
-            KontaxDbContext context,
-            long productoLoteId,
-            long bodegaId,
-            CancellationToken cancellationToken)
-    {
-        var existencia =
-            await context.ProductosLotesExistencias
-                .FirstOrDefaultAsync(
-                    x => x.ProductoLoteId == productoLoteId
-                         && x.BodegaId == bodegaId,
-                    cancellationToken);
-
-        if (existencia is not null)
-        {
-            return existencia;
-        }
-
-        existencia = new ProductoLoteExistencia
-        {
-            ProductoLoteId = productoLoteId,
-            BodegaId = bodegaId,
-            StockActual = 0,
-            StockReservado = 0,
-            CreatedAt = DateTime.Now
-        };
-
-        context.ProductosLotesExistencias.Add(existencia);
-
-        return existencia;
-    }
-
-    private async Task RegistrarSeriesAsync(
-        KontaxDbContext context,
-        Producto producto,
-        ProductoLote? lote,
-        long bodegaId,
-        IngresoInventarioDetalleRequest detalleRequest,
-        decimal cantidadBase,
-        decimal costoUnitarioBase,
-        CancellationToken cancellationToken)
-    {
-        if (cantidadBase != decimal.Truncate(cantidadBase))
-        {
-            throw new InvalidOperationException(
-                $"El producto '{producto.Nombre}' maneja series y no puede ingresar cantidades fraccionadas.");
-        }
-
-        var cantidadSeriesEsperadas =
-            Convert.ToInt32(cantidadBase);
-
-        var series =
-            detalleRequest.NumerosSerie
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .Select(x => x.Trim())
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-        if (series.Count != cantidadSeriesEsperadas)
-        {
-            throw new InvalidOperationException(
-                $"Debe ingresar exactamente {cantidadSeriesEsperadas} número(s) de serie para '{producto.Nombre}'.");
-        }
-
-        foreach (var numeroSerie in series)
-        {
-            var existe =
-                await context.ProductosSeries.AnyAsync(
-                    x => x.ProductoId == producto.Id
-                         && x.NumeroSerie == numeroSerie,
-                    cancellationToken);
-
-            if (existe)
+            cost = new ProductoCosto
             {
+                ProductoId = product.Id,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            context.ProductosCostos.Add(cost);
+        }
+
+        var averageBefore = cost.CostoPromedio;
+        var totalStockAfter = totalStockBefore + baseQuantity;
+        var averageAfter = totalStockAfter == 0
+            ? 0
+            : ((totalStockBefore * averageBefore) + request.CostoTotal) /
+              totalStockAfter;
+
+        existence.StockActual += baseQuantity;
+        existence.UpdatedAt = now;
+        cost.UltimoPrecioCompra = unitCost;
+        cost.UltimoCostoEfectivo = unitCost;
+        cost.CostoPromedio = averageAfter;
+        cost.UpdatedAt = now;
+
+        var detail = new MovimientoInventarioDetalle
+        {
+            MovimientoInventario = movement,
+            ProductoId = product.Id,
+            ProductoPresentacionId = presentation.Id,
+            CantidadPresentacion = request.Cantidad,
+            FactorConversion = presentation.FactorConversion,
+            CantidadBase = baseQuantity,
+            CostoUnitarioBase = unitCost,
+            CostoTotal = request.CostoTotal,
+            StockAnterior = stockBefore,
+            StockNuevo = existence.StockActual,
+            CostoPromedioAnterior = averageBefore,
+            CostoPromedioNuevo = averageAfter,
+            EsBonificacion = false,
+            Observacion = Normalize(request.Observacion),
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        context.MovimientosInventarioDetalles.Add(detail);
+
+        ProductoLote? lot = null;
+        if (product.ManejaLotes)
+        {
+            if (string.IsNullOrWhiteSpace(request.NumeroLote))
                 throw new InvalidOperationException(
-                    $"La serie '{numeroSerie}' ya existe para el producto '{producto.Nombre}'.");
+                    $"Debe indicar el lote de '{product.Nombre}'.");
+
+            var lotNumber = request.NumeroLote.Trim();
+            lot = await context.ProductosLotes.SingleOrDefaultAsync(
+                x => x.ProductoId == product.Id &&
+                     x.NumeroLote == lotNumber,
+                cancellationToken);
+            if (lot is null)
+            {
+                lot = new ProductoLote
+                {
+                    ProductoId = product.Id,
+                    NumeroLote = lotNumber,
+                    FechaElaboracion = request.FechaElaboracion,
+                    FechaCaducidad = request.FechaCaducidad,
+                    Estado = 1,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+                context.ProductosLotes.Add(lot);
+                await context.SaveChangesAsync(cancellationToken);
             }
 
-            context.ProductosSeries.Add(
-                new ProductoSerie
+            var lotStock = await context.ProductosLotesExistencias
+                .SingleOrDefaultAsync(
+                    x => x.LoteId == lot.Id &&
+                         x.BodegaId == movement.BodegaId,
+                    cancellationToken);
+            if (lotStock is null)
+            {
+                lotStock = new ProductoLoteExistencia
                 {
-                    ProductoId = producto.Id,
-                    ProductoLoteId = lote?.Id,
-                    BodegaId = bodegaId,
-                    NumeroSerie = numeroSerie,
-                    CostoUnitarioBase = costoUnitarioBase,
-                    EstadoSerie = "DISPONIBLE",
-                    CreatedAt = DateTime.Now
+                    LoteId = lot.Id,
+                    BodegaId = movement.BodegaId,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+                context.ProductosLotesExistencias.Add(lotStock);
+            }
+
+            var lotBefore = lotStock.StockActual;
+            lotStock.StockActual += baseQuantity;
+            lotStock.UpdatedAt = now;
+            detail.Lotes.Add(new MovimientoInventarioDetalleLote
+            {
+                ProductoLote = lot,
+                CantidadBase = baseQuantity,
+                StockLoteAnterior = lotBefore,
+                StockLoteNuevo = lotStock.StockActual,
+                CreatedAt = now
+            });
+        }
+        else if (!string.IsNullOrWhiteSpace(request.NumeroLote))
+        {
+            throw new InvalidOperationException(
+                $"'{product.Nombre}' no maneja lotes.");
+        }
+
+        if (product.ManejaSeries)
+        {
+            if (baseQuantity != decimal.Truncate(baseQuantity) ||
+                request.NumerosSerie.Count != (int)baseQuantity)
+                throw new InvalidOperationException(
+                    $"Debe indicar una serie única por unidad de '{product.Nombre}'.");
+
+            var normalized = request.NumerosSerie
+                .Select(x => x.Trim())
+                .Where(x => x.Length > 0)
+                .ToList();
+            if (normalized.Count != normalized.Distinct().Count())
+                throw new InvalidOperationException(
+                    "Los números de serie no pueden repetirse.");
+
+            var availableState = await context.EstadosSerie
+                .SingleAsync(x => x.Codigo == "DISPONIBLE" && x.Estado == 1,
+                    cancellationToken);
+            foreach (var serialNumber in normalized)
+            {
+                if (await context.ProductosSeries.AnyAsync(
+                        x => x.ProductoId == product.Id &&
+                             x.NumeroSerie == serialNumber,
+                        cancellationToken))
+                    throw new InvalidOperationException(
+                        $"La serie '{serialNumber}' ya existe.");
+
+                var serial = new ProductoSerie
+                {
+                    ProductoId = product.Id,
+                    ProductoLote = lot,
+                    BodegaId = movement.BodegaId,
+                    NumeroSerie = serialNumber,
+                    EstadoSerieId = availableState.Id,
+                    Observacion = Normalize(request.Observacion),
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+                context.ProductosSeries.Add(serial);
+                detail.Series.Add(new MovimientoInventarioDetalleSerie
+                {
+                    ProductoSerie = serial,
+                    CreatedAt = now
                 });
+            }
+        }
+        else if (request.NumerosSerie.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"'{product.Nombre}' no maneja series.");
         }
     }
+
+    private static async Task<string> ObtenerSiguienteNumeroAsync(
+        KontaxDbContext context,
+        long empresaId,
+        long establecimientoId,
+        string tipoCodigo,
+        CancellationToken cancellationToken)
+    {
+        var type = await context.TiposDocumentoInterno.SingleAsync(
+            x => x.Codigo == tipoCodigo && x.Estado == 1,
+            cancellationToken);
+
+        await context.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+             INSERT INTO s_configuracion.secuenciales_internos
+                 (empresa_id, establecimiento_id, tipo_documento_interno_id,
+                  ultimo_secuencial, created_at, updated_at)
+             VALUES ({empresaId}, {establecimientoId}, {type.Id},
+                     0, {DateTime.UtcNow}, {DateTime.UtcNow})
+             ON CONFLICT (empresa_id, establecimiento_id,
+                          tipo_documento_interno_id) DO NOTHING
+             """, cancellationToken);
+
+        var sequence = await context.SecuencialesInternos
+            .FromSqlInterpolated(
+                $"""
+                 SELECT * FROM s_configuracion.secuenciales_internos
+                 WHERE empresa_id = {empresaId}
+                   AND establecimiento_id = {establecimientoId}
+                   AND tipo_documento_interno_id = {type.Id}
+                 FOR UPDATE
+                 """)
+            .SingleAsync(cancellationToken);
+        sequence.UltimoSecuencial++;
+        sequence.UpdatedAt = DateTime.UtcNow;
+        await context.SaveChangesAsync(cancellationToken);
+        return $"{type.PrefijoDefault}-{sequence.UltimoSecuencial:000000}";
+    }
+
+    private static string? Normalize(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

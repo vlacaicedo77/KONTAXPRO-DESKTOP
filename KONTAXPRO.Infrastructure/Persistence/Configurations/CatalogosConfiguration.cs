@@ -160,6 +160,8 @@ public sealed class CategoriaProductoConfiguration
         builder.HasIndex(x => x.Uuid)
             .IsUnique()
             .HasDatabaseName("ux_categorias_productos_uuid");
+        builder.HasAlternateKey(x => new { x.Id, x.EmpresaId })
+            .HasName("ak_categorias_productos_id_empresa");
         builder.HasIndex(x => new { x.EmpresaId, x.Codigo })
             .IsUnique()
             .HasDatabaseName("ux_categorias_productos_empresa_codigo");

@@ -32,6 +32,12 @@ public class CurrentSession
 
     public string? BodegaNombre { get; set; }
 
+    public long? CajaId { get; set; }
+
+    public string? CajaNombre { get; set; }
+
+    public long? CajaSesionId { get; set; }
+
     public bool IsAuthenticated =>
         UsuarioId > 0;
 
@@ -75,6 +81,10 @@ public class CurrentSession
 
         BodegaId = null;
         BodegaNombre = null;
+
+        CajaId = null;
+        CajaNombre = null;
+        CajaSesionId = null;
         NumeroIdentificacion = string.Empty;
         CantidadEmpresasDisponibles = 0;
     }

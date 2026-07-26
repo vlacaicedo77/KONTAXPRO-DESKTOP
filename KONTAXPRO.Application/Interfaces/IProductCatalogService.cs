@@ -17,6 +17,10 @@ public interface IProductCatalogService
     Task<List<CatalogItemDto>> ObtenerTarifasImpuestoAsync(
         CancellationToken cancellationToken = default);
 
+    Task<List<CatalogItemDto>> ObtenerListasPrecioAsync(
+        long empresaId,
+        CancellationToken cancellationToken = default);
+
     Task<CatalogCreateResult> CrearCategoriaAsync(
         long empresaId,
         string nombre,

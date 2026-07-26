@@ -21,7 +21,7 @@ public class IngresoInventarioDetalleRequest
 
     public string? NumeroLote { get; set; }
 
-    public DateOnly? FechaFabricacion { get; set; }
+    public DateOnly? FechaElaboracion { get; set; }
 
     public DateOnly? FechaCaducidad { get; set; }
 

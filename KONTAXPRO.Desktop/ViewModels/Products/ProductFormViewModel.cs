@@ -19,6 +19,7 @@ public partial class ProductFormViewModel : ObservableObject
 
     private long? _productoId;
     private string? _tipoCatalogoRapido;
+    private readonly HashSet<long> _tarifasImpuestoIds = [];
 
     public event Action? CloseRequested;
     public event Action<long>? ProductSaved;
@@ -40,6 +41,12 @@ public partial class ProductFormViewModel : ObservableObject
 
     public ObservableCollection<CatalogItemDto> TarifasImpuesto { get; }
         = new();
+
+    public ObservableCollection<CatalogItemDto> ListasPrecio { get; }
+        = new();
+
+    public ObservableCollection<ProductoPresentacionDto>
+        PresentacionesAdicionales { get; } = new();
 
     public ObservableCollection<string> TiposProducto { get; }
         = new()
@@ -90,6 +97,12 @@ public partial class ProductFormViewModel : ObservableObject
 
     [ObservableProperty]
     private long? tarifaImpuestoId;
+
+    [ObservableProperty]
+    private long? listaPrecioBaseId;
+
+    [ObservableProperty]
+    private decimal precioBase;
 
     [ObservableProperty]
     private string tipoProducto = "PRODUCTO";
@@ -484,7 +497,24 @@ public partial class ProductFormViewModel : ObservableObject
                 producto.UnidadMedidaBaseId;
 
             TarifaImpuestoId =
-                producto.TarifaImpuestoId;
+                producto.Impuestos
+                    .FirstOrDefault(x => x.Estado == 1)
+                    ?.TarifaImpuestoId;
+            _tarifasImpuestoIds.Clear();
+            foreach (var impuesto in producto.Impuestos.Where(x => x.Estado == 1))
+                _tarifasImpuestoIds.Add(impuesto.TarifaImpuestoId);
+
+            var precioBase = producto.Presentaciones
+                .FirstOrDefault(x => x.EsPresentacionBase)
+                ?.Precios.FirstOrDefault();
+            ListaPrecioBaseId = precioBase?.ListaPrecioId;
+            PrecioBase = precioBase?.Precio ?? 0;
+
+            foreach (var presentacion in producto.Presentaciones
+                         .Where(x => !x.EsPresentacionBase))
+            {
+                PresentacionesAdicionales.Add(presentacion);
+            }
 
             TipoProducto =
                 producto.TipoProducto;
@@ -495,14 +525,12 @@ public partial class ProductFormViewModel : ObservableObject
             ManejaInventario =
                 producto.ManejaInventario;
 
-            PermiteVentaSinStock =
-                producto.PermiteVentaSinStock;
-
-            AlertaStockMinimo =
-                producto.AlertaStockMinimo;
-
             StockMinimo =
-                producto.StockMinimo;
+                producto.Existencias
+                    .FirstOrDefault(x =>
+                        x.BodegaId == _currentSession.BodegaId)
+                    ?.StockMinimo
+                ?? 0;
 
             AlertaCaducidad =
                 producto.AlertaCaducidad;
@@ -577,13 +605,6 @@ public partial class ProductFormViewModel : ObservableObject
             return;
         }
 
-        if (!TarifaImpuestoId.HasValue)
-        {
-            MensajeError =
-                "Debe seleccionar la tarifa de impuesto.";
-            return;
-        }
-
         IsLoading = true;
 
         try
@@ -623,8 +644,12 @@ public partial class ProductFormViewModel : ObservableObject
                     UnidadMedidaBaseId =
                         UnidadMedidaBaseId.Value,
 
-                    TarifaImpuestoId =
-                        TarifaImpuestoId.Value,
+                    TarifasImpuestoIds =
+                        _tarifasImpuestoIds
+                            .Append(TarifaImpuestoId ?? 0)
+                            .Where(x => x > 0)
+                            .Distinct()
+                            .ToList(),
 
                     Nombre =
                         Nombre.Trim(),
@@ -654,8 +679,6 @@ public partial class ProductFormViewModel : ObservableObject
                     ManejaInventario =
                         manejaInventarioReal,
 
-                    PermiteVentaSinStock = false,
-
                     ManejaLotes =
                         manejaLotes,
 
@@ -664,10 +687,6 @@ public partial class ProductFormViewModel : ObservableObject
 
                     ManejaFechaCaducidad =
                         manejaFechaCaducidad,
-
-                    AlertaStockMinimo =
-                        manejaInventarioReal &&
-                        AlertaStockMinimo,
 
                     StockMinimo =
                         manejaInventarioReal
@@ -684,7 +703,53 @@ public partial class ProductFormViewModel : ObservableObject
                             : 0,
 
                     Observacion =
-                        Observacion?.Trim()
+                        Observacion?.Trim(),
+
+                    Presentaciones =
+                    [
+                        new ProductoPresentacionDto
+                        {
+                            Id = null,
+                            Codigo = "BASE",
+                            CodigoBarras = SinCodigoBarras
+                                ? null
+                                : CodigoBarras.Trim(),
+                            Nombre = PresentacionNombre.Trim(),
+                            FactorConversion = 1,
+                            EsPresentacionBase = true,
+                            PermiteCompra = true,
+                            PermiteVenta = true,
+                            Estado = 1,
+                            Precios = ListaPrecioBaseId.HasValue
+                                ?
+                                [
+                                    new ProductoPrecioDto
+                                    {
+                                        ListaPrecioId =
+                                            ListaPrecioBaseId.Value,
+                                        MetodoCalculo = "PRECIO_FIJO",
+                                        Precio = PrecioBase,
+                                        Estado = 1
+                                    }
+                                ]
+                                : []
+                        },
+                        .. PresentacionesAdicionales
+                    ],
+
+                    Existencias =
+                        manejaInventarioReal &&
+                        _currentSession.BodegaId.HasValue
+                            ?
+                            [
+                                new ProductoExistenciaDto
+                                {
+                                    BodegaId =
+                                        _currentSession.BodegaId.Value,
+                                    StockMinimo = StockMinimo
+                                }
+                            ]
+                            : []
                 };
 
             var resultado =
@@ -973,6 +1038,10 @@ public partial class ProductFormViewModel : ObservableObject
             await _catalogService
                 .ObtenerTarifasImpuestoAsync();
 
+        var listas =
+            await _catalogService
+                .ObtenerListasPrecioAsync(empresaId);
+
         ReemplazarColeccion(
             Categorias,
             categorias);
@@ -988,6 +1057,9 @@ public partial class ProductFormViewModel : ObservableObject
         ReemplazarColeccion(
             TarifasImpuesto,
             tarifas);
+        ReemplazarColeccion(
+            ListasPrecio,
+            listas);
 
         /*
          * Para producto nuevo podemos seleccionar automáticamente
@@ -1012,6 +1084,8 @@ public partial class ProductFormViewModel : ObservableObject
                 TarifaImpuestoId =
                     tarifas.FirstOrDefault()?.Id;
             }
+
+            ListaPrecioBaseId ??= listas.FirstOrDefault()?.Id;
         }
     }
 
@@ -1048,6 +1122,10 @@ public partial class ProductFormViewModel : ObservableObject
         MarcaId = null;
         UnidadMedidaBaseId = null;
         TarifaImpuestoId = null;
+        _tarifasImpuestoIds.Clear();
+        ListaPrecioBaseId = null;
+        PrecioBase = 0;
+        PresentacionesAdicionales.Clear();
 
         TipoProducto = "PRODUCTO";
         TipoControlInventario = "NORMAL";
@@ -1077,6 +1155,35 @@ public partial class ProductFormViewModel : ObservableObject
             null;
 
         LimpiarSugerencias();
+    }
+
+    [RelayCommand]
+    private void AgregarPresentacion()
+    {
+        PresentacionesAdicionales.Add(new ProductoPresentacionDto
+        {
+            Codigo = $"P{PresentacionesAdicionales.Count + 1:00}",
+            Nombre = "Nueva presentación",
+            FactorConversion = 1,
+            PermiteCompra = true,
+            PermiteVenta = true,
+            Estado = 1
+        });
+    }
+
+    [RelayCommand]
+    private void QuitarPresentacion(ProductoPresentacionDto? presentacion)
+    {
+        if (presentacion is null)
+            return;
+
+        if (presentacion.Id.HasValue)
+        {
+            presentacion.Estado = 0;
+            return;
+        }
+
+        PresentacionesAdicionales.Remove(presentacion);
     }
 
     private void NotificarPropiedadesCalculadas()

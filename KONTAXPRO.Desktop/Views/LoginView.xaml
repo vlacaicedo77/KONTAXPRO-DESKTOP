@@ -643,6 +643,7 @@
                         <!-- Botón -->
                         <Button Grid.Row="4"
                                 Command="{Binding LoginCommand}"
+                                AutomationProperties.Name="Ingresar a KONTAXPRO"
                                 Style="{StaticResource LoginPrimaryButtonStyle}"
                                 IsDefault="True"
                                 IsEnabled="{Binding IsLoading,

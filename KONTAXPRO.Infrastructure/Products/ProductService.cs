@@ -1,4 +1,4 @@
-﻿using KONTAXPRO.Application.Interfaces;
+using KONTAXPRO.Application.Interfaces;
 using KONTAXPRO.Application.Models.Productos;
 using KONTAXPRO.Domain.Entities.Inventario;
 using KONTAXPRO.Infrastructure.Persistence;
@@ -7,16 +7,9 @@ using Npgsql;
 
 namespace KONTAXPRO.Infrastructure.Products;
 
-public class ProductService : IProductService
+public sealed class ProductService(
+    IDbContextFactory<KontaxDbContext> dbContextFactory) : IProductService
 {
-    private readonly IDbContextFactory<KontaxDbContext> _dbContextFactory;
-
-    public ProductService(
-        IDbContextFactory<KontaxDbContext> dbContextFactory)
-    {
-        _dbContextFactory = dbContextFactory;
-    }
-
     public async Task<List<ProductoListadoDto>> ObtenerProductosAsync(
         long empresaId,
         string? busqueda = null,
@@ -25,752 +18,476 @@ public class ProductService : IProductService
         CancellationToken cancellationToken = default)
     {
         await using var context =
-            await _dbContextFactory.CreateDbContextAsync(
-                cancellationToken);
+            await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-        var query = context.Productos
-            .AsNoTracking()
+        var query = context.Productos.AsNoTracking()
             .Where(x => x.EmpresaId == empresaId);
-
-        if (estado.HasValue)
-        {
-            query = query.Where(x => x.Estado == estado.Value);
-        }
-
-        if (categoriaId.HasValue)
-        {
-            query = query.Where(
-                x => x.CategoriaProductoId == categoriaId.Value);
-        }
 
         if (!string.IsNullOrWhiteSpace(busqueda))
         {
-            var texto = busqueda.Trim().ToLower();
-
+            var text = busqueda.Trim().ToLower();
             query = query.Where(x =>
-                x.Codigo.ToLower().Contains(texto) ||
-                x.Nombre.ToLower().Contains(texto) ||
+                x.Codigo.ToLower().Contains(text) ||
+                x.Nombre.ToLower().Contains(text) ||
+                (x.Modelo != null && x.Modelo.ToLower().Contains(text)) ||
                 x.Presentaciones.Any(p =>
                     p.CodigoBarras != null &&
-                    p.CodigoBarras.ToLower().Contains(texto)));
+                    p.CodigoBarras.ToLower().Contains(text)));
         }
 
-        var productos = await query
+        if (categoriaId.HasValue)
+            query = query.Where(x => x.CategoriaProductoId == categoriaId);
+
+        if (estado.HasValue)
+            query = query.Where(x => x.Estado == estado);
+
+        return await query
             .OrderBy(x => x.Nombre)
             .Select(x => new ProductoListadoDto
             {
                 Id = x.Id,
-
                 Codigo = x.Codigo,
-
                 Nombre = x.Nombre,
-
-                Categoria = x.CategoriaProducto != null
-                    ? x.CategoriaProducto.Nombre
-                    : null,
-
-                Marca = x.Marca != null
-                    ? x.Marca.Nombre
-                    : null,
-
-                UnidadBase = x.UnidadMedidaBase != null
-                    ? x.UnidadMedidaBase.Nombre
-                    : string.Empty,
-
-                TarifaImpuesto = x.TarifaImpuesto != null
-                    ? x.TarifaImpuesto.Nombre
-                    : string.Empty,
-
-                StockActual =
-                    x.Existencias.Sum(e => e.StockActual),
-
-                StockMinimo =
-                    x.StockMinimo,
-
-                CostoPromedio = x.Costo != null
-                    ? x.Costo.CostoPromedio
-                    : 0,
-
+                Categoria = x.CategoriaProducto == null
+                    ? null
+                    : x.CategoriaProducto.Nombre,
+                Marca = x.Marca == null ? null : x.Marca.Nombre,
+                UnidadBase = x.UnidadMedidaBase!.Abreviatura,
+                TarifaImpuesto = x.Impuestos
+                    .Where(i => i.Estado == 1)
+                    .Select(i => i.TarifaImpuesto!.Nombre)
+                    .FirstOrDefault() ?? string.Empty,
+                StockActual = x.Existencias.Sum(e => e.StockActual),
+                StockMinimo = x.Existencias.Sum(e => e.StockMinimo),
+                CostoPromedio = x.Costo == null ? 0 : x.Costo.CostoPromedio,
                 PrecioPrincipal = x.Presentaciones
                     .Where(p => p.EsPresentacionBase)
                     .SelectMany(p => p.Precios)
-                    .Where(p =>
-                        p.Estado == 1 &&
-                        p.ListaPrecio != null &&
-                        p.ListaPrecio.EsPredeterminada)
-                    .Select(p => p.Precio)
+                    .Where(p => p.ListaPrecio!.EsListaBase &&
+                                p.MetodoCalculo == "PRECIO_FIJO")
+                    .Select(p => p.Precio ?? 0)
                     .FirstOrDefault(),
-
-                DiasAlertaCaducidad =
-                    x.DiasAlertaCaducidad,
-
-                PorCaducar = false,
-
-                ProximaCaducidad = null,
-
-                Estado = x.Estado
+                DiasAlertaCaducidad = x.DiasAlertaCaducidad ?? 0,
+                ProximaCaducidad = x.Lotes
+                    .Where(l => l.FechaCaducidad != null &&
+                                l.Estado == 1)
+                    .Min(l => l.FechaCaducidad),
+                PorCaducar = x.AlertaCaducidad &&
+                    x.Lotes.Any(l => l.FechaCaducidad != null),
+                Estado = (short)x.Estado
             })
             .ToListAsync(cancellationToken);
-
-        /*
-         * =========================================================
-         * PRÓXIMAS CADUCIDADES
-         * =========================================================
-         *
-         * Solo consultamos lotes correspondientes a los productos
-         * que ya fueron recuperados en el listado.
-         *
-         * Además:
-         * - el lote debe estar activo;
-         * - debe tener fecha de caducidad;
-         * - debe mantener stock en al menos una bodega.
-         */
-
-        if (productos.Count > 0)
-        {
-            var productosIds = productos
-                .Select(x => x.Id)
-                .ToList();
-
-            var lotes = await context.ProductosLotes
-                .AsNoTracking()
-                .Where(x =>
-                    productosIds.Contains(x.ProductoId) &&
-                    x.Estado == 1 &&
-                    x.FechaCaducidad != null &&
-                    x.Existencias.Any(e => e.StockActual > 0))
-                .Select(x => new
-                {
-                    x.ProductoId,
-
-                    FechaCaducidad =
-                        x.FechaCaducidad!.Value
-                })
-                .ToListAsync(cancellationToken);
-
-            var hoy =
-                DateOnly.FromDateTime(DateTime.Today);
-
-            foreach (var producto in productos)
-            {
-                /*
-                 * Buscamos únicamente lotes que aún no hayan
-                 * caducado.
-                 *
-                 * Los lotes ya vencidos los podremos manejar
-                 * posteriormente como otro indicador independiente.
-                 */
-
-                var fechasProducto = lotes
-                    .Where(x =>
-                        x.ProductoId == producto.Id &&
-                        x.FechaCaducidad >= hoy)
-                    .Select(x => x.FechaCaducidad)
-                    .OrderBy(x => x)
-                    .ToList();
-
-                if (fechasProducto.Count == 0)
-                {
-                    continue;
-                }
-
-                /*
-                 * La primera fecha ordenada es la próxima fecha
-                 * de caducidad disponible de ese producto.
-                 */
-
-                producto.ProximaCaducidad =
-                    fechasProducto[0];
-
-                /*
-                 * Ejemplo:
-                 *
-                 * Hoy: 2026-07-22
-                 * Días alerta: 30
-                 *
-                 * Fecha límite:
-                 * 2026-08-21
-                 *
-                 * Si el lote caduca antes o ese mismo día,
-                 * se considera "Por caducar".
-                 */
-
-                var fechaLimite =
-                    hoy.AddDays(
-                        producto.DiasAlertaCaducidad);
-
-                producto.PorCaducar =
-                    producto.ProximaCaducidad.Value
-                    <= fechaLimite;
-            }
-        }
-
-        return productos;
     }
 
     public async Task<ProductoDetalleDto?> ObtenerProductoAsync(
-    long productoId,
-    long empresaId,
-    CancellationToken cancellationToken = default)
+        long productoId,
+        long empresaId,
+        CancellationToken cancellationToken = default)
     {
         await using var context =
-            await _dbContextFactory.CreateDbContextAsync(
-                cancellationToken);
+            await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-        return await context.Productos
-            .AsNoTracking()
-            .Where(x =>
-                x.Id == productoId &&
-                x.EmpresaId == empresaId)
+        return await context.Productos.AsNoTracking()
+            .Where(x => x.Id == productoId && x.EmpresaId == empresaId)
             .Select(x => new ProductoDetalleDto
             {
                 Id = x.Id,
-
                 EmpresaId = x.EmpresaId,
-
-                CategoriaProductoId =
-                    x.CategoriaProductoId,
-
-                MarcaId =
-                    x.MarcaId,
-
-                UnidadMedidaBaseId =
-                    x.UnidadMedidaBaseId,
-
-                TarifaImpuestoId =
-                    x.TarifaImpuestoId,
-
-                Codigo =
-                    x.Codigo,
-
-                Nombre =
-                    x.Nombre,
-
-                Modelo =
-                    x.Modelo,
-
-                Descripcion =
-                    x.Descripcion,
-
-                /*
-                 * Presentación base del producto.
-                 */
+                CategoriaProductoId = x.CategoriaProductoId,
+                MarcaId = x.MarcaId,
+                UnidadMedidaBaseId = x.UnidadMedidaBaseId,
+                Impuestos = x.Impuestos
+                    .OrderBy(i => i.TarifaImpuesto!.Nombre)
+                    .Select(i => new ProductoImpuestoDto
+                    {
+                        TarifaImpuestoId = i.TarifaImpuestoId,
+                        Nombre = i.TarifaImpuesto!.Nombre,
+                        Estado = i.Estado
+                    }).ToList(),
+                Codigo = x.Codigo,
+                Nombre = x.Nombre,
+                Modelo = x.Modelo,
                 PresentacionNombre = x.Presentaciones
                     .Where(p => p.EsPresentacionBase)
                     .Select(p => p.Nombre)
                     .FirstOrDefault() ?? string.Empty,
-
                 CodigoBarras = x.Presentaciones
                     .Where(p => p.EsPresentacionBase)
                     .Select(p => p.CodigoBarras)
                     .FirstOrDefault(),
-
-                CodigoBarrasInterno = x.Presentaciones
-                    .Where(p => p.EsPresentacionBase)
-                    .Select(p => p.CodigoBarrasInterno)
-                    .FirstOrDefault(),
-
-                TipoProducto =
-                    x.TipoProducto,
-
-                TipoControlInventario =
-                    x.TipoControlInventario,
-
-                ManejaInventario =
-                    x.ManejaInventario,
-
-                PermiteVentaSinStock =
-                    x.PermiteVentaSinStock,
-
-                ManejaLotes =
-                    x.ManejaLotes,
-
-                ManejaSeries =
-                    x.ManejaSeries,
-
-                ManejaFechaCaducidad =
-                    x.ManejaFechaCaducidad,
-
-                AlertaStockMinimo =
-                    x.AlertaStockMinimo,
-
-                AlertaCaducidad =
-                    x.AlertaCaducidad,
-
-                StockMinimo =
-                    x.StockMinimo,
-
-                DiasAlertaCaducidad =
-                    x.DiasAlertaCaducidad,
-
-                Observacion =
-                    x.Observacion,
-
-                Estado =
-                    x.Estado
+                Descripcion = x.Descripcion,
+                TipoProducto = x.TipoProducto,
+                TipoControlInventario = x.ManejaSeries
+                    ? (x.ManejaLotes ? "LOTE_Y_SERIE" : "SERIE")
+                    : (x.ManejaLotes ? "LOTE" : "NORMAL"),
+                ManejaInventario = x.ManejaInventario,
+                ManejaLotes = x.ManejaLotes,
+                ManejaSeries = x.ManejaSeries,
+                ManejaFechaCaducidad = x.ManejaFechaCaducidad,
+                AlertaCaducidad = x.AlertaCaducidad,
+                DiasAlertaCaducidad = x.DiasAlertaCaducidad ?? 0,
+                Observacion = x.Observacion,
+                Estado = (short)x.Estado,
+                Presentaciones = x.Presentaciones
+                    .OrderByDescending(p => p.EsPresentacionBase)
+                    .ThenBy(p => p.Nombre)
+                    .Select(p => new ProductoPresentacionDto
+                    {
+                        Id = p.Id,
+                        Codigo = p.Codigo,
+                        CodigoBarras = p.CodigoBarras,
+                        Nombre = p.Nombre,
+                        FactorConversion = p.FactorConversion,
+                        EsPresentacionBase = p.EsPresentacionBase,
+                        PermiteCompra = p.PermiteCompra,
+                        PermiteVenta = p.PermiteVenta,
+                        Estado = p.Estado,
+                        Precios = p.Precios.Select(pp => new ProductoPrecioDto
+                        {
+                            Id = pp.Id,
+                            ListaPrecioId = pp.ListaPrecioId,
+                            ListaPrecioNombre = pp.ListaPrecio!.Nombre,
+                            MetodoCalculo = pp.MetodoCalculo,
+                            Porcentaje = pp.Porcentaje,
+                            Precio = pp.Precio,
+                            Estado = pp.Estado
+                        }).ToList()
+                    }).ToList(),
+                Costo = x.Costo == null
+                    ? new ProductoCostoDto()
+                    : new ProductoCostoDto
+                    {
+                        UltimoPrecioCompra = x.Costo.UltimoPrecioCompra,
+                        UltimoCostoEfectivo = x.Costo.UltimoCostoEfectivo,
+                        CostoPromedio = x.Costo.CostoPromedio
+                    },
+                Existencias = x.Existencias.Select(e => new ProductoExistenciaDto
+                {
+                    BodegaId = e.BodegaId,
+                    BodegaNombre = e.Bodega!.Nombre,
+                    StockActual = e.StockActual,
+                    StockReservado = e.StockReservado,
+                    StockMinimo = e.StockMinimo,
+                    Ubicacion = e.Ubicacion
+                }).ToList()
             })
-            .FirstOrDefaultAsync(
-                cancellationToken);
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task<ProductOperationResult> GuardarProductoAsync(
-    ProductoGuardarRequest request,
-    CancellationToken cancellationToken = default)
+        ProductoGuardarRequest request,
+        CancellationToken cancellationToken = default)
     {
-        var validationResult =
-            ValidateRequest(request);
-
-        if (validationResult is not null)
-        {
-            return ProductOperationResult.Fail(
-                validationResult);
-        }
+        var validation = Validate(request);
+        if (validation is not null)
+            return ProductOperationResult.Fail(validation);
 
         await using var context =
-            await _dbContextFactory.CreateDbContextAsync(
-                cancellationToken);
-
-        var nombre =
-            request.Nombre.Trim();
-
-
-        /*
-         * ============================================================
-         * VALIDAR CÓDIGO DE BARRAS
-         * ============================================================
-         *
-         * Si el usuario indicó un código comercial,
-         * verificamos que ninguna otra presentación lo utilice.
-         *
-         * Al editar excluimos las presentaciones del mismo producto.
-         */
-
-        if (!request.SinCodigoBarras)
-        {
-            var codigoBarras =
-                request.CodigoBarras!.Trim();
-
-
-            var codigoBarrasExiste =
-                await context.ProductosPresentaciones
-                    .AsNoTracking()
-                    .AnyAsync(
-                        x =>
-                            x.CodigoBarras == codigoBarras &&
-                            (
-                                !request.Id.HasValue ||
-                                x.ProductoId != request.Id.Value
-                            ),
-                        cancellationToken);
-
-
-            if (codigoBarrasExiste)
-            {
-                return ProductOperationResult.Fail(
-                    $"El código de barras '{codigoBarras}' ya está registrado en otra presentación.");
-            }
-        }
-
-
-        /*
-         * ============================================================
-         * VALIDAR CATÁLOGOS
-         * ============================================================
-         */
-
-        var referenciasValidas =
-            await ValidarCatalogosAsync(
-                context,
-                request,
-                cancellationToken);
-
-        if (referenciasValidas is not null)
-        {
-            return ProductOperationResult.Fail(
-                referenciasValidas);
-        }
-
-
+            await dbContextFactory.CreateDbContextAsync(cancellationToken);
         await using var transaction =
-            await context.Database
-                .BeginTransactionAsync(
-                    cancellationToken);
-
+            await context.Database.BeginTransactionAsync(cancellationToken);
 
         try
         {
+            if (!await context.Empresas.AnyAsync(
+                    x => x.Id == request.EmpresaId && x.Estado == 1,
+                    cancellationToken))
+                return ProductOperationResult.Fail("La empresa no es válida.");
+
+            if (!await context.UnidadesMedida.AnyAsync(
+                    x => x.Id == request.UnidadMedidaBaseId && x.Estado == 1,
+                    cancellationToken))
+                return ProductOperationResult.Fail(
+                    "La unidad de medida no es válida.");
+
+            if (request.CategoriaProductoId.HasValue &&
+                !await context.CategoriasProducto.AnyAsync(
+                    x => x.Id == request.CategoriaProductoId &&
+                         x.EmpresaId == request.EmpresaId &&
+                         x.Estado == 1,
+                    cancellationToken))
+                return ProductOperationResult.Fail(
+                    "La categoría no pertenece a la empresa activa.");
+
+            if (request.MarcaId.HasValue &&
+                !await context.Marcas.AnyAsync(
+                    x => x.Id == request.MarcaId && x.Estado == 1,
+                    cancellationToken))
+                return ProductOperationResult.Fail("La marca no es válida.");
+
+            var tarifasIds = request.TarifasImpuestoIds.Distinct().ToList();
+            if (tarifasIds.Count != 0 &&
+                await context.TarifasImpuesto.CountAsync(
+                    x => tarifasIds.Contains(x.Id) && x.Estado == 1,
+                    cancellationToken) != tarifasIds.Count)
+                return ProductOperationResult.Fail(
+                    "Una o más tarifas de impuesto no son válidas.");
+
+            var listaIds = request.Presentaciones
+                .SelectMany(x => x.Precios)
+                .Select(x => x.ListaPrecioId)
+                .Distinct()
+                .ToList();
+            if (listaIds.Count != 0 &&
+                await context.ListasPrecio.CountAsync(
+                    x => listaIds.Contains(x.Id) &&
+                         x.EmpresaId == request.EmpresaId &&
+                         x.Estado == 1,
+                    cancellationToken) != listaIds.Count)
+                return ProductOperationResult.Fail(
+                    "Una o más listas de precio no pertenecen a la empresa.");
+
+            var bodegaIds = request.Existencias
+                .Select(x => x.BodegaId)
+                .Distinct()
+                .ToList();
+            if (bodegaIds.Count != 0 &&
+                await context.Bodegas.CountAsync(
+                    x => bodegaIds.Contains(x.Id) &&
+                         x.Establecimiento!.EmpresaId == request.EmpresaId &&
+                         x.Estado == 1,
+                    cancellationToken) != bodegaIds.Count)
+                return ProductOperationResult.Fail(
+                    "Una o más bodegas no pertenecen a la empresa.");
+
+            var isNew = !request.Id.HasValue;
             Producto producto;
 
-            ProductoPresentacion? presentacionBase;
-
-            var esNuevo =
-                !request.Id.HasValue;
-
-
-            /*
-             * ========================================================
-             * PRODUCTO NUEVO
-             * ========================================================
-             */
-
-            if (esNuevo)
+            if (isNew)
             {
-                producto =
-                    new Producto
-                    {
-                        EmpresaId =
-                            request.EmpresaId,
-
-                        Codigo =
-                            await GenerarCodigoProductoAsync(
-                                context,
-                                cancellationToken),
-
-                        CreatedAt =
-                            DateTime.Now,
-
-                        Estado =
-                            1
-                    };
-
-
-                context.Productos.Add(
-                    producto);
-
-
-                presentacionBase = null;
+                var uuid = Guid.NewGuid();
+                producto = new Producto
+                {
+                    Uuid = uuid,
+                    EmpresaId = request.EmpresaId,
+                    Codigo = $"PRD-{uuid:N}"[..16].ToUpperInvariant(),
+                    Estado = 1,
+                    CreatedAt = DateTime.UtcNow
+                };
+                context.Productos.Add(producto);
             }
-
-            /*
-             * ========================================================
-             * EDICIÓN
-             * ========================================================
-             */
-
             else
             {
-                var productoId =
-                    request.Id
+                producto = await context.Productos
+                    .Include(x => x.Presentaciones)
+                        .ThenInclude(x => x.Precios)
+                    .Include(x => x.Impuestos)
+                    .Include(x => x.Costo)
+                    .Include(x => x.Existencias)
+                    .SingleOrDefaultAsync(
+                        x => x.Id == request.Id &&
+                             x.EmpresaId == request.EmpresaId,
+                        cancellationToken)
                     ?? throw new InvalidOperationException(
-                        "El identificador del producto no es válido.");
-
-
-                producto =
-                    await context.Productos
-                        .Include(x =>
-                            x.Presentaciones)
-                        .FirstOrDefaultAsync(
-                            x =>
-                                x.Id == productoId &&
-                                x.EmpresaId ==
-                                request.EmpresaId,
-                            cancellationToken)
-                    ?? throw new InvalidOperationException(
-                        "El producto no existe.");
-
-
-                presentacionBase =
-                    producto.Presentaciones
-                        .FirstOrDefault(
-                            x => x.EsPresentacionBase);
-
-
-                if (presentacionBase is null)
-                {
-                    throw new InvalidOperationException(
-                        "El producto no tiene configurada una presentación base.");
-                }
-
-
-                producto.UpdatedAt =
-                    DateTime.Now;
+                        "No se encontró el producto.");
             }
 
+            producto.CategoriaProductoId = request.CategoriaProductoId;
+            producto.MarcaId = request.MarcaId;
+            producto.UnidadMedidaBaseId = request.UnidadMedidaBaseId;
+            producto.Nombre = request.Nombre.Trim();
+            producto.Descripcion = Normalize(request.Descripcion);
+            producto.Modelo = Normalize(request.Modelo);
+            producto.TipoProducto = request.TipoProducto;
+            producto.ManejaInventario = request.ManejaInventario;
+            producto.ManejaLotes = request.ManejaLotes;
+            producto.ManejaSeries = request.ManejaSeries;
+            producto.ManejaFechaCaducidad = request.ManejaFechaCaducidad;
+            producto.AlertaCaducidad = request.AlertaCaducidad;
+            producto.DiasAlertaCaducidad = request.AlertaCaducidad
+                ? request.DiasAlertaCaducidad
+                : null;
+            producto.Observacion = Normalize(request.Observacion);
+            producto.UpdatedAt = DateTime.UtcNow;
 
-            /*
-             * ========================================================
-             * DATOS GENERALES
-             * ========================================================
-             */
-
-            producto.CategoriaProductoId =
-                request.CategoriaProductoId;
-
-            producto.MarcaId =
-                request.MarcaId;
-
-            producto.UnidadMedidaBaseId =
-                request.UnidadMedidaBaseId;
-
-            producto.TarifaImpuestoId =
-                request.TarifaImpuestoId;
-
-            producto.Nombre =
-                nombre;
-
-            producto.Modelo =
-                request.Modelo?.Trim();
-
-            producto.Descripcion =
-                request.Descripcion?.Trim();
-
-            producto.TipoProducto =
-                request.TipoProducto;
-
-            producto.TipoControlInventario =
-                request.TipoControlInventario;
-
-            producto.ManejaInventario =
-                request.ManejaInventario;
-
-            producto.PermiteVentaSinStock =
-                request.PermiteVentaSinStock;
-
-            producto.ManejaLotes =
-                request.ManejaLotes;
-
-            producto.ManejaSeries =
-                request.ManejaSeries;
-
-            producto.ManejaFechaCaducidad =
-                request.ManejaFechaCaducidad;
-
-            producto.AlertaStockMinimo =
-                request.AlertaStockMinimo;
-
-            producto.AlertaCaducidad =
-                request.AlertaCaducidad;
-
-            producto.StockMinimo =
-                request.StockMinimo;
-
-            producto.DiasAlertaCaducidad =
-                request.DiasAlertaCaducidad;
-
-            producto.Observacion =
-                request.Observacion?.Trim();
-
-
-            /*
-             * ========================================================
-             * DETERMINAR CÓDIGO DE BARRAS
-             * ========================================================
-             */
-
-            string codigoBarras;
-            bool codigoBarrasInterno;
-
-
-            if (request.SinCodigoBarras)
+            var basePresentation = producto.Presentaciones
+                .SingleOrDefault(x => x.EsPresentacionBase);
+            if (basePresentation is null)
             {
-                /*
-                 * Si estamos editando un producto cuyo código ya fue
-                 * generado por KONTAXPRO, conservamos el mismo.
-                 *
-                 * No debemos generar un código nuevo en cada edición.
-                 */
-
-                if (!esNuevo &&
-                    presentacionBase != null &&
-                    presentacionBase.CodigoBarrasInterno &&
-                    !string.IsNullOrWhiteSpace(
-                        presentacionBase.CodigoBarras))
+                basePresentation = new ProductoPresentacion
                 {
-                    codigoBarras =
-                        presentacionBase.CodigoBarras;
+                    Uuid = Guid.NewGuid(),
+                    EmpresaId = request.EmpresaId,
+                    Producto = producto,
+                    Codigo = "BASE",
+                    FactorConversion = 1,
+                    EsPresentacionBase = true,
+                    PermiteCompra = true,
+                    PermiteVenta = true,
+                    Estado = 1,
+                    CreatedAt = DateTime.UtcNow
+                };
+                context.ProductosPresentaciones.Add(basePresentation);
+            }
 
-                    codigoBarrasInterno =
-                        true;
+            basePresentation.Nombre = request.PresentacionNombre.Trim();
+            basePresentation.CodigoBarras = request.SinCodigoBarras
+                ? null
+                : Normalize(request.CodigoBarras);
+            basePresentation.UpdatedAt = DateTime.UtcNow;
+
+            foreach (var tarifaId in tarifasIds)
+            {
+                var impuesto = producto.Impuestos
+                    .SingleOrDefault(x => x.TarifaImpuestoId == tarifaId);
+                if (impuesto is null)
+                {
+                    producto.Impuestos.Add(new ProductoImpuesto
+                    {
+                        TarifaImpuestoId = tarifaId,
+                        Estado = 1,
+                        CreatedAt = DateTime.UtcNow
+                    });
                 }
                 else
                 {
-                    codigoBarras =
-                        await GenerarCodigoBarrasInternoAsync(
-                            context,
-                            cancellationToken);
-
-                    codigoBarrasInterno =
-                        true;
+                    impuesto.Estado = 1;
+                    impuesto.UpdatedAt = DateTime.UtcNow;
                 }
             }
-            else
-            {
-                codigoBarras =
-                    request.CodigoBarras!.Trim();
 
-                codigoBarrasInterno =
-                    false;
+            foreach (var impuesto in producto.Impuestos
+                         .Where(x => !tarifasIds.Contains(x.TarifaImpuestoId)))
+            {
+                impuesto.Estado = 0;
+                impuesto.UpdatedAt = DateTime.UtcNow;
             }
 
-
-            /*
-             * ========================================================
-             * PRODUCTO NUEVO
-             * ========================================================
-             */
-
-            if (esNuevo)
+            foreach (var input in request.Presentaciones
+                         .Where(x => !x.EsPresentacionBase))
             {
-                var nuevaPresentacionBase =
-                    new ProductoPresentacion
+                var presentation = input.Id.HasValue
+                    ? producto.Presentaciones.SingleOrDefault(
+                        x => x.Id == input.Id.Value &&
+                             !x.EsPresentacionBase)
+                    : null;
+                if (input.Id.HasValue && presentation is null)
+                    throw new InvalidOperationException(
+                        "Una presentación adicional no pertenece al producto.");
+                if (presentation is null)
+                {
+                    presentation = new ProductoPresentacion
                     {
-                        Producto =
-                            producto,
-
-                        UnidadMedidaId =
-                            request.UnidadMedidaBaseId,
-
-                        Codigo =
-                            "BASE",
-
-                        CodigoBarras =
-                            codigoBarras,
-
-                        CodigoBarrasInterno =
-                            codigoBarrasInterno,
-
-                        Nombre =
-                            request.PresentacionNombre.Trim(),
-
-                        FactorConversion =
-                            1,
-
-                        EsPresentacionBase =
-                            true,
-
-                        PermiteCompra =
-                            true,
-
-                        PermiteVenta =
-                            true,
-
-                        Estado =
-                            1,
-
-                        CreatedAt =
-                            DateTime.Now
+                        Uuid = Guid.NewGuid(),
+                        EmpresaId = request.EmpresaId,
+                        Producto = producto,
+                        CreatedAt = DateTime.UtcNow
                     };
+                    producto.Presentaciones.Add(presentation);
+                }
+                presentation.Codigo = input.Codigo.Trim();
+                presentation.CodigoBarras = Normalize(input.CodigoBarras);
+                presentation.Nombre = input.Nombre.Trim();
+                presentation.FactorConversion = input.FactorConversion;
+                presentation.EsPresentacionBase = false;
+                presentation.PermiteCompra = input.PermiteCompra;
+                presentation.PermiteVenta = input.PermiteVenta;
+                presentation.Estado = input.Estado;
+                presentation.UpdatedAt = DateTime.UtcNow;
 
-
-                producto.Presentaciones.Add(
-                    nuevaPresentacionBase);
-
-
-                /*
-                 * Registro inicial de costos.
-                 */
-
-                producto.Costo =
-                    new ProductoCosto
+                foreach (var priceInput in input.Precios)
+                {
+                    var price = priceInput.Id.HasValue
+                        ? presentation.Precios.SingleOrDefault(
+                            x => x.Id == priceInput.Id.Value)
+                        : presentation.Precios.SingleOrDefault(
+                            x => x.ListaPrecioId == priceInput.ListaPrecioId);
+                    if (priceInput.Id.HasValue && price is null)
+                        throw new InvalidOperationException(
+                            "Un precio no pertenece a la presentación.");
+                    price ??= new ProductoPresentacionPrecio
                     {
-                        UltimoPrecioCompra =
-                            0,
-
-                        UltimoCostoEfectivo =
-                            0,
-
-                        CostoPromedio =
-                            0,
-
-                        CostoMaximoExistencia =
-                            0,
-
-                        CreatedAt =
-                            DateTime.Now
+                        ListaPrecioId = priceInput.ListaPrecioId,
+                        CreatedAt = DateTime.UtcNow
                     };
+                    if (price.Id == 0 &&
+                        !presentation.Precios.Contains(price))
+                        presentation.Precios.Add(price);
+                    price.MetodoCalculo = priceInput.MetodoCalculo;
+                    price.Porcentaje = priceInput.Porcentaje;
+                    price.Precio = priceInput.Precio;
+                    price.Estado = priceInput.Estado;
+                    price.UpdatedAt = DateTime.UtcNow;
+                }
             }
 
-            /*
-             * ========================================================
-             * ACTUALIZAR PRESENTACIÓN BASE
-             * ========================================================
-             */
-
-            else if (presentacionBase != null)
+            var baseInput = request.Presentaciones
+                .SingleOrDefault(x => x.EsPresentacionBase);
+            if (baseInput is not null)
             {
-                presentacionBase.UnidadMedidaId =
-                    request.UnidadMedidaBaseId;
-
-                presentacionBase.Nombre =
-                    request.PresentacionNombre.Trim();
-
-                presentacionBase.CodigoBarras =
-                    codigoBarras;
-
-                presentacionBase.CodigoBarrasInterno =
-                    codigoBarrasInterno;
-
-                presentacionBase.UpdatedAt =
-                    DateTime.Now;
+                foreach (var priceInput in baseInput.Precios)
+                {
+                    var price = basePresentation.Precios.SingleOrDefault(
+                        x => x.ListaPrecioId == priceInput.ListaPrecioId);
+                    price ??= new ProductoPresentacionPrecio
+                    {
+                        ListaPrecioId = priceInput.ListaPrecioId,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    if (price.Id == 0 &&
+                        !basePresentation.Precios.Contains(price))
+                        basePresentation.Precios.Add(price);
+                    price.MetodoCalculo = priceInput.MetodoCalculo;
+                    price.Porcentaje = priceInput.Porcentaje;
+                    price.Precio = priceInput.Precio;
+                    price.Estado = priceInput.Estado;
+                    price.UpdatedAt = DateTime.UtcNow;
+                }
             }
 
+            foreach (var input in request.Existencias)
+            {
+                var existence = producto.Existencias.SingleOrDefault(
+                    x => x.BodegaId == input.BodegaId);
+                if (existence is null)
+                {
+                    existence = new ProductoExistencia
+                    {
+                        BodegaId = input.BodegaId,
+                        StockActual = 0,
+                        StockReservado = 0,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    producto.Existencias.Add(existence);
+                }
+                existence.StockMinimo = input.StockMinimo;
+                existence.Ubicacion = Normalize(input.Ubicacion);
+                existence.UpdatedAt = DateTime.UtcNow;
+            }
 
-            /*
-             * ========================================================
-             * GUARDAR
-             * ========================================================
-             */
+            if (producto.Costo is null)
+            {
+                producto.Costo = new ProductoCosto
+                {
+                    Producto = producto,
+                    UltimoPrecioCompra = 0,
+                    UltimoCostoEfectivo = 0,
+                    CostoPromedio = 0,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+            }
 
-            await context.SaveChangesAsync(
-                cancellationToken);
-
-
-            await transaction.CommitAsync(
-                cancellationToken);
-
-
+            await context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
             return ProductOperationResult.Ok(
                 producto.Id,
-                esNuevo
+                isNew
                     ? "Producto creado correctamente."
                     : "Producto actualizado correctamente.");
         }
-
-        /*
-         * ============================================================
-         * VIOLACIÓN DE UNICIDAD
-         * ============================================================
-         */
-
         catch (DbUpdateException ex)
-            when (
-                ex.InnerException
-                    is PostgresException postgresException
-                &&
-                postgresException.SqlState ==
-                    PostgresErrorCodes.UniqueViolation)
+            when (ex.InnerException is PostgresException
+                  { SqlState: PostgresErrorCodes.UniqueViolation })
         {
-            await transaction.RollbackAsync(
-                cancellationToken);
-
-
+            await transaction.RollbackAsync(cancellationToken);
             return ProductOperationResult.Fail(
-                "No fue posible guardar porque el código interno o el código de barras ya está siendo utilizado.");
+                "El código del producto o código de barras ya está registrado.");
         }
-
-
         catch (InvalidOperationException ex)
         {
-            await transaction.RollbackAsync(
-                cancellationToken);
-
-
-            return ProductOperationResult.Fail(
-                ex.Message);
-        }
-
-
-        catch (Exception ex)
-        {
-            await transaction.RollbackAsync(
-                cancellationToken);
-
-            var detalle =
-                ex.InnerException?.Message
-                ?? ex.Message;
-
-            return ProductOperationResult.Fail(
-                $"Error al guardar producto: {detalle}");
+            await transaction.RollbackAsync(cancellationToken);
+            return ProductOperationResult.Fail(ex.Message);
         }
     }
 
@@ -781,456 +498,137 @@ public class ProductService : IProductService
         CancellationToken cancellationToken = default)
     {
         if (nuevoEstado is not 0 and not 1)
-        {
-            return ProductOperationResult.Fail(
-                "El estado solicitado no es válido.");
-        }
+            return ProductOperationResult.Fail("El estado no es válido.");
 
         await using var context =
-            await _dbContextFactory.CreateDbContextAsync(
-                cancellationToken);
-
-        var producto =
-            await context.Productos
-                .FirstOrDefaultAsync(
-                    x =>
-                        x.Id == productoId &&
-                        x.EmpresaId == empresaId,
-                    cancellationToken);
-
-        if (producto is null)
-        {
-            return ProductOperationResult.Fail(
-                "No se encontró el producto.");
-        }
-
-        producto.Estado =
-            nuevoEstado;
-
-        producto.UpdatedAt =
-            DateTime.Now;
-
-        await context.SaveChangesAsync(
+            await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var producto = await context.Productos.SingleOrDefaultAsync(
+            x => x.Id == productoId && x.EmpresaId == empresaId,
             cancellationToken);
+        if (producto is null)
+            return ProductOperationResult.Fail("No se encontró el producto.");
 
-        return ProductOperationResult.Ok(
-            producto.Id,
-            nuevoEstado == 1
-                ? "Producto activado correctamente."
-                : "Producto inactivado correctamente.");
-    }
-
-    private static string? ValidateRequest(
-        ProductoGuardarRequest request)
-    {
-        if (request.EmpresaId <= 0)
-        {
-            return "La empresa no es válida.";
-        }
-
-        if (string.IsNullOrWhiteSpace(
-            request.Nombre))
-        {
-            return "Debe ingresar el nombre del producto.";
-        }
-
-        if (string.IsNullOrWhiteSpace(
-                request.PresentacionNombre))
-        {
-            return "Debe ingresar el nombre de la presentación base.";
-        }
-
-
-        if (!request.SinCodigoBarras &&
-            string.IsNullOrWhiteSpace(
-                request.CodigoBarras))
-        {
-            return "Debe ingresar el código de barras o indicar que la presentación no posee uno.";
-        }
-
-        if (request.UnidadMedidaBaseId <= 0)
-        {
-            return "Debe seleccionar la unidad de medida.";
-        }
-
-        if (request.TarifaImpuestoId <= 0)
-        {
-            return "Debe seleccionar la tarifa de impuesto.";
-        }
-
-        if (request.StockMinimo < 0)
-        {
-            return "El stock mínimo no puede ser negativo.";
-        }
-
-        if (request.DiasAlertaCaducidad < 0)
-        {
-            return "Los días de alerta de caducidad no pueden ser negativos.";
-        }
-
-        if (request.TipoProducto is not
-            ("PRODUCTO" or "SERVICIO"))
-        {
-            return "El tipo de producto no es válido.";
-        }
-
-        if (request.TipoControlInventario is not
-            ("NORMAL" or
-             "LOTE" or
-             "SERIE" or
-             "LOTE_Y_SERIE"))
-        {
-            return "El tipo de control de inventario no es válido.";
-        }
-
-        if (request.TipoProducto == "SERVICIO" &&
-            request.ManejaInventario)
-        {
-            return "Un servicio no puede manejar inventario.";
-        }
-
-        if (!request.ManejaInventario &&
-            (request.ManejaLotes ||
-             request.ManejaSeries ||
-             request.ManejaFechaCaducidad))
-        {
-            return "Un producto que no maneja inventario no puede manejar lotes, series o caducidad.";
-        }
-
-        if (request.ManejaFechaCaducidad &&
-            !request.ManejaLotes)
-        {
-            return "La fecha de caducidad debe estar asociada al control por lotes.";
-        }
-
-        return null;
-    }
-
-    private static async Task<string> GenerarCodigoBarrasInternoAsync(
-    KontaxDbContext context,
-    CancellationToken cancellationToken)
-    {
-        var siguiente =
-            await context.Database
-                .SqlQueryRaw<long>(
-                    """
-                SELECT nextval(
-                    's_inventario.codigo_barras_interno_seq'
-                ) AS "Value"
-                """)
-                .SingleAsync(
-                    cancellationToken);
-
-        return siguiente.ToString();
+        producto.Estado = nuevoEstado;
+        producto.UpdatedAt = DateTime.UtcNow;
+        await context.SaveChangesAsync(cancellationToken);
+        return ProductOperationResult.Ok(producto.Id,
+            nuevoEstado == 1 ? "Producto activado." : "Producto inactivado.");
     }
 
     public async Task<ProductoCodigoBarrasDto?> BuscarPorCodigoBarrasAsync(
-    string codigoBarras,
-    CancellationToken cancellationToken = default)
+        string codigoBarras,
+        CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(codigoBarras))
-        {
             return null;
-        }
-
-        var codigo =
-            codigoBarras.Trim();
 
         await using var context =
-            await _dbContextFactory.CreateDbContextAsync(
-                cancellationToken);
-
-        return await context.ProductosPresentaciones
-            .AsNoTracking()
-            .Where(x =>
-                x.CodigoBarras != null &&
-                x.CodigoBarras == codigo)
+            await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var code = codigoBarras.Trim();
+        return await context.ProductosPresentaciones.AsNoTracking()
+            .Where(x => x.CodigoBarras == code && x.Estado == 1)
             .Select(x => new ProductoCodigoBarrasDto
             {
-                ProductoId =
-                    x.ProductoId,
-
-                PresentacionId =
-                    x.Id,
-
-                CodigoInterno =
-                    x.Producto != null
-                        ? x.Producto.Codigo
-                        : string.Empty,
-
-                Nombre =
-                    x.Producto != null
-                        ? x.Producto.Nombre
-                        : string.Empty,
-
-                Modelo =
-                    x.Producto != null
-                        ? x.Producto.Modelo
-                        : null,
-
-                Presentacion =
-                    x.Nombre,
-
-                CodigoBarras =
-                    x.CodigoBarras!
+                ProductoId = x.ProductoId,
+                PresentacionId = x.Id,
+                CodigoInterno = x.Producto!.Codigo,
+                Nombre = x.Producto!.Nombre,
+                Modelo = x.Producto!.Modelo,
+                Presentacion = x.Nombre,
+                CodigoBarras = x.CodigoBarras!
             })
-            .FirstOrDefaultAsync(
-                cancellationToken);
-    }
-
-    private static async Task<string> GenerarCodigoProductoAsync(
-    KontaxDbContext context,
-    CancellationToken cancellationToken)
-    {
-        var siguiente =
-            await context.Database
-                .SqlQueryRaw<long>(
-                    """
-                SELECT nextval(
-                    's_inventario.codigo_producto_seq'
-                ) AS "Value"
-                """)
-                .SingleAsync(
-                    cancellationToken);
-
-        return $"PRD-{siguiente:000000}";
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task<List<ProductoSugerenciaDto>> BuscarSimilaresAsync(
-    long empresaId,
-    string? nombre,
-    string? modelo,
-    int limite = 5,
-    CancellationToken cancellationToken = default)
+        long empresaId,
+        string? nombre,
+        string? modelo,
+        int limite = 5,
+        CancellationToken cancellationToken = default)
     {
-        if (empresaId <= 0)
-        {
-            return new List<ProductoSugerenciaDto>();
-        }
-
-        var nombreTexto =
-            nombre?.Trim() ?? string.Empty;
-
-        var modeloTexto =
-            modelo?.Trim() ?? string.Empty;
-
-        if (nombreTexto.Length < 3 &&
-            modeloTexto.Length < 3)
-        {
-            return new List<ProductoSugerenciaDto>();
-        }
-
-        /*
-         * Construimos un texto de búsqueda combinando
-         * nombre y modelo.
-         */
-        var textoBusqueda =
-            $"{nombreTexto} {modeloTexto}"
-                .Trim();
+        var text = $"{nombre} {modelo}".Trim().ToLowerInvariant();
+        if (empresaId <= 0 || text.Length < 3)
+            return [];
 
         await using var context =
-            await _dbContextFactory.CreateDbContextAsync(
-                cancellationToken);
-
-        /*
-         * Recuperamos una cantidad pequeña de productos
-         * candidatos.
-         *
-         * La similitud considera:
-         * - nombre;
-         * - modelo;
-         * - nombre de presentación.
-         */
-        var candidatos =
-            await context.Database
-                .SqlQueryRaw<long>(
-                    """
-                SELECT p.id AS "Value"
-                FROM s_inventario.productos p
-                WHERE p.empresa_id = {0}
-                  AND p.estado = 1
-                  AND (
-                        similarity(
-                            lower(
-                                concat_ws(
-                                    ' ',
-                                    p.nombre,
-                                    coalesce(p.modelo, '')
-                                )
-                            ),
-                            lower({1})
-                        ) >= 0.20
-
-                        OR EXISTS (
-                            SELECT 1
-                            FROM s_inventario.productos_presentaciones pp
-                            WHERE pp.producto_id = p.id
-                              AND pp.estado = 1
-                              AND similarity(
-                                    lower(pp.nombre),
-                                    lower({1})
-                                  ) >= 0.20
-                        )
-
-                        OR p.nombre ILIKE '%' || {1} || '%'
-                        OR coalesce(p.modelo, '') ILIKE '%' || {1} || '%'
-                  )
-                ORDER BY
-                    GREATEST(
-                        similarity(
-                            lower(
-                                concat_ws(
-                                    ' ',
-                                    p.nombre,
-                                    coalesce(p.modelo, '')
-                                )
-                            ),
-                            lower({1})
-                        ),
-                        COALESCE(
-                            (
-                                SELECT MAX(
-                                    similarity(
-                                        lower(pp.nombre),
-                                        lower({1})
-                                    )
-                                )
-                                FROM s_inventario.productos_presentaciones pp
-                                WHERE pp.producto_id = p.id
-                                  AND pp.estado = 1
-                            ),
-                            0
-                        )
-                    ) DESC
-                LIMIT {2}
-                """,
-                    empresaId,
-                    textoBusqueda,
-                    limite)
-                .ToListAsync(
-                    cancellationToken);
-
-        if (candidatos.Count == 0)
-        {
-            return new List<ProductoSugerenciaDto>();
-        }
-
-        var resultados =
-    await context.Productos
-        .AsNoTracking()
-        .Where(x =>
-            candidatos.Contains(x.Id))
-        .Select(x => new ProductoSugerenciaDto
-        {
-            ProductoId = x.Id,
-
-            Nombre = x.Nombre,
-
-            Modelo = x.Modelo,
-
-            Marca = x.Marca != null
-                ? x.Marca.Nombre
-                : null,
-
-            Presentaciones =
-                x.Presentaciones
+            await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        return await context.Productos.AsNoTracking()
+            .Where(x => x.EmpresaId == empresaId &&
+                        x.Estado == 1 &&
+                        (x.Nombre.ToLower().Contains(text) ||
+                         (x.Modelo != null &&
+                          x.Modelo.ToLower().Contains(text))))
+            .OrderBy(x => x.Nombre)
+            .Take(Math.Clamp(limite, 1, 20))
+            .Select(x => new ProductoSugerenciaDto
+            {
+                ProductoId = x.Id,
+                Nombre = x.Nombre,
+                Modelo = x.Modelo,
+                Marca = x.Marca == null ? null : x.Marca.Nombre,
+                Presentaciones = x.Presentaciones
                     .Where(p => p.Estado == 1)
                     .OrderBy(p => p.Nombre)
                     .Select(p => p.Nombre)
                     .Take(4)
                     .ToList()
-        })
-        .ToListAsync(
-            cancellationToken);
-
-
-        var orden =
-            candidatos
-                .Select((id, index) => new
-                {
-                    id,
-                    index
-                })
-                .ToDictionary(
-                    x => x.id,
-                    x => x.index);
-
-
-        return resultados
-            .OrderBy(x =>
-                orden[x.ProductoId])
-            .ToList();
+            })
+            .ToListAsync(cancellationToken);
     }
 
-    private static async Task<string?> ValidarCatalogosAsync(
-        KontaxDbContext context,
-        ProductoGuardarRequest request,
-        CancellationToken cancellationToken)
+    private static string? Validate(ProductoGuardarRequest request)
     {
-        var unidadExiste =
-            await context.UnidadesMedida
-                .AnyAsync(
-                    x =>
-                        x.Id ==
-                        request.UnidadMedidaBaseId &&
-                        x.Estado == 1,
-                    cancellationToken);
-
-        if (!unidadExiste)
+        if (request.EmpresaId <= 0) return "La empresa no es válida.";
+        if (string.IsNullOrWhiteSpace(request.Nombre))
+            return "Debe ingresar el nombre.";
+        if (string.IsNullOrWhiteSpace(request.PresentacionNombre))
+            return "Debe ingresar la presentación base.";
+        if (request.UnidadMedidaBaseId <= 0)
+            return "Debe seleccionar la unidad de medida.";
+        if (!request.SinCodigoBarras &&
+            string.IsNullOrWhiteSpace(request.CodigoBarras))
+            return "Debe ingresar el código de barras.";
+        if (request.TipoProducto is not ("PRODUCTO" or "SERVICIO"))
+            return "El tipo de producto no es válido.";
+        if (request.TipoProducto == "SERVICIO" && request.ManejaInventario)
+            return "Un servicio no puede manejar inventario.";
+        if (!request.ManejaInventario &&
+            (request.ManejaLotes || request.ManejaSeries ||
+             request.ManejaFechaCaducidad))
+            return "El control de lotes, series o caducidad requiere inventario.";
+        if (request.ManejaFechaCaducidad && !request.ManejaLotes)
+            return "La caducidad requiere manejo de lotes.";
+        if (request.DiasAlertaCaducidad < 0)
+            return "Los días de alerta no pueden ser negativos.";
+        if (request.Presentaciones.Count(x => x.EsPresentacionBase) > 1)
+            return "Solo puede existir una presentación BASE.";
+        foreach (var presentation in request.Presentaciones
+                     .Where(x => !x.EsPresentacionBase))
         {
-            return "La unidad de medida seleccionada no es válida.";
-        }
-
-        var tarifaExiste =
-            await context.TarifasImpuesto
-                .AnyAsync(
-                    x =>
-                        x.Id ==
-                        request.TarifaImpuestoId &&
-                        x.Estado == 1,
-                    cancellationToken);
-
-        if (!tarifaExiste)
-        {
-            return "La tarifa de impuesto seleccionada no es válida.";
-        }
-
-        if (request.CategoriaProductoId.HasValue)
-        {
-            var categoriaExiste =
-                await context.CategoriasProducto
-                    .AnyAsync(
-                        x =>
-                            x.Id ==
-                            request.CategoriaProductoId.Value &&
-                            x.EmpresaId ==
-                            request.EmpresaId &&
-                            x.Estado == 1,
-                        cancellationToken);
-
-            if (!categoriaExiste)
+            if (string.IsNullOrWhiteSpace(presentation.Codigo) ||
+                string.IsNullOrWhiteSpace(presentation.Nombre))
+                return "Cada presentación requiere código y nombre.";
+            if (presentation.FactorConversion <= 0)
+                return "El factor de conversión debe ser mayor que cero.";
+            foreach (var price in presentation.Precios)
             {
-                return "La categoría seleccionada no pertenece a la empresa activa.";
+                var porcentaje = price.MetodoCalculo
+                    is "PORCENTAJE_COSTO" or "DESCUENTO_PORCENTAJE";
+                var fijo = price.MetodoCalculo == "PRECIO_FIJO";
+                if ((!porcentaje && !fijo) ||
+                    (porcentaje && (price.Porcentaje is null or < 0 ||
+                                    price.Precio is not null)) ||
+                    (fijo && (price.Precio is null or < 0 ||
+                              price.Porcentaje is not null)))
+                    return "La configuración de un precio no es válida.";
             }
         }
-
-        if (request.MarcaId.HasValue)
-        {
-            var marcaExiste =
-                await context.Marcas
-                    .AnyAsync(
-                        x =>
-                            x.Id ==
-                            request.MarcaId.Value &&
-                            x.Estado == 1,
-                        cancellationToken);
-
-            if (!marcaExiste)
-            {
-                return "La marca seleccionada no es válida.";
-            }
-        }
-
+        if (request.Existencias.Any(x => x.StockMinimo < 0))
+            return "El stock mínimo no puede ser negativo.";
         return null;
     }
+
+    private static string? Normalize(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

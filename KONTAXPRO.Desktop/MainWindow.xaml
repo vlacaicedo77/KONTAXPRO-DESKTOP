@@ -500,6 +500,7 @@
                         <Grid Width="310">
 
                             <ToggleButton x:Name="UserMenuButton"
+                                          AutomationProperties.Name="Menú de usuario"
                                           Width="310"
                                           Height="60"
                                           Padding="10,5"
@@ -657,6 +658,7 @@
 
                                             <!-- Cambiar empresa -->
                                             <Button Command="{Binding CambiarEmpresaCommand}"
+                                                    AutomationProperties.Name="Cambiar empresa"
                                                     Style="{StaticResource UserMenuOptionButtonStyle}">
 
                                                 <StackPanel Orientation="Horizontal">

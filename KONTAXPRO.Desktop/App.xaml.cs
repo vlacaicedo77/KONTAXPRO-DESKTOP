@@ -9,6 +9,7 @@ using KONTAXPRO.Infrastructure.Inventory;
 using KONTAXPRO.Infrastructure.Persistence;
 using KONTAXPRO.Infrastructure.Products;
 using KONTAXPRO.Infrastructure.Security;
+using KONTAXPRO.Infrastructure.FacturacionElectronica;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -50,6 +51,9 @@ namespace KONTAXPRO.Desktop
             services.AddTransient<IInventoryService, InventoryService>();
             services.AddTransient<IProductService, ProductService>();
             services.AddTransient<IProductCatalogService, ProductCatalogService>();
+            services.AddTransient<IEstadoComprobanteElectronicoService,
+                EstadoComprobanteElectronicoService>();
+            services.AddTransient<ProductsViewModel>();
             services.AddTransient<ProductFormViewModel>();
 
             // ViewModels
@@ -74,6 +78,7 @@ namespace KONTAXPRO.Desktop
             services.AddSingleton<IUsuarioEmpresaService, UsuarioEmpresaService>();
 
             services.AddSingleton<StructuralSeeder>();
+            services.AddSingleton<DemoSeeder>();
 
             _serviceProvider = services.BuildServiceProvider();
         }
@@ -130,6 +135,21 @@ namespace KONTAXPRO.Desktop
                         StructuralSeeder>();
 
                 await seeder.SeedAsync();
+
+                var environmentName =
+                    Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
+                    ?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+
+                if (string.Equals(
+                        environmentName,
+                        "Development",
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    var demoSeeder =
+                        _serviceProvider.GetRequiredService<DemoSeeder>();
+
+                    await demoSeeder.SeedAsync(environmentName);
+                }
 
                 // Ejecutar Login y selección automática/manual de empresa
                 var sessionFlowService =

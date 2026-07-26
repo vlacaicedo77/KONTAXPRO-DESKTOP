@@ -1,4 +1,6 @@
 using KONTAXPRO.Domain.Entities.Configuracion;
+using ConfiguracionFacturacionElectronica =
+    KONTAXPRO.Domain.Entities.Configuracion.FacturacionElectronica;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -145,16 +147,17 @@ public sealed class UsuarioConfiguracionEmpresaConfiguration
             .HasPrincipalKey(x => new { x.Id, x.EstablecimientoId })
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(x => x.Bodega).WithMany()
-            .HasForeignKey(x => new { x.BodegaId, x.EmpresaId })
-            .HasPrincipalKey(x => new { x.Id, x.EmpresaId })
+            .HasForeignKey(x => new { x.BodegaId, x.EstablecimientoId })
+            .HasPrincipalKey(x => new { x.Id, x.EstablecimientoId })
             .OnDelete(DeleteBehavior.Restrict);
     }
 }
 
 public sealed class FacturacionElectronicaConfiguration
-    : IEntityTypeConfiguration<FacturacionElectronica>
+    : IEntityTypeConfiguration<ConfiguracionFacturacionElectronica>
 {
-    public void Configure(EntityTypeBuilder<FacturacionElectronica> builder)
+    public void Configure(
+        EntityTypeBuilder<ConfiguracionFacturacionElectronica> builder)
     {
         builder.ToTable("facturacion_electronica", "s_configuracion");
         builder.HasKey(x => x.Id);
@@ -179,7 +182,8 @@ public sealed class FacturacionElectronicaConfiguration
             .HasDatabaseName("ux_facturacion_electronica_empresa");
         builder.HasOne(x => x.Empresa)
             .WithOne(x => x.FacturacionElectronica)
-            .HasForeignKey<FacturacionElectronica>(x => x.EmpresaId)
+            .HasForeignKey<ConfiguracionFacturacionElectronica>(
+                x => x.EmpresaId)
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(x => x.TipoAmbiente).WithMany()
             .HasForeignKey(x => x.TipoAmbienteId)

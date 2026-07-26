@@ -7,6 +7,14 @@ namespace KONTAXPRO.Infrastructure.Persistence;
 
 public sealed class StructuralSeeder
 {
+    // AVISO DE RELEASE:
+    // Los códigos SRI incluidos son datos de referencia estructural.
+    // Deben contrastarse con las fichas técnicas y catálogos vigentes del SRI
+    // antes de cada release de producción. Tarifas y conceptos de retención,
+    // por tener vigencia temporal, no se inventan ni se fijan aquí.
+    private const string VerificarSriAntesDeProduccion =
+        "VERIFICAR CONTRA CATALOGO SRI VIGENTE ANTES DE RELEASE PRODUCCION.";
+
     private readonly IDbContextFactory<KontaxDbContext> _dbContextFactory;
 
     public StructuralSeeder(
@@ -20,6 +28,8 @@ public sealed class StructuralSeeder
     {
         await using var context =
             await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+        await using var transaction =
+            await context.Database.BeginTransactionAsync(cancellationToken);
 
         var now = DateTime.UtcNow;
 
@@ -27,6 +37,9 @@ public sealed class StructuralSeeder
         await SeedConsumidorFinalAsync(context, now, cancellationToken);
         await SeedRegimenesAsync(context, now, cancellationToken);
         await SeedTiposComprobanteAsync(context, now, cancellationToken);
+        await SeedUnidadesMedidaAsync(context, now, cancellationToken);
+        await SeedImpuestosAsync(context, now, cancellationToken);
+        await SeedFormasYMediosPagoAsync(context, now, cancellationToken);
         await SeedNumericosAsync(
             context,
             context.TiposAmbiente,
@@ -230,6 +243,7 @@ public sealed class StructuralSeeder
         }
 
         await context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
     }
 
     private static async Task SeedTiposIdentificacionAsync(
@@ -370,18 +384,26 @@ public sealed class StructuralSeeder
         }
 
         var asignacionesExistentes = await context.RolesPermisos
-            .Where(x =>
-                x.Rol != null &&
-                x.Rol.Codigo == "ADMINISTRADOR")
-            .Select(x => x.Permiso!.Codigo)
-            .ToHashSetAsync(cancellationToken);
+            .Select(x => new
+            {
+                Rol = x.Rol!.Codigo,
+                Permiso = x.Permiso!.Codigo
+            })
+            .ToListAsync(cancellationToken);
+        var paresExistentes = asignacionesExistentes
+            .Select(x => $"{x.Rol}|{x.Permiso}")
+            .ToHashSet(StringComparer.Ordinal);
 
-        var administrador = roles["ADMINISTRADOR"];
-        foreach (var codigoPermiso in permisosSeeds.Select(x => x.Codigo))
+        var asignaciones = permisosSeeds
+            .Select(x => ("ADMINISTRADOR", x.Codigo))
+            .Append(("GUARDALMACEN", "INVENTARIO_VER_COSTO"));
+
+        foreach (var (codigoRol, codigoPermiso) in asignaciones)
         {
             var permiso = permisos[codigoPermiso];
+            var par = $"{codigoRol}|{codigoPermiso}";
 
-            if (asignacionesExistentes.Contains(permiso.Codigo))
+            if (paresExistentes.Contains(par))
             {
                 continue;
             }
@@ -389,10 +411,11 @@ public sealed class StructuralSeeder
             context.RolesPermisos.Add(
                 new RolPermiso
                 {
-                    Rol = administrador,
+                    Rol = roles[codigoRol],
                     Permiso = permiso,
                     CreatedAt = now
                 });
+            paresExistentes.Add(par);
         }
     }
 
@@ -453,6 +476,145 @@ public sealed class StructuralSeeder
 
             entity.CodigoSri = seed.Sri;
             entity.Nombre = seed.Codigo;
+            entity.Descripcion = VerificarSriAntesDeProduccion;
+            entity.Estado = 1;
+        }
+    }
+
+    private static async Task SeedUnidadesMedidaAsync(
+        KontaxDbContext context,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        (string Codigo, string Nombre, string Abreviatura)[] seeds =
+        [
+            ("UNIDAD", "Unidad", "u")
+        ];
+        var existentes = await context.UnidadesMedida
+            .ToDictionaryAsync(x => x.Codigo, cancellationToken);
+
+        foreach (var seed in seeds)
+        {
+            if (!existentes.TryGetValue(seed.Codigo, out var entity))
+            {
+                entity = new UnidadMedida
+                {
+                    Codigo = seed.Codigo,
+                    CreatedAt = now
+                };
+                context.UnidadesMedida.Add(entity);
+            }
+
+            entity.Nombre = seed.Nombre;
+            entity.Abreviatura = seed.Abreviatura;
+            entity.Estado = 1;
+        }
+    }
+
+    private static async Task SeedImpuestosAsync(
+        KontaxDbContext context,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        (string Sri, string Codigo, string Nombre)[] seeds =
+        [
+            ("2", "IVA", "Impuesto al Valor Agregado"),
+            ("3", "ICE", "Impuesto a los Consumos Especiales"),
+            ("5", "IRBPNR", "Impuesto Redimible a las Botellas Plásticas")
+        ];
+        var existentes = await context.Impuestos
+            .ToDictionaryAsync(x => x.Codigo, cancellationToken);
+
+        foreach (var seed in seeds)
+        {
+            if (!existentes.TryGetValue(seed.Codigo, out var entity))
+            {
+                entity = new Impuesto
+                {
+                    Codigo = seed.Codigo,
+                    CreatedAt = now
+                };
+                context.Impuestos.Add(entity);
+            }
+
+            entity.CodigoSri = seed.Sri;
+            entity.Nombre = seed.Nombre;
+            entity.Descripcion = VerificarSriAntesDeProduccion;
+            entity.Estado = 1;
+        }
+
+        // No sembrar TarifasImpuesto ni ConceptosRetencion sin una fuente
+        // oficial versionada: porcentajes, códigos y vigencias pueden cambiar.
+    }
+
+    private static async Task SeedFormasYMediosPagoAsync(
+        KontaxDbContext context,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        (string Sri, string Codigo, string Nombre)[] formas =
+        [
+            ("01", "SIN_SISTEMA_FINANCIERO",
+                "Sin utilización del sistema financiero"),
+            ("15", "COMPENSACION_DEUDAS", "Compensación de deudas"),
+            ("16", "TARJETA_DEBITO", "Tarjeta de débito"),
+            ("17", "DINERO_ELECTRONICO", "Dinero electrónico"),
+            ("18", "TARJETA_PREPAGO", "Tarjeta prepago"),
+            ("19", "TARJETA_CREDITO", "Tarjeta de crédito"),
+            ("20", "OTROS_SISTEMA_FINANCIERO",
+                "Otros con utilización del sistema financiero"),
+            ("21", "ENDOSO_TITULOS", "Endoso de títulos")
+        ];
+        var formasExistentes = await context.FormasPago
+            .ToDictionaryAsync(x => x.Codigo, cancellationToken);
+
+        foreach (var seed in formas)
+        {
+            if (!formasExistentes.TryGetValue(seed.Codigo, out var entity))
+            {
+                entity = new FormaPago
+                {
+                    Codigo = seed.Codigo,
+                    CreatedAt = now
+                };
+                context.FormasPago.Add(entity);
+                formasExistentes.Add(seed.Codigo, entity);
+            }
+
+            entity.CodigoSri = seed.Sri;
+            entity.Nombre = seed.Nombre;
+            entity.Descripcion = VerificarSriAntesDeProduccion;
+            entity.Estado = 1;
+        }
+
+        (string Codigo, string Nombre, string FormaCodigo)[] medios =
+        [
+            ("EFECTIVO", "Efectivo", "SIN_SISTEMA_FINANCIERO"),
+            ("TRANSFERENCIA", "Transferencia bancaria",
+                "OTROS_SISTEMA_FINANCIERO"),
+            ("CHEQUE", "Cheque", "OTROS_SISTEMA_FINANCIERO"),
+            ("TARJETA_DEBITO", "Tarjeta de débito", "TARJETA_DEBITO"),
+            ("TARJETA_CREDITO", "Tarjeta de crédito", "TARJETA_CREDITO")
+        ];
+        var mediosExistentes = await context.MediosPago
+            .ToDictionaryAsync(x => x.Codigo, cancellationToken);
+
+        foreach (var seed in medios)
+        {
+            if (!mediosExistentes.TryGetValue(seed.Codigo, out var entity))
+            {
+                entity = new MedioPago
+                {
+                    Codigo = seed.Codigo,
+                    CreatedAt = now
+                };
+                context.MediosPago.Add(entity);
+            }
+
+            entity.Nombre = seed.Nombre;
+            entity.FormaPagoSri = formasExistentes[seed.FormaCodigo];
+            entity.Descripcion =
+                $"Mapeo estructural. {VerificarSriAntesDeProduccion}";
             entity.Estado = 1;
         }
     }

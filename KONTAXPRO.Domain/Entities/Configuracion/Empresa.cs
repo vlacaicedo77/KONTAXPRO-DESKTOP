@@ -29,13 +29,10 @@ public class Empresa
         new List<UsuarioConfiguracionEmpresa>();
     public FacturacionElectronica? FacturacionElectronica { get; set; }
 
-    // Navegaciones de módulos que todavía conservan el modelo previo.
-    public ConfiguracionInventario? ConfiguracionInventario { get; set; }
     public ICollection<CategoriaProducto> CategoriasProducto { get; set; } =
         new List<CategoriaProducto>();
     public ICollection<ListaPrecio> ListasPrecio { get; set; } =
         new List<ListaPrecio>();
-    public ICollection<Bodega> Bodegas { get; set; } = new List<Bodega>();
     public ICollection<Producto> Productos { get; set; } =
         new List<Producto>();
 }

@@ -95,6 +95,25 @@ public class ProductCatalogService : IProductCatalogService
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<List<CatalogItemDto>> ObtenerListasPrecioAsync(
+        long empresaId,
+        CancellationToken cancellationToken = default)
+    {
+        await using var context =
+            await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+        return await context.ListasPrecio.AsNoTracking()
+            .Where(x => x.EmpresaId == empresaId && x.Estado == 1)
+            .OrderByDescending(x => x.EsListaBase)
+            .ThenBy(x => x.Orden)
+            .Select(x => new CatalogItemDto
+            {
+                Id = x.Id,
+                Nombre = x.Nombre
+            })
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<CatalogCreateResult> CrearCategoriaAsync(
         long empresaId,
         string nombre,

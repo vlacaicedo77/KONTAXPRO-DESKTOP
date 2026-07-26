@@ -103,6 +103,8 @@ public sealed class EmpresaTerceroConfiguration
                     "estado IN (0, 1)");
             });
         builder.HasKey(x => x.Id);
+        builder.HasAlternateKey(x => new { x.Id, x.EmpresaId })
+            .HasName("ak_empresas_terceros_id_empresa");
         builder.Property(x => x.Id).HasColumnName("id")
             .UseIdentityByDefaultColumn();
         builder.Property(x => x.EmpresaId)

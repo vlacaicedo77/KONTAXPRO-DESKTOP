@@ -12,6 +12,7 @@
         <!-- ===================================================== -->
 
         <Button Style="{DynamicResource SidebarMainButtonStyle}"
+                AutomationProperties.Name="{Binding Titulo}"
                 HorizontalAlignment="Stretch"
                 HorizontalContentAlignment="Stretch"
                 Click="MenuButton_Click"
@@ -141,6 +142,7 @@
                 <DataTemplate>
 
                     <Button Style="{DynamicResource SidebarSubmenuButtonStyle}"
+                            AutomationProperties.Name="{Binding Titulo}"
                             HorizontalAlignment="Stretch"
                             HorizontalContentAlignment="Stretch"
                             Command="{Binding DataContext.NavegarCommand,

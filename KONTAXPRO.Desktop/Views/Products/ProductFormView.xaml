@@ -1101,7 +1101,7 @@
 
                         <!-- IVA -->
 
-                        <TextBlock Text="IVA / impuesto *"
+                        <TextBlock Text="IVA / impuesto"
                                    Style="{StaticResource FieldLabelStyle}" />
 
                         <ComboBox ItemsSource="{Binding TarifasImpuesto}"
@@ -1109,6 +1109,26 @@
                                   SelectedValuePath="Id"
                                   SelectedValue="{Binding TarifaImpuestoId}"
                                   Style="{StaticResource ModernComboBoxStyle}" />
+
+                        <TextBlock Text="Lista de precio base"
+                                   Style="{StaticResource FieldLabelStyle}"
+                                   Margin="0,14,0,0" />
+
+                        <ComboBox ItemsSource="{Binding ListasPrecio}"
+                                  DisplayMemberPath="Nombre"
+                                  SelectedValuePath="Id"
+                                  SelectedValue="{Binding ListaPrecioBaseId}"
+                                  Style="{StaticResource ModernComboBoxStyle}" />
+
+                        <TextBlock Text="Precio fijo"
+                                   Style="{StaticResource FieldLabelStyle}"
+                                   Margin="0,14,0,0" />
+
+                        <Border Style="{StaticResource FormFieldBorderStyle}">
+                            <TextBox Text="{Binding PrecioBase,
+                                UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource ModernTextBoxStyle}" />
+                        </Border>
 
 
                     </StackPanel>
@@ -1264,6 +1284,60 @@
                             </StackPanel>
 
                         </Grid>
+
+                        <Grid Margin="0,22,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Presentaciones adicionales"
+                                           Style="{StaticResource SectionTitleStyle}" />
+                                <TextBlock Text="La BASE siempre se conserva; agrega cajas, paquetes u otras unidades comerciales."
+                                           Style="{StaticResource FieldHelpStyle}"
+                                           Margin="0,3,0,0" />
+                            </StackPanel>
+                            <Button Grid.Column="1"
+                                    Content="Agregar presentación"
+                                    Command="{Binding AgregarPresentacionCommand}"
+                                    Style="{StaticResource PrimaryButtonStyle}" />
+                        </Grid>
+
+                        <DataGrid ItemsSource="{Binding PresentacionesAdicionales}"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  MinHeight="120">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Código"
+                                                    Binding="{Binding Codigo, UpdateSourceTrigger=PropertyChanged}"
+                                                    Width="110" />
+                                <DataGridTextColumn Header="Nombre"
+                                                    Binding="{Binding Nombre, UpdateSourceTrigger=PropertyChanged}"
+                                                    Width="*" />
+                                <DataGridTextColumn Header="Factor"
+                                                    Binding="{Binding FactorConversion, UpdateSourceTrigger=PropertyChanged}"
+                                                    Width="90" />
+                                <DataGridTextColumn Header="Código de barras"
+                                                    Binding="{Binding CodigoBarras, UpdateSourceTrigger=PropertyChanged}"
+                                                    Width="170" />
+                                <DataGridCheckBoxColumn Header="Compra"
+                                                        Binding="{Binding PermiteCompra}"
+                                                        Width="75" />
+                                <DataGridCheckBoxColumn Header="Venta"
+                                                        Binding="{Binding PermiteVenta}"
+                                                        Width="75" />
+                                <DataGridTemplateColumn Width="70">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Button Content="Quitar"
+                                                    Command="{Binding DataContext.QuitarPresentacionCommand,
+                                                        RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                    CommandParameter="{Binding}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
 
                     </StackPanel>
 

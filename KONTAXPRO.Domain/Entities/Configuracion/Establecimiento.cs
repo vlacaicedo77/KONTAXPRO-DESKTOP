@@ -21,4 +21,6 @@ public class Establecimiento
     public ICollection<UsuarioConfiguracionEmpresa>
         UsuariosConfiguracionesEmpresa { get; set; } =
         new List<UsuarioConfiguracionEmpresa>();
+    public ICollection<KONTAXPRO.Domain.Entities.Inventario.Bodega> Bodegas
+        { get; set; } = [];
 }
