@@ -1,0 +1,438 @@
+﻿<Window x:Class="KONTAXPRO.Desktop.Views.ConfirmacionWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="Finalizar sesión"
+        Width="570"
+        Height="440"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False">
+
+    <Window.Resources>
+
+        <!-- Botón verde: seguir conectado -->
+        <Style x:Key="StayConnectedButtonStyle"
+               TargetType="Button">
+
+            <Setter Property="Width" Value="175"/>
+            <Setter Property="Height" Value="46"/>
+            <Setter Property="Padding" Value="16,0"/>
+            <Setter Property="Background" Value="#16A34A"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+
+            <Setter Property="Template">
+                <Setter.Value>
+
+                    <ControlTemplate TargetType="Button">
+
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="10"
+                                Padding="{TemplateBinding Padding}">
+
+                            <ContentPresenter
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"/>
+
+                        </Border>
+
+                        <ControlTemplate.Triggers>
+
+                            <Trigger Property="IsMouseOver"
+                                     Value="True">
+
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Background"
+                                        Value="#15803D"/>
+
+                            </Trigger>
+
+                            <Trigger Property="IsPressed"
+                                     Value="True">
+
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Background"
+                                        Value="#166534"/>
+
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Opacity"
+                                        Value="0.9"/>
+
+                            </Trigger>
+
+                        </ControlTemplate.Triggers>
+
+                    </ControlTemplate>
+
+                </Setter.Value>
+            </Setter>
+
+        </Style>
+
+
+        <!-- Botón rojo: cerrar sesión -->
+        <Style x:Key="LogoutButtonStyle"
+               TargetType="Button">
+
+            <Setter Property="Width" Value="175"/>
+            <Setter Property="Height" Value="46"/>
+            <Setter Property="Padding" Value="16,0"/>
+            <Setter Property="Background" Value="#DC2626"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+
+            <Setter Property="Template">
+                <Setter.Value>
+
+                    <ControlTemplate TargetType="Button">
+
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="10"
+                                Padding="{TemplateBinding Padding}">
+
+                            <ContentPresenter
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"/>
+
+                        </Border>
+
+                        <ControlTemplate.Triggers>
+
+                            <Trigger Property="IsMouseOver"
+                                     Value="True">
+
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Background"
+                                        Value="#B91C1C"/>
+
+                            </Trigger>
+
+                            <Trigger Property="IsPressed"
+                                     Value="True">
+
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Background"
+                                        Value="#991B1B"/>
+
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Opacity"
+                                        Value="0.9"/>
+
+                            </Trigger>
+
+                        </ControlTemplate.Triggers>
+
+                    </ControlTemplate>
+
+                </Setter.Value>
+            </Setter>
+
+        </Style>
+
+    </Window.Resources>
+
+
+    <!-- Contenedor exterior -->
+    <Border Margin="24"
+            CornerRadius="22"
+            Background="{DynamicResource BorderBrush}">
+
+        <Border.Effect>
+
+            <DropShadowEffect
+                BlurRadius="30"
+                ShadowDepth="4"
+                Direction="270"
+                Opacity="0.35"/>
+
+        </Border.Effect>
+
+
+        <!-- Fondo principal -->
+        <Border Margin="1"
+                CornerRadius="21"
+                Background="{DynamicResource SurfaceBrush}"
+                ClipToBounds="True">
+
+            <Grid>
+
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="7"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+
+                <!-- Línea luminosa superior -->
+                <Border Grid.Row="0"
+                        Margin="7,0,7,0"
+                        CornerRadius="14,14,0,0">
+
+                    <Border.Background>
+
+                        <LinearGradientBrush
+                            StartPoint="0,0"
+                            EndPoint="1,0">
+
+                            <GradientStop Color="#16A34A"
+                                          Offset="0"/>
+
+                            <GradientStop Color="#84CC16"
+                                          Offset="0.25"/>
+
+                            <GradientStop Color="#FACC15"
+                                          Offset="0.50"/>
+
+                            <GradientStop Color="#FB923C"
+                                          Offset="0.75"/>
+
+                            <GradientStop Color="#DC2626"
+                                          Offset="1"/>
+
+                        </LinearGradientBrush>
+
+                    </Border.Background>
+
+                </Border>
+
+
+                <!-- Contenido -->
+                <Grid Grid.Row="1"
+                      Margin="34,25,34,26">
+
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+
+                    <!-- Encabezado -->
+                    <StackPanel Grid.Row="0"
+                                Orientation="Horizontal">
+
+                        <Border Width="58"
+                                Height="58"
+                                CornerRadius="16"
+                                Background="#DC2626"
+                                Margin="0,0,18,0">
+
+                            <materialDesign:PackIcon
+                                Kind="Logout"
+                                Width="30"
+                                Height="30"
+                                Foreground="White"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"/>
+
+                        </Border>
+
+
+                        <StackPanel VerticalAlignment="Center">
+
+                            <TextBlock
+                                Text="Finalizar sesión"
+                                FontSize="25"
+                                FontWeight="Bold"
+                                Foreground="{DynamicResource TextPrimaryBrush}"/>
+
+                            <TextBlock
+                                Text="SESIÓN SEGURA"
+                                Margin="0,4,0,0"
+                                FontSize="11"
+                                FontWeight="Bold"
+                                Foreground="{DynamicResource BrandProBrush}"/>
+
+                        </StackPanel>
+
+                    </StackPanel>
+
+
+                    <!-- Usuario y empresa -->
+                    <StackPanel Grid.Row="1"
+                                Margin="0,20,0,0">
+
+                        <!-- Usuario -->
+                        <Border Height="46"
+                                Padding="12,0"
+                                CornerRadius="9"
+                                Background="{DynamicResource BackgroundBrush}"
+                                Margin="0,0,0,8">
+
+                            <Grid>
+
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="32"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <materialDesign:PackIcon
+                                    Grid.Column="0"
+                                    Kind="AccountCircle"
+                                    Width="21"
+                                    Height="21"
+                                    VerticalAlignment="Center"
+                                    Foreground="{DynamicResource BrandProBrush}"/>
+
+                                <TextBlock
+                                    Grid.Column="1"
+                                    Text="{Binding NombreUsuario, Mode=OneWay}"
+                                    FontSize="13"
+                                    FontWeight="SemiBold"
+                                    VerticalAlignment="Center"
+                                    TextTrimming="CharacterEllipsis"
+                                    Foreground="{DynamicResource TextPrimaryBrush}"/>
+
+                            </Grid>
+
+                        </Border>
+
+
+                        <!-- Empresa -->
+                        <Border Height="46"
+                                Padding="12,0"
+                                CornerRadius="9"
+                                Background="{DynamicResource BackgroundBrush}">
+
+                            <Grid>
+
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="32"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <materialDesign:PackIcon
+                                    Grid.Column="0"
+                                    Kind="OfficeBuilding"
+                                    Width="21"
+                                    Height="21"
+                                    VerticalAlignment="Center"
+                                    Foreground="{DynamicResource BrandProBrush}"/>
+
+                                <TextBlock
+                                    Grid.Column="1"
+                                    Text="{Binding Empresa, Mode=OneWay}"
+                                    FontSize="13"
+                                    FontWeight="SemiBold"
+                                    VerticalAlignment="Center"
+                                    TextTrimming="CharacterEllipsis"
+                                    Foreground="{DynamicResource TextPrimaryBrush}"/>
+
+                            </Grid>
+
+                        </Border>
+
+                    </StackPanel>
+
+
+                    <!-- Mensaje secundario -->
+                    <Border Grid.Row="2"
+                            Margin="0,20,0,0"
+                            Padding="12,10"
+                            CornerRadius="9"
+                            Background="{DynamicResource BackgroundBrush}">
+
+                        <Grid>
+
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="28"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <materialDesign:PackIcon
+                                Grid.Column="0"
+                                Kind="InformationOutline"
+                                Width="18"
+                                Height="18"
+                                VerticalAlignment="Center"
+                                Foreground="{DynamicResource TextMutedBrush}"/>
+
+                            <TextBlock
+                                Grid.Column="1"
+                                Text="Al finalizar la sesión, deberás ingresar nuevamente tus credenciales."
+                                FontSize="12"
+                                LineHeight="18"
+                                TextWrapping="Wrap"
+                                VerticalAlignment="Center"
+                                Foreground="{DynamicResource TextMutedBrush}"/>
+
+                        </Grid>
+
+                    </Border>
+
+
+                    <!-- Botones -->
+                    <StackPanel Grid.Row="3"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                Margin="0,24,0,0">
+
+                        <!-- Seguir conectado -->
+                        <Button Style="{StaticResource StayConnectedButtonStyle}"
+                                Click="Cancelar_Click"
+                                Margin="0,0,14,0">
+
+                            <StackPanel Orientation="Horizontal">
+
+                                <materialDesign:PackIcon
+                                    Kind="ShieldCheck"
+                                    Width="19"
+                                    Height="19"
+                                    Margin="0,0,9,0"
+                                    Foreground="White"/>
+
+                                <TextBlock
+                                    Text="Seguir conectado"
+                                    FontWeight="Bold"
+                                    VerticalAlignment="Center"/>
+
+                            </StackPanel>
+
+                        </Button>
+
+
+                        <!-- Cerrar sesión -->
+                        <Button Style="{StaticResource LogoutButtonStyle}"
+                                Click="Confirmar_Click">
+
+                            <StackPanel Orientation="Horizontal">
+
+                                <materialDesign:PackIcon
+                                    Kind="Logout"
+                                    Width="19"
+                                    Height="19"
+                                    Margin="0,0,9,0"
+                                    Foreground="White"/>
+
+                                <TextBlock
+                                    Text="Cerrar sesión"
+                                    FontWeight="Bold"
+                                    VerticalAlignment="Center"/>
+
+                            </StackPanel>
+
+                        </Button>
+
+                    </StackPanel>
+
+                </Grid>
+
+            </Grid>
+
+        </Border>
+
+    </Border>
+
+</Window>

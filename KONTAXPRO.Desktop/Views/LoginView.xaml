@@ -1,0 +1,721 @@
+﻿<Window x:Class="KONTAXPRO.Desktop.Views.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="KONTAXPRO · Acceso seguro"
+        Width="980"
+        Height="620"
+        MinWidth="900"
+        MinHeight="580"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        AllowsTransparency="True"
+        Background="Transparent"
+        MouseLeftButtonDown="Window_MouseLeftButtonDown"
+        ShowInTaskbar="True">
+
+    <Window.Resources>
+
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+
+        <!-- Campo de texto moderno -->
+        <Style x:Key="LoginTextBoxStyle"
+               TargetType="TextBox">
+
+            <Setter Property="Height"
+                    Value="48" />
+
+            <Setter Property="Padding"
+                    Value="44,0,14,0" />
+
+            <Setter Property="FontSize"
+                    Value="14" />
+
+            <Setter Property="VerticalContentAlignment"
+                    Value="Center" />
+
+            <Setter Property="Background"
+                    Value="{DynamicResource BackgroundBrush}" />
+
+            <Setter Property="Foreground"
+                    Value="{DynamicResource TextPrimaryBrush}" />
+
+            <Setter Property="BorderBrush"
+                    Value="{DynamicResource BorderBrush}" />
+
+            <Setter Property="BorderThickness"
+                    Value="1" />
+
+            <Setter Property="CaretBrush"
+                    Value="{DynamicResource BrandProBrush}" />
+
+            <Setter Property="FocusVisualStyle"
+                    Value="{x:Null}" />
+
+            <Setter Property="Template">
+                <Setter.Value>
+
+                    <ControlTemplate TargetType="TextBox">
+
+                        <Border x:Name="FieldBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="10">
+
+                            <ScrollViewer x:Name="PART_ContentHost" />
+
+                        </Border>
+
+                        <ControlTemplate.Triggers>
+
+                            <Trigger Property="IsKeyboardFocused"
+                                     Value="True">
+
+                                <Setter TargetName="FieldBorder"
+                                        Property="BorderBrush"
+                                        Value="{DynamicResource BrandProBrush}" />
+
+                                <Setter TargetName="FieldBorder"
+                                        Property="BorderThickness"
+                                        Value="2" />
+
+                            </Trigger>
+
+                            <Trigger Property="IsEnabled"
+                                     Value="False">
+
+                                <Setter Property="Opacity"
+                                        Value="0.60" />
+
+                            </Trigger>
+
+                        </ControlTemplate.Triggers>
+
+                    </ControlTemplate>
+
+                </Setter.Value>
+            </Setter>
+
+        </Style>
+
+
+        <!-- Botón principal -->
+        <Style x:Key="LoginPrimaryButtonStyle"
+               TargetType="Button">
+
+            <Setter Property="Height"
+                    Value="50" />
+
+            <Setter Property="Background"
+                    Value="#16A34A" />
+
+            <Setter Property="Foreground"
+                    Value="White" />
+
+            <Setter Property="FontSize"
+                    Value="14" />
+
+            <Setter Property="FontWeight"
+                    Value="Bold" />
+
+            <Setter Property="BorderThickness"
+                    Value="0" />
+
+            <Setter Property="Cursor"
+                    Value="Hand" />
+
+            <Setter Property="FocusVisualStyle"
+                    Value="{x:Null}" />
+
+            <Setter Property="Template">
+                <Setter.Value>
+
+                    <ControlTemplate TargetType="Button">
+
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="11">
+
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+
+                        </Border>
+
+                        <ControlTemplate.Triggers>
+
+                            <Trigger Property="IsMouseOver"
+                                     Value="True">
+
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Background"
+                                        Value="#15803D" />
+
+                            </Trigger>
+
+                            <Trigger Property="IsPressed"
+                                     Value="True">
+
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Background"
+                                        Value="#166534" />
+
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Opacity"
+                                        Value="0.88" />
+
+                            </Trigger>
+
+                            <Trigger Property="IsEnabled"
+                                     Value="False">
+
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Opacity"
+                                        Value="0.55" />
+
+                            </Trigger>
+
+                        </ControlTemplate.Triggers>
+
+                    </ControlTemplate>
+
+                </Setter.Value>
+            </Setter>
+
+        </Style>
+
+    </Window.Resources>
+
+
+    <!-- Sombra exterior -->
+    <Border Margin="24"
+            CornerRadius="24"
+            Background="{DynamicResource SurfaceBrush}"
+            BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="1">
+
+        <Border.Effect>
+
+            <DropShadowEffect BlurRadius="34"
+                              ShadowDepth="6"
+                              Direction="270"
+                              Opacity="0.34" />
+
+        </Border.Effect>
+
+
+        <Grid ClipToBounds="True">
+
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="43*" />
+                <ColumnDefinition Width="57*" />
+            </Grid.ColumnDefinitions>
+
+
+            <!-- ================================================= -->
+            <!-- PANEL IZQUIERDO                                   -->
+            <!-- ================================================= -->
+            <Border Grid.Column="0"
+                    CornerRadius="23,0,0,23">
+
+                <Border.Background>
+
+                    <LinearGradientBrush StartPoint="0,0"
+                                         EndPoint="1,1">
+
+                        <GradientStop Color="#071A12"
+                                      Offset="0" />
+
+                        <GradientStop Color="#0B3D24"
+                                      Offset="0.52" />
+
+                        <GradientStop Color="#16A34A"
+                                      Offset="1" />
+
+                    </LinearGradientBrush>
+
+                </Border.Background>
+
+
+                <Grid Margin="42,38">
+
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+
+                    <!-- Marca -->
+                    <StackPanel Grid.Row="0"
+                                Orientation="Horizontal">
+
+                        <TextBlock Text="KONTAX"
+                                   FontFamily="Segoe UI Black"
+                                   FontSize="31"
+                                   FontWeight="Black"
+                                   Foreground="White" />
+
+                        <TextBlock Text="PRO"
+                                   FontFamily="Segoe UI Black"
+                                   FontSize="31"
+                                   FontWeight="Black"
+                                   Foreground="{DynamicResource BrandProBrush}" />
+
+                    </StackPanel>
+
+
+                    <!-- Mensaje central -->
+                    <StackPanel Grid.Row="1"
+                                VerticalAlignment="Center">
+
+                        <Border Width="72"
+                                Height="72"
+                                CornerRadius="20"
+                                HorizontalAlignment="Left"
+                                Margin="0,0,0,26">
+
+                            <Border.Background>
+
+                                <SolidColorBrush Color="#26FFFFFF" />
+
+                            </Border.Background>
+
+                            <materialDesign:PackIcon Kind="ShieldLockOutline"
+                                                     Width="38"
+                                                     Height="38"
+                                                     Foreground="White"
+                                                     HorizontalAlignment="Center"
+                                                     VerticalAlignment="Center" />
+
+                        </Border>
+
+
+                        <TextBlock Text="Tu negocio,&#10;siempre bajo control."
+                                   FontSize="31"
+                                   FontWeight="Bold"
+                                   LineHeight="38"
+                                   Foreground="White" />
+
+                        <TextBlock Text="Accede a una experiencia empresarial moderna, segura y diseñada para simplificar cada operación."
+                                   Margin="0,20,0,0"
+                                   FontSize="14"
+                                   LineHeight="22"
+                                   TextWrapping="Wrap"
+                                   Foreground="#D1FAE5" />
+
+
+                        <!-- Indicadores visuales -->
+                        <StackPanel Margin="0,30,0,0">
+
+                            <StackPanel Orientation="Horizontal"
+                                        Margin="0,0,0,13">
+
+                                <materialDesign:PackIcon Kind="CheckCircle"
+                                                         Width="19"
+                                                         Height="19"
+                                                         Foreground="#FACC15"
+                                                         Margin="0,0,10,0" />
+
+                                <TextBlock Text="Sesión protegida y cifrada"
+                                           Foreground="White"
+                                           VerticalAlignment="Center" />
+
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal">
+
+                                <materialDesign:PackIcon Kind="CheckCircle"
+                                                         Width="19"
+                                                         Height="19"
+                                                         Foreground="#FACC15"
+                                                         Margin="0,0,10,0" />
+
+                                <TextBlock Text="Acceso multiempresa centralizado"
+                                           Foreground="White"
+                                           VerticalAlignment="Center" />
+
+                            </StackPanel>
+
+                        </StackPanel>
+
+                    </StackPanel>
+
+
+                    <!-- Pie -->
+                    <StackPanel Grid.Row="2">
+
+                        <Border Height="1"
+                                Background="#35FFFFFF"
+                                Margin="0,0,0,16" />
+
+                        <TextBlock Text="KONTAXPRO DESKTOP · 2026"
+                                   FontSize="10"
+                                   FontWeight="SemiBold"
+                                   Foreground="#A7F3D0" />
+
+                    </StackPanel>
+
+                </Grid>
+
+            </Border>
+
+
+            <!-- ================================================= -->
+            <!-- PANEL DE AUTENTICACIÓN                            -->
+            <!-- ================================================= -->
+            <Border Grid.Column="1"
+                    Background="{DynamicResource SurfaceBrush}"
+                    CornerRadius="0,23,23,0">
+
+                <Grid>
+
+                    <!-- Línea luminosa superior -->
+                    <Border Height="6"
+                            Margin="12,0,12,0"
+                            VerticalAlignment="Top"
+                            CornerRadius="0,0,0,0">
+
+                        <Border.Background>
+
+                            <LinearGradientBrush StartPoint="0,0"
+                                                 EndPoint="1,0">
+
+                                <GradientStop Color="#16A34A"
+                                              Offset="0" />
+
+                                <GradientStop Color="#FACC15"
+                                              Offset="0.58" />
+
+                                <GradientStop Color="#DC2626"
+                                              Offset="1" />
+
+                            </LinearGradientBrush>
+
+                        </Border.Background>
+
+                    </Border>
+
+
+                    <!-- Cerrar -->
+                    <Button Width="38"
+                            Height="38"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            Margin="0,16,16,0"
+                            Background="#EF2B2D"
+                            Foreground="White"
+                            BorderThickness="0"
+                            Cursor="Hand"
+                            FocusVisualStyle="{x:Null}"
+                            ToolTip="Cerrar KONTAXPRO"
+                            Click="Cerrar_Click">
+
+                        <Button.Template>
+
+                            <ControlTemplate TargetType="Button">
+
+                                <Border x:Name="CloseButtonBorder"
+                                        Width="34"
+                                        Height="34"
+                                        Background="{TemplateBinding Background}"
+                                        CornerRadius="9">
+
+                                    <materialDesign:PackIcon Kind="Close"
+                                                             Width="18"
+                                                             Height="18"
+                                                             HorizontalAlignment="Center"
+                                                             VerticalAlignment="Center"
+                                                             Foreground="White" />
+
+                                </Border>
+
+                                <ControlTemplate.Triggers>
+
+                                    <!-- Hover -->
+                                    <Trigger Property="IsMouseOver"
+                                             Value="True">
+
+                                        <Setter TargetName="CloseButtonBorder"
+                                                Property="Background"
+                                                Value="#DC2626" />
+
+                                    </Trigger>
+
+                                    <!-- Presionado -->
+                                    <Trigger Property="IsPressed"
+                                             Value="True">
+
+                                        <Setter TargetName="CloseButtonBorder"
+                                                Property="Background"
+                                                Value="#B91C1C" />
+
+                                    </Trigger>
+
+                                </ControlTemplate.Triggers>
+
+                            </ControlTemplate>
+
+                        </Button.Template>
+
+                    </Button>
+
+
+                    <!-- Formulario -->
+                    <Grid Width="380"
+                          VerticalAlignment="Center">
+
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+
+                        <!-- Encabezado -->
+                        <StackPanel Grid.Row="0"
+                                    Margin="0,0,0,30">
+
+                            <TextBlock Text="Bienvenido de nuevo"
+                                       FontSize="29"
+                                       FontWeight="Bold"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+
+                            <TextBlock Text="Ingresa tus credenciales para acceder a tu espacio de trabajo."
+                                       Margin="0,9,0,0"
+                                       FontSize="13"
+                                       LineHeight="20"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextMutedBrush}" />
+
+                        </StackPanel>
+
+
+                        <!-- Identificación -->
+                        <StackPanel Grid.Row="1"
+                                    Margin="0,0,0,20">
+
+                            <TextBlock Text="Número de identificación"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Margin="2,0,0,7"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+
+                            <Grid>
+
+                                <TextBox x:Name="NumeroIdentificacionInput"
+                                         Text="{Binding NumeroIdentificacion,
+                                            UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource LoginTextBoxStyle}"
+                                         FontWeight="Bold"
+                                         MaxLength="10"
+                                         TextChanged="NumeroIdentificacion_TextChanged"
+                                         IsEnabled="{Binding IsLoading,
+                                            Converter={StaticResource BooleanInverterConverter}}" />
+
+                                <materialDesign:PackIcon Kind="CardAccountDetailsOutline"
+                                                         Width="20"
+                                                         Height="20"
+                                                         Margin="15,0,0,0"
+                                                         HorizontalAlignment="Left"
+                                                         VerticalAlignment="Center"
+                                                         IsHitTestVisible="False"
+                                                         Foreground="{DynamicResource BrandProBrush}" />
+
+                            </Grid>
+
+                        </StackPanel>
+
+
+                        <!-- Contraseña -->
+                        <StackPanel Grid.Row="2"
+                                    Margin="0,0,0,17">
+
+                            <TextBlock Text="Contraseña"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Margin="2,0,0,7"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+
+                            <Grid>
+
+                                <Border Height="48"
+                                        CornerRadius="10">
+
+                                    <Border.Style>
+
+                                        <Style TargetType="Border">
+
+                                            <Setter Property="Background"
+                                                    Value="{DynamicResource BackgroundBrush}" />
+
+                                            <Setter Property="BorderBrush"
+                                                    Value="{DynamicResource BorderBrush}" />
+
+                                            <Setter Property="BorderThickness"
+                                                    Value="1" />
+
+                                            <Style.Triggers>
+
+                                                <!-- El PasswordBox o cualquier elemento interno tiene foco -->
+                                                <Trigger Property="IsKeyboardFocusWithin"
+                                                         Value="True">
+
+                                                    <Setter Property="BorderBrush"
+                                                            Value="{DynamicResource BrandProBrush}" />
+
+                                                    <Setter Property="BorderThickness"
+                                                            Value="2" />
+
+                                                </Trigger>
+
+                                            </Style.Triggers>
+
+                                        </Style>
+
+                                    </Border.Style>
+
+                                    <PasswordBox x:Name="PasswordInput"
+                                                 Padding="44,0,14,0"
+                                                 FontSize="14"
+                                                 FontWeight="SemiBold"
+                                                 VerticalContentAlignment="Center"
+                                                 Background="Transparent"
+                                                 Foreground="{DynamicResource TextPrimaryBrush}"
+                                                 CaretBrush="{DynamicResource BrandProBrush}"
+                                                 BorderThickness="0"
+                                                 PasswordChanged="PasswordInput_PasswordChanged"
+                                                 IsEnabled="{Binding IsLoading,
+                    Converter={StaticResource BooleanInverterConverter}}" />
+
+                                </Border>
+
+
+                                <!-- Icono -->
+                                <materialDesign:PackIcon Kind="LockOutline"
+                                                         Width="20"
+                                                         Height="20"
+                                                         Margin="15,0,0,0"
+                                                         HorizontalAlignment="Left"
+                                                         VerticalAlignment="Center"
+                                                         IsHitTestVisible="False"
+                                                         Foreground="{DynamicResource BrandProBrush}" />
+
+                            </Grid>
+
+                        </StackPanel>
+
+
+                        <!-- Mensaje -->
+                        <Border Grid.Row="3"
+                                MinHeight="38"
+                                Margin="0,0,0,14"
+                                Padding="11,8"
+                                CornerRadius="9"
+                                Background="{DynamicResource BackgroundBrush}"
+                                Visibility="{Binding Mensaje,
+                                    Converter={StaticResource StringToVisibilityConverter}}">
+
+                            <StackPanel Orientation="Horizontal">
+
+                                <materialDesign:PackIcon Kind="AlertCircleOutline"
+                                                         Width="18"
+                                                         Height="18"
+                                                         Margin="0,0,9,0"
+                                                         Foreground="#DC2626" />
+
+                                <TextBlock Text="{Binding Mensaje}"
+                                           FontSize="12"
+                                           FontWeight="Bold"
+                                           TextWrapping="Wrap"
+                                           VerticalAlignment="Center"
+                                           Foreground="#DC2626" />
+
+                            </StackPanel>
+
+                        </Border>
+
+
+                        <!-- Botón -->
+                        <Button Grid.Row="4"
+                                Command="{Binding LoginCommand}"
+                                Style="{StaticResource LoginPrimaryButtonStyle}"
+                                IsDefault="True"
+                                IsEnabled="{Binding IsLoading,
+                                    Converter={StaticResource BooleanInverterConverter}}">
+
+                            <Grid>
+
+                                <StackPanel Orientation="Horizontal"
+                                            HorizontalAlignment="Center"
+                                            Visibility="{Binding IsLoading,
+                                                Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+
+                                    <materialDesign:PackIcon Kind="LoginVariant"
+                                                             Width="20"
+                                                             Height="20"
+                                                             Margin="0,0,10,0"
+                                                             Foreground="White" />
+
+                                    <TextBlock Text="Ingresar a KONTAXPRO"
+                                               FontWeight="Bold"
+                                               VerticalAlignment="Center" />
+
+                                </StackPanel>
+
+
+                                <StackPanel Orientation="Horizontal"
+                                            HorizontalAlignment="Center"
+                                            Visibility="{Binding IsLoading,
+                                                Converter={StaticResource BooleanToVisibilityConverter}}">
+
+                                    <ProgressBar Width="26"
+                                                 Height="5"
+                                                 IsIndeterminate="True"
+                                                 Foreground="White"
+                                                 Margin="0,0,10,0" />
+
+                                    <TextBlock Text="Verificando acceso..."
+                                               FontWeight="Bold"
+                                               VerticalAlignment="Center" />
+
+                                </StackPanel>
+
+                            </Grid>
+
+                        </Button>
+
+
+                        <!-- Seguridad -->
+                        <StackPanel Grid.Row="5"
+                                    Orientation="Horizontal"
+                                    HorizontalAlignment="Center"
+                                    Margin="0,23,0,0">
+
+                            <materialDesign:PackIcon Kind="LockCheckOutline"
+                                                     Width="16"
+                                                     Height="16"
+                                                     Margin="0,0,7,0"
+                                                     Foreground="{DynamicResource TextMutedBrush}" />
+
+                            <TextBlock Text="Conexión protegida con PostgreSQL"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource TextMutedBrush}" />
+
+                        </StackPanel>
+
+                    </Grid>
+
+                </Grid>
+
+            </Border>
+
+        </Grid>
+
+    </Border>
+
+</Window>

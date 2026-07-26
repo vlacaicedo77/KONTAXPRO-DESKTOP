@@ -1,0 +1,1249 @@
+﻿<UserControl x:Class="KONTAXPRO.Desktop.Views.Products.ProductsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:productViews="clr-namespace:KONTAXPRO.Desktop.Views.Products"
+             mc:Ignorable="d"
+             d:DesignHeight="720"
+             d:DesignWidth="1250">
+
+    <UserControl.Resources>
+
+        <Style x:Key="KpiCardStyle"
+               TargetType="Border">
+
+            <Setter Property="CornerRadius"
+                    Value="16"/>
+
+            <Setter Property="Padding"
+                    Value="18"/>
+
+            <Setter Property="BorderThickness"
+                    Value="1"/>
+
+            <Setter Property="Background"
+                    Value="{DynamicResource CardBackgroundBrush}"/>
+
+            <Setter Property="BorderBrush"
+                    Value="{DynamicResource BorderBrush}"/>
+
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect BlurRadius="18"
+                                      ShadowDepth="2"
+                                      Opacity="0.10"/>
+                </Setter.Value>
+            </Setter>
+
+        </Style>
+
+
+        <Style x:Key="TableActionButtonStyle"
+               TargetType="Button">
+
+            <Setter Property="Width"
+                    Value="34"/>
+
+            <Setter Property="Height"
+                    Value="34"/>
+
+            <Setter Property="Padding"
+                    Value="0"/>
+
+            <Setter Property="Background"
+                    Value="{DynamicResource SecondarySurfaceBrush}"/>
+
+            <Setter Property="BorderBrush"
+                    Value="{DynamicResource BorderBrush}"/>
+
+            <Setter Property="BorderThickness"
+                    Value="1"/>
+
+            <Setter Property="Cursor"
+                    Value="Hand"/>
+
+        </Style>
+
+        <!-- ============================================================
+     BOTÓN DE ACTUALIZACIÓN
+     ============================================================ -->
+
+        <Style x:Key="RefreshButtonStyle"
+               TargetType="Button">
+
+            <Setter Property="Width"
+                    Value="46" />
+
+            <Setter Property="Height"
+                    Value="46" />
+
+            <Setter Property="Padding"
+                    Value="0" />
+
+            <Setter Property="Background"
+                    Value="{DynamicResource SuccessSoftBrush}" />
+
+            <Setter Property="Foreground"
+                    Value="{DynamicResource BrandProBrush}" />
+
+            <Setter Property="BorderBrush"
+                    Value="{DynamicResource BrandProBrush}" />
+
+            <Setter Property="BorderThickness"
+                    Value="1" />
+
+            <Setter Property="Cursor"
+                    Value="Hand" />
+
+            <Setter Property="FocusVisualStyle"
+                    Value="{x:Null}" />
+
+            <Setter Property="Template">
+
+                <Setter.Value>
+
+                    <ControlTemplate TargetType="Button">
+
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="10">
+
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+
+                        </Border>
+
+
+                        <ControlTemplate.Triggers>
+
+                            <Trigger Property="IsMouseOver"
+                                     Value="True">
+
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Background"
+                                        Value="{DynamicResource CatalogButtonHoverBrush}" />
+
+                            </Trigger>
+
+
+                            <Trigger Property="IsPressed"
+                                     Value="True">
+
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Background"
+                                        Value="{DynamicResource CatalogButtonPressedBrush}" />
+
+                            </Trigger>
+
+                        </ControlTemplate.Triggers>
+
+                    </ControlTemplate>
+
+                </Setter.Value>
+
+            </Setter>
+
+        </Style>
+
+    </UserControl.Resources>
+
+
+    <Grid Background="{DynamicResource PageBackgroundBrush}">
+
+        <!-- =====================================================
+             LISTADO
+             ===================================================== -->
+
+        <Grid Margin="26">
+
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="22"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="22"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="16"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+
+            <!-- ENCABEZADO -->
+
+            <Grid Grid.Row="0">
+
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+
+                <StackPanel Orientation="Horizontal">
+
+                    <Border Width="46"
+                            Height="46"
+                            CornerRadius="13"
+                            Background="{DynamicResource SuccessSoftBrush}"
+                            Margin="0,0,14,0">
+
+                        <materialDesign:PackIcon Kind="PackageVariantClosed"
+                                                 Width="24"
+                                                 Height="24"
+                                                 Foreground="{DynamicResource BrandProBrush}"
+                                                 HorizontalAlignment="Center"
+                                                 VerticalAlignment="Center"/>
+
+                    </Border>
+
+                    <StackPanel>
+
+                        <TextBlock Text="Productos"
+                                   FontSize="28"
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource PrimaryTextBrush}"/>
+
+                        <TextBlock Text="Catálogo, precios, existencias y control de inventario"
+                                   Margin="0,3,0,0"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource SecondaryTextBrush}"/>
+
+                    </StackPanel>
+
+                </StackPanel>
+
+
+                <Button Grid.Column="1"
+        Style="{StaticResource PrimaryButtonStyle}"
+        Command="{Binding NuevoProductoCommand}">
+
+                    <StackPanel Orientation="Horizontal">
+
+                        <materialDesign:PackIcon Kind="Plus"
+                                 Width="19"
+                                 Height="19"
+                                 Foreground="White"
+                                 VerticalAlignment="Center"/>
+
+                        <TextBlock Text="Nuevo producto"
+                   Margin="8,0,0,0"
+                   Foreground="White"
+                   FontWeight="SemiBold"
+                   VerticalAlignment="Center"/>
+
+                    </StackPanel>
+
+                </Button>
+
+            </Grid>
+
+
+            <!-- KPI -->
+
+            <Grid Grid.Row="2">
+
+                <Grid.ColumnDefinitions>
+
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="14"/>
+
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="14"/>
+
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="14"/>
+
+                    <ColumnDefinition Width="*"/>
+
+                </Grid.ColumnDefinitions>
+
+
+                <Border Grid.Column="0"
+                        Style="{StaticResource KpiCardStyle}">
+
+                    <Grid>
+
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="52"/>
+                            <ColumnDefinition Width="14"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Border Width="52"
+                                Height="52"
+                                CornerRadius="14"
+                                Background="{DynamicResource InfoSoftBrush}">
+
+                            <materialDesign:PackIcon Kind="PackageVariantClosed"
+                                                     Width="25"
+                                                     Height="25"
+                                                     Foreground="#3B82F6"
+                                                     HorizontalAlignment="Center"
+                                                     VerticalAlignment="Center"/>
+
+                        </Border>
+
+                        <StackPanel Grid.Column="2"
+                                    VerticalAlignment="Center">
+
+                            <TextBlock Text="{Binding TotalProductos}"
+                                       FontSize="25"
+                                       FontWeight="Bold"
+                                       Foreground="{DynamicResource PrimaryTextBrush}"/>
+
+                            <TextBlock Text="Productos"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"/>
+
+                        </StackPanel>
+
+                    </Grid>
+
+                </Border>
+
+
+                <Border Grid.Column="2"
+                        Style="{StaticResource KpiCardStyle}">
+
+                    <Grid>
+
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="52"/>
+                            <ColumnDefinition Width="14"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Border Width="52"
+                                Height="52"
+                                CornerRadius="14"
+                                Background="{DynamicResource WarningSoftBrush}">
+
+                            <materialDesign:PackIcon Kind="PackageVariantClosedMinus"
+                                                     Width="25"
+                                                     Height="25"
+                                                     Foreground="#F59E0B"
+                                                     HorizontalAlignment="Center"
+                                                     VerticalAlignment="Center"/>
+
+                        </Border>
+
+                        <StackPanel Grid.Column="2"
+                                    VerticalAlignment="Center">
+
+                            <TextBlock Text="{Binding TotalStockBajo}"
+                                       FontSize="25"
+                                       FontWeight="Bold"
+                                       Foreground="{DynamicResource PrimaryTextBrush}"/>
+
+                            <TextBlock Text="Stock bajo"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"/>
+
+                        </StackPanel>
+
+                    </Grid>
+
+                </Border>
+
+
+                <Border Grid.Column="4"
+                        Style="{StaticResource KpiCardStyle}">
+
+                    <Grid>
+
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="52"/>
+                            <ColumnDefinition Width="14"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Border Width="52"
+                                Height="52"
+                                CornerRadius="14"
+                                Background="{DynamicResource DangerSoftBrush}">
+
+                            <materialDesign:PackIcon Kind="PackageVariantRemove"
+                                                     Width="25"
+                                                     Height="25"
+                                                     Foreground="#EF4444"
+                                                     HorizontalAlignment="Center"
+                                                     VerticalAlignment="Center"/>
+
+                        </Border>
+
+                        <StackPanel Grid.Column="2"
+                                    VerticalAlignment="Center">
+
+                            <TextBlock Text="{Binding TotalSinStock}"
+                                       FontSize="25"
+                                       FontWeight="Bold"
+                                       Foreground="{DynamicResource PrimaryTextBrush}"/>
+
+                            <TextBlock Text="Sin stock"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"/>
+
+                        </StackPanel>
+
+                    </Grid>
+
+                </Border>
+
+
+                <Border Grid.Column="6"
+                        Style="{StaticResource KpiCardStyle}">
+
+                    <Grid>
+
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="52"/>
+                            <ColumnDefinition Width="14"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Border Width="52"
+                                Height="52"
+                                CornerRadius="14"
+                                Background="{DynamicResource PurpleSoftBrush}">
+
+                            <materialDesign:PackIcon Kind="CalendarAlert"
+                                                     Width="25"
+                                                     Height="25"
+                                                     Foreground="#A855F7"
+                                                     HorizontalAlignment="Center"
+                                                     VerticalAlignment="Center"/>
+
+                        </Border>
+
+                        <StackPanel Grid.Column="2"
+                                    VerticalAlignment="Center">
+
+                            <TextBlock Text="{Binding TotalPorCaducar}"
+                                       FontSize="25"
+                                       FontWeight="Bold"
+                                       Foreground="{DynamicResource PrimaryTextBrush}"/>
+
+                            <TextBlock Text="Por caducar"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"/>
+
+                        </StackPanel>
+
+                    </Grid>
+
+                </Border>
+
+            </Grid>
+
+
+            <!-- BUSCADOR -->
+
+            <Border Grid.Row="4"
+                    Background="{DynamicResource CardBackgroundBrush}"
+                    CornerRadius="14"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="1"
+                    Padding="14">
+
+                <Grid>
+
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="14"/>
+                        <ColumnDefinition Width="46"/>
+                    </Grid.ColumnDefinitions>
+
+
+                    <Border Grid.Column="0"
+                            Height="46"
+                            Background="{DynamicResource InputSecondaryBackgroundBrush}"
+                            BorderBrush="{DynamicResource InputBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10">
+
+                        <Grid>
+
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="44"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <materialDesign:PackIcon Kind="Magnify"
+                                                     Width="19"
+                                                     Height="19"
+                                                     Foreground="{DynamicResource SecondaryTextBrush}"
+                                                     HorizontalAlignment="Center"
+                                                     VerticalAlignment="Center"/>
+
+                            <TextBox Grid.Column="1"
+                                     BorderThickness="0"
+                                     Background="Transparent"
+                                     Foreground="{DynamicResource PrimaryTextBrush}"
+                                     CaretBrush="{DynamicResource BrandProBrush}"
+                                     VerticalContentAlignment="Center"
+                                     FontSize="13"
+                                     Text="{Binding TextoBusqueda,
+                                                    UpdateSourceTrigger=PropertyChanged}"/>
+
+                        </Grid>
+
+                    </Border>
+
+
+                    <CheckBox Grid.Column="2"
+                              Content="Solo productos activos"
+                              IsChecked="{Binding MostrarSoloActivos}"
+                              Foreground="{DynamicResource PrimaryTextBrush}"
+                              VerticalAlignment="Center"/>
+
+
+                    <Button Grid.Column="4"
+                            Style="{StaticResource RefreshButtonStyle}"
+                            Command="{Binding RecargarCommand}"
+                            ToolTip="Actualizar productos">
+
+                        <materialDesign:PackIcon Kind="Refresh"
+                                                 Width="20"
+                                                 Height="20"
+                                                 Foreground="{Binding Foreground,
+            RelativeSource={RelativeSource AncestorType=Button}}" />
+
+                    </Button>
+
+                </Grid>
+
+            </Border>
+
+
+            <!-- TABLA -->
+
+            <Border Grid.Row="6"
+                    Background="{DynamicResource TableBackgroundBrush}"
+                    CornerRadius="14"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="1"
+                    ClipToBounds="True">
+
+                <Grid>
+
+                    <DataGrid ItemsSource="{Binding Productos}"
+                              SelectedItem="{Binding ProductoSeleccionado}"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              IsReadOnly="True"
+                              BorderThickness="0"
+                              Background="{DynamicResource TableBackgroundBrush}"
+                              Foreground="{DynamicResource PrimaryTextBrush}"
+                              RowBackground="{DynamicResource TableBackgroundBrush}"
+                              AlternatingRowBackground="{DynamicResource TableAlternateRowBrush}"
+                              HorizontalGridLinesBrush="{DynamicResource TableGridBrush}"
+                              GridLinesVisibility="Horizontal"
+                              HeadersVisibility="Column"
+                              RowHeight="50"
+                              ColumnHeaderHeight="46"
+                              SelectionMode="Single"
+                              SelectionUnit="FullRow">
+
+                        <DataGrid.ColumnHeaderStyle>
+
+                            <Style TargetType="DataGridColumnHeader">
+
+                                <Setter Property="Background"
+                                        Value="{DynamicResource TableHeaderBrush}"/>
+
+                                <Setter Property="Foreground"
+                                        Value="{DynamicResource PrimaryTextBrush}"/>
+
+                                <Setter Property="BorderBrush"
+                                        Value="{DynamicResource BorderBrush}"/>
+
+                                <Setter Property="BorderThickness"
+                                        Value="0,0,1,1"/>
+
+                                <Setter Property="FontWeight"
+                                        Value="SemiBold"/>
+
+                                <Setter Property="Padding"
+                                        Value="8,0"/>
+
+                            </Style>
+
+                        </DataGrid.ColumnHeaderStyle>
+
+
+                        <DataGrid.RowStyle>
+
+                            <Style TargetType="DataGridRow">
+
+                                <Setter Property="Foreground"
+                                        Value="{DynamicResource PrimaryTextBrush}"/>
+
+                                <Style.Triggers>
+
+                                    <Trigger Property="IsSelected"
+                                             Value="True">
+
+                                        <Setter Property="Background"
+                                                Value="{DynamicResource TableSelectedRowBrush}"/>
+
+                                        <Setter Property="Foreground"
+                                                Value="{DynamicResource PrimaryTextBrush}"/>
+
+                                    </Trigger>
+
+                                </Style.Triggers>
+
+                            </Style>
+
+                        </DataGrid.RowStyle>
+
+
+                        <DataGrid.Columns>
+
+                            <DataGridTextColumn Header="Código"
+                                                Binding="{Binding Codigo}"
+                                                Width="110"/>
+
+                            <DataGridTemplateColumn Header="Producto"
+                                                    Width="*"
+                                                    MinWidth="220">
+
+                                <DataGridTemplateColumn.CellTemplate>
+
+                                    <DataTemplate>
+
+                                        <StackPanel VerticalAlignment="Center">
+
+                                            <TextBlock Text="{Binding Nombre}"
+                                                       Foreground="{DynamicResource PrimaryTextBrush}"
+                                                       FontWeight="SemiBold"/>
+
+                                            <TextBlock Text="{Binding Marca}"
+                                                       Foreground="{DynamicResource MutedTextBrush}"
+                                                       FontSize="10"/>
+
+                                        </StackPanel>
+
+                                    </DataTemplate>
+
+                                </DataGridTemplateColumn.CellTemplate>
+
+                            </DataGridTemplateColumn>
+
+                            <DataGridTextColumn Header="Categoría"
+                                                Binding="{Binding Categoria}"
+                                                Width="150"/>
+
+                            <DataGridTextColumn Header="Unidad"
+                                                Binding="{Binding UnidadBase}"
+                                                Width="95"/>
+
+                            <DataGridTextColumn Header="Stock"
+                                                Binding="{Binding StockActual, StringFormat=N2}"
+                                                Width="85"/>
+
+                            <DataGridTextColumn Header="Costo prom."
+                                                Binding="{Binding CostoPromedio, StringFormat={}{0:C2}}"
+                                                Width="110"/>
+
+                            <DataGridTextColumn Header="Precio"
+                                                Binding="{Binding PrecioPrincipal, StringFormat={}{0:C2}}"
+                                                Width="100"/>
+
+                            <DataGridTextColumn Header="IVA"
+                                                Binding="{Binding TarifaImpuesto}"
+                                                Width="85"/>
+
+
+                            <DataGridTemplateColumn Header="Estado"
+                                                    Width="95">
+
+                                <DataGridTemplateColumn.CellTemplate>
+
+                                    <DataTemplate>
+
+                                        <Border CornerRadius="10"
+                                                Padding="9,4"
+                                                HorizontalAlignment="Left"
+                                                Background="{DynamicResource SuccessSoftBrush}">
+
+                                            <TextBlock Text="{Binding Activo,
+                                                Converter={StaticResource BooleanToStatusTextConverter}}"
+                                                       FontSize="10"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource BrandProBrush}"/>
+
+                                        </Border>
+
+                                    </DataTemplate>
+
+                                </DataGridTemplateColumn.CellTemplate>
+
+                            </DataGridTemplateColumn>
+
+
+                            <DataGridTemplateColumn Header=""
+                                                    Width="92">
+
+                                <DataGridTemplateColumn.CellTemplate>
+
+                                    <DataTemplate>
+
+                                        <StackPanel Orientation="Horizontal">
+
+                                            <Button Style="{StaticResource TableActionButtonStyle}"
+                                                    Command="{Binding DataContext.EditarProductoCommand,
+                                                        RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                    CommandParameter="{Binding}">
+
+                                                <materialDesign:PackIcon Kind="PencilOutline"
+                                                                         Foreground="#3B82F6"/>
+
+                                            </Button>
+
+                                            <Button Style="{StaticResource TableActionButtonStyle}"
+                                                    Margin="6,0,0,0"
+                                                    Command="{Binding DataContext.CambiarEstadoCommand,
+                                                        RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                    CommandParameter="{Binding}">
+
+                                                <materialDesign:PackIcon Kind="Power"
+                                                                         Foreground="#EF4444"/>
+
+                                            </Button>
+
+                                        </StackPanel>
+
+                                    </DataTemplate>
+
+                                </DataGridTemplateColumn.CellTemplate>
+
+                            </DataGridTemplateColumn>
+
+                        </DataGrid.Columns>
+
+                    </DataGrid>
+
+
+                    <!-- VACÍO -->
+
+                    <StackPanel HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                IsHitTestVisible="False">
+
+                        <StackPanel.Style>
+
+                            <Style TargetType="StackPanel">
+
+                                <Setter Property="Visibility"
+                                        Value="Collapsed"/>
+
+                                <Style.Triggers>
+
+                                    <DataTrigger Binding="{Binding Productos.Count}"
+                                                 Value="0">
+
+                                        <Setter Property="Visibility"
+                                                Value="Visible"/>
+
+                                    </DataTrigger>
+
+                                </Style.Triggers>
+
+                            </Style>
+
+                        </StackPanel.Style>
+
+
+                        <Border Width="78"
+                                Height="78"
+                                CornerRadius="22"
+                                Background="{DynamicResource SuccessSoftBrush}">
+
+                            <materialDesign:PackIcon Kind="PackageVariant"
+                                                     Width="38"
+                                                     Height="38"
+                                                     Foreground="{DynamicResource BrandProBrush}"
+                                                     HorizontalAlignment="Center"
+                                                     VerticalAlignment="Center"/>
+
+                        </Border>
+
+                        <TextBlock Text="Todavía no hay productos"
+                                   Margin="0,16,0,0"
+                                   FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource PrimaryTextBrush}"/>
+
+                        <TextBlock Text="Registra tu primer producto para comenzar a administrar el inventario."
+                                   Margin="0,6,0,0"
+                                   Foreground="{DynamicResource MutedTextBrush}"/>
+
+                    </StackPanel>
+
+                </Grid>
+
+            </Border>
+
+        </Grid>
+
+
+        <!-- =====================================================
+             FORMULARIO FULL WORKSPACE
+             ===================================================== -->
+
+        <Border Background="{DynamicResource OverlayBrush}"
+                Visibility="{Binding IsProductFormOpen,
+                    Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+
+        <Border Margin="18"
+                Background="{DynamicResource ElevatedSurfaceBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="1"
+                Visibility="{Binding IsProductFormOpen,
+            Converter={StaticResource BooleanToVisibilityConverter}}">
+
+            <Border.Effect>
+
+                <DropShadowEffect BlurRadius="35"
+                                  ShadowDepth="0"
+                                  Opacity="0.32" />
+
+            </Border.Effect>
+
+            <productViews:ProductFormView DataContext="{Binding ProductForm}" />
+
+        </Border>
+
+        <!-- =====================================================
+     MODAL - VERIFICACIÓN PREVIA DE PRODUCTO
+     ===================================================== -->
+
+        <!-- Atenuación -->
+        <Border Panel.ZIndex="200"
+                Background="{DynamicResource OverlayBrush}"
+                Visibility="{Binding IsNewProductCheckOpen,
+            Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+
+        <!-- Modal -->
+        <Border Panel.ZIndex="201"
+                Width="520"
+                Padding="24"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="{DynamicResource ElevatedSurfaceBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="1"
+                CornerRadius="18"
+                Visibility="{Binding IsNewProductCheckOpen,
+            Converter={StaticResource BooleanToVisibilityConverter}}">
+
+            <Border.Effect>
+
+                <DropShadowEffect BlurRadius="36"
+                                  ShadowDepth="0"
+                                  Opacity="0.32" />
+
+            </Border.Effect>
+
+
+            <StackPanel>
+
+                <!-- =============================================
+             CABECERA
+             ============================================= -->
+
+                <Grid Margin="0,0,0,22">
+
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+
+                    <!-- Icono -->
+
+                    <Border Width="46"
+                            Height="46"
+                            CornerRadius="13"
+                            Background="{DynamicResource SuccessSoftBrush}"
+                            Margin="0,0,13,0">
+
+                        <materialDesign:PackIcon Kind="BarcodeScan"
+                                                 Width="24"
+                                                 Height="24"
+                                                 Foreground="{DynamicResource BrandProBrush}"
+                                                 HorizontalAlignment="Center"
+                                                 VerticalAlignment="Center" />
+
+                    </Border>
+
+
+                    <!-- Título -->
+
+                    <StackPanel Grid.Column="1"
+                                VerticalAlignment="Center">
+
+                        <TextBlock Text="Verificar producto"
+                                   FontSize="18"
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource PrimaryTextBrush}" />
+
+                        <TextBlock Text="Comprueba el código antes de registrar una nueva presentación."
+                                   Margin="0,3,0,0"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource SecondaryTextBrush}" />
+
+                    </StackPanel>
+
+
+                    <!-- Cerrar -->
+
+                    <Button Grid.Column="2"
+                            Width="38"
+                            Height="38"
+                            Padding="0"
+                            Style="{StaticResource DangerButtonStyle}"
+                            Command="{Binding CancelarVerificacionNuevoProductoCommand}">
+
+                        <materialDesign:PackIcon Kind="Close"
+                                                 Width="18"
+                                                 Height="18"
+                                                 Foreground="White" />
+
+                    </Button>
+
+                </Grid>
+
+
+                <!-- =============================================
+             EXPLICACIÓN
+             ============================================= -->
+
+                <Border Padding="13"
+                        Margin="0,0,0,18"
+                        CornerRadius="10"
+                        Background="{DynamicResource InfoSoftBrush}">
+
+                    <Grid>
+
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <materialDesign:PackIcon Kind="InformationOutline"
+                                                 Width="19"
+                                                 Height="19"
+                                                 Margin="0,1,10,0"
+                                                 Foreground="#3B82F6" />
+
+                        <TextBlock Grid.Column="1"
+                                   Text="Escanea el código de barras del producto o ingrésalo manualmente. Esto permite comprobar si la presentación ya está registrada."
+                                   TextWrapping="Wrap"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource SecondaryTextBrush}" />
+
+                    </Grid>
+
+                </Border>
+
+
+                <!-- =============================================
+             CÓDIGO DE BARRAS
+             ============================================= -->
+
+                <TextBlock Text="Código de barras"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource PrimaryTextBrush}"
+                           Margin="0,0,0,7" />
+
+
+                <Grid>
+
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="10" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+
+                    <!-- Entrada -->
+
+                    <Border Height="46"
+                            Background="{DynamicResource InputSecondaryBackgroundBrush}"
+                            BorderBrush="{DynamicResource InputBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10">
+
+                        <Grid>
+
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="42" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <materialDesign:PackIcon Kind="Barcode"
+                                                     Width="19"
+                                                     Height="19"
+                                                     Foreground="{DynamicResource SecondaryTextBrush}"
+                                                     HorizontalAlignment="Center"
+                                                     VerticalAlignment="Center" />
+
+                            <TextBox Grid.Column="1"
+                                     Text="{Binding CodigoBarrasNuevoProducto,
+                                 UpdateSourceTrigger=PropertyChanged}"
+                                     BorderThickness="0"
+                                     Background="Transparent"
+                                     Foreground="{DynamicResource PrimaryTextBrush}"
+                                     CaretBrush="{DynamicResource BrandProBrush}"
+                                     FontSize="14"
+                                     VerticalContentAlignment="Center" />
+
+                        </Grid>
+
+                    </Border>
+
+
+                    <!-- Verificar -->
+
+                    <Button Grid.Column="2"
+                            Height="46"
+                            MinWidth="112"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Command="{Binding VerificarCodigoBarrasCommand}">
+
+                        <StackPanel Orientation="Horizontal">
+
+                            <materialDesign:PackIcon Kind="Magnify"
+                                                     Width="18"
+                                                     Height="18"
+                                                     Foreground="White"
+                                                     VerticalAlignment="Center" />
+
+                            <TextBlock Text="Verificar"
+                                       Margin="7,0,0,0"
+                                       Foreground="White"
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center" />
+
+                        </StackPanel>
+
+                    </Button>
+
+                </Grid>
+
+
+                <!-- =============================================
+             MENSAJE DE VALIDACIÓN
+             ============================================= -->
+
+                <TextBlock Text="{Binding MensajeVerificacionBarcode}"
+                           Margin="2,10,0,0"
+                           Foreground="#EF4444"
+                           FontSize="11"
+                           FontWeight="Medium"
+                           TextWrapping="Wrap" />
+
+
+                <!-- =============================================
+             PRODUCTO ENCONTRADO
+             ============================================= -->
+
+                <Border Margin="0,14,0,0"
+                        Padding="14"
+                        CornerRadius="12"
+                        Background="{DynamicResource WarningSoftBrush}"
+                        BorderBrush="#F59E0B"
+                        BorderThickness="1"
+                        Visibility="{Binding HayProductoCodigoEncontrado,
+            Converter={StaticResource BooleanToVisibilityConverter}}">
+
+                    <Border.Style>
+
+                        <Style TargetType="Border">
+
+                            <Setter Property="Visibility"
+                                    Value="Collapsed" />
+
+                            <Style.Triggers>
+
+                                <DataTrigger Binding="{Binding ProductoCodigoEncontrado}"
+                                             Value="{x:Null}">
+
+                                    <Setter Property="Visibility"
+                                            Value="Collapsed" />
+
+                                </DataTrigger>
+
+                                <DataTrigger Binding="{Binding ProductoCodigoEncontrado,
+                            TargetNullValue=False}"
+                                             Value="False">
+
+                                    <Setter Property="Visibility"
+                                            Value="Visible" />
+
+                                </DataTrigger>
+
+                            </Style.Triggers>
+
+                        </Style>
+
+                    </Border.Style>
+
+
+                    <Grid>
+
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+
+                        <Border Width="38"
+                                Height="38"
+                                CornerRadius="10"
+                                Background="#22F59E0B">
+
+                            <materialDesign:PackIcon Kind="AlertOutline"
+                                                     Width="20"
+                                                     Height="20"
+                                                     Foreground="#F59E0B"
+                                                     HorizontalAlignment="Center"
+                                                     VerticalAlignment="Center" />
+
+                        </Border>
+
+
+                        <StackPanel Grid.Column="2">
+
+                            <TextBlock Text="Presentación ya registrada"
+                                       FontSize="12"
+                                       FontWeight="Bold"
+                                       Foreground="{DynamicResource PrimaryTextBrush}" />
+
+                            <TextBlock Text="{Binding ProductoCodigoEncontrado.Nombre}"
+                                       Margin="0,7,0,0"
+                                       FontSize="14"
+                                       FontWeight="Bold"
+                                       Foreground="{DynamicResource PrimaryTextBrush}" />
+
+                            <TextBlock Text="{Binding ProductoCodigoEncontrado.Modelo}"
+                                       Margin="0,2,0,0"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource SecondaryTextBrush}" />
+
+                            <StackPanel Orientation="Horizontal"
+                                        Margin="0,6,0,0">
+
+                                <TextBlock Text="Presentación: "
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource SecondaryTextBrush}" />
+
+                                <TextBlock Text="{Binding ProductoCodigoEncontrado.Presentacion}"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource PrimaryTextBrush}" />
+
+                            </StackPanel>
+
+                        </StackPanel>
+
+                    </Grid>
+
+                </Border>
+
+                <Button Margin="0,12,0,0"
+                        HorizontalAlignment="Left"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Command="{Binding AbrirProductoEncontradoCommand}"
+                        Visibility="{Binding HayProductoCodigoEncontrado,
+                            Converter={StaticResource BooleanToVisibilityConverter}}">
+
+                    <StackPanel Orientation="Horizontal">
+
+                        <materialDesign:PackIcon Kind="OpenInNew"
+                                                 Width="17"
+                                                 Height="17"
+                                                 Margin="0,0,7,0"
+                                                 Foreground="White" />
+
+                        <TextBlock Text="Abrir producto existente"
+                                   FontWeight="SemiBold"
+                                   Foreground="White" />
+
+                    </StackPanel>
+
+                </Button>
+
+
+                <!-- =============================================
+             SEPARADOR
+             ============================================= -->
+
+                <Border Height="1"
+                        Margin="0,20,0,18"
+                        Background="{DynamicResource BorderBrush}" />
+
+
+                <!-- =============================================
+             SIN CÓDIGO
+             ============================================= -->
+
+                <Grid>
+
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+
+                    <StackPanel VerticalAlignment="Center">
+
+                        <TextBlock Text="¿La presentación no tiene código?"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource PrimaryTextBrush}" />
+
+                        <TextBlock Text="KONTAXPRO generará uno automáticamente al guardar."
+                                   Margin="0,3,0,0"
+                                   FontSize="10"
+                                   Foreground="{DynamicResource SecondaryTextBrush}" />
+
+                    </StackPanel>
+
+
+                    <Button Grid.Column="1"
+                            Margin="16,0,0,0"
+                            Command="{Binding ContinuarSinCodigoBarrasCommand}"
+                            Style="{StaticResource PrimaryButtonStyle}">
+
+                        <StackPanel Orientation="Horizontal">
+
+                            <materialDesign:PackIcon Kind="BarcodeOff"
+                                                     Width="18"
+                                                     Height="18"
+                                                     Margin="0,0,7,0" />
+
+                            <TextBlock Text="Continuar sin código"
+                                       FontWeight="SemiBold" />
+
+                        </StackPanel>
+
+                    </Button>
+
+                </Grid>
+
+            </StackPanel>
+
+        </Border>
+
+    </Grid>
+
+</UserControl>

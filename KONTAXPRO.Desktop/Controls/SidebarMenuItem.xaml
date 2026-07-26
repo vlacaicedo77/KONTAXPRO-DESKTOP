@@ -1,0 +1,199 @@
+﻿<UserControl x:Class="KONTAXPRO.Desktop.Controls.SidebarMenuItem"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             HorizontalAlignment="Stretch">
+
+    <StackPanel HorizontalAlignment="Stretch">
+
+
+        <!-- ===================================================== -->
+        <!-- OPCIÓN PRINCIPAL                                      -->
+        <!-- ===================================================== -->
+
+        <Button Style="{DynamicResource SidebarMainButtonStyle}"
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Stretch"
+                Click="MenuButton_Click"
+                Command="{Binding DataContext.NavegarCommand,
+                              RelativeSource={RelativeSource AncestorType=Window}}"
+                CommandParameter="{Binding}">
+
+            <Grid HorizontalAlignment="Stretch">
+
+                <Grid.ColumnDefinitions>
+
+                    <ColumnDefinition Width="30" />
+
+                    <ColumnDefinition Width="*" />
+
+                    <ColumnDefinition Width="24" />
+
+                </Grid.ColumnDefinitions>
+
+
+                <!-- ================================================= -->
+                <!-- ICONO                                             -->
+                <!-- ================================================= -->
+
+                <materialDesign:PackIcon Grid.Column="0"
+                                         Kind="{Binding Icono}"
+                                         Width="20"
+                                         Height="20"
+                                         HorizontalAlignment="Left"
+                                         VerticalAlignment="Center" />
+
+
+                <!-- ================================================= -->
+                <!-- TEXTO                                             -->
+                <!-- ================================================= -->
+
+                <TextBlock Grid.Column="1"
+                           Text="{Binding Titulo}"
+                           Margin="8,0,8,0"
+                           FontSize="13"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           TextWrapping="NoWrap"
+                           TextTrimming="CharacterEllipsis"
+                           ToolTip="{Binding Titulo}" />
+
+
+                <!-- ================================================= -->
+                <!-- CHEVRON                                           -->
+                <!-- ================================================= -->
+
+                <materialDesign:PackIcon Grid.Column="2"
+                                         Kind="ChevronDown"
+                                         Width="18"
+                                         Height="18"
+                                         HorizontalAlignment="Right"
+                                         VerticalAlignment="Center"
+                                         RenderTransformOrigin="0.5,0.5"
+                                         Visibility="{Binding TieneHijos,
+                        Converter={StaticResource BooleanToVisibilityConverter}}">
+
+                    <materialDesign:PackIcon.RenderTransform>
+
+                        <RotateTransform Angle="0" />
+
+                    </materialDesign:PackIcon.RenderTransform>
+
+
+                    <materialDesign:PackIcon.Style>
+
+                        <Style TargetType="materialDesign:PackIcon">
+
+                            <Style.Triggers>
+
+                                <DataTrigger Binding="{Binding EstaExpandido}"
+                                             Value="True">
+
+                                    <Setter Property="RenderTransform">
+
+                                        <Setter.Value>
+
+                                            <RotateTransform Angle="180" />
+
+                                        </Setter.Value>
+
+                                    </Setter>
+
+                                </DataTrigger>
+
+                            </Style.Triggers>
+
+                        </Style>
+
+                    </materialDesign:PackIcon.Style>
+
+                </materialDesign:PackIcon>
+
+            </Grid>
+
+        </Button>
+
+
+        <!-- ===================================================== -->
+        <!-- SUBMENÚ                                               -->
+        <!-- ===================================================== -->
+
+        <ItemsControl ItemsSource="{Binding Hijos}"
+                      HorizontalAlignment="Stretch"
+                      Visibility="{Binding EstaExpandido,
+                Converter={StaticResource BooleanToVisibilityConverter}}">
+
+
+            <ItemsControl.ItemContainerStyle>
+
+                <Style TargetType="ContentPresenter">
+
+                    <Setter Property="HorizontalAlignment"
+                            Value="Stretch" />
+
+                </Style>
+
+            </ItemsControl.ItemContainerStyle>
+
+
+            <ItemsControl.ItemTemplate>
+
+                <DataTemplate>
+
+                    <Button Style="{DynamicResource SidebarSubmenuButtonStyle}"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Stretch"
+                            Command="{Binding DataContext.NavegarCommand,
+                                          RelativeSource={RelativeSource AncestorType=Window}}"
+                            CommandParameter="{Binding}">
+
+                        <Grid HorizontalAlignment="Stretch">
+
+                            <Grid.ColumnDefinitions>
+
+                                <ColumnDefinition Width="25" />
+
+                                <ColumnDefinition Width="*" />
+
+                            </Grid.ColumnDefinitions>
+
+
+                            <!-- ========================================= -->
+                            <!-- ICONO SUBMENÚ                             -->
+                            <!-- ========================================= -->
+
+                            <materialDesign:PackIcon Grid.Column="0"
+                                                     Kind="{Binding Icono}"
+                                                     Width="16"
+                                                     Height="16"
+                                                     HorizontalAlignment="Left"
+                                                     VerticalAlignment="Center" />
+
+
+                            <!-- ========================================= -->
+                            <!-- TEXTO SUBMENÚ                             -->
+                            <!-- ========================================= -->
+
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding Titulo}"
+                                       Margin="7,0,4,0"
+                                       FontSize="12.5"
+                                       FontWeight="Medium"
+                                       VerticalAlignment="Center"
+                                       TextWrapping="NoWrap"
+                                       TextTrimming="CharacterEllipsis"
+                                       ToolTip="{Binding Titulo}" />
+
+                        </Grid>
+
+                    </Button>
+
+                </DataTemplate>
+
+            </ItemsControl.ItemTemplate>
+
+        </ItemsControl>
+
+    </StackPanel>
+
+</UserControl>
