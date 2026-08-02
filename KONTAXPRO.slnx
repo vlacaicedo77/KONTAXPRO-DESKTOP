@@ -1,9 +1,14 @@
 <Solution>
   <Folder Name="/Elementos de la solución/">
+    <File Path=".gitignore" />
     <File Path="AGENTS.md" />
+    <File Path="CODEX_PROMPTS.md" />
+    <File Path="promp.md" />
+    <File Path="PrompProducto.md" />
   </Folder>
   <Project Path="KONTAXPRO.Application/KONTAXPRO.Application.csproj" />
   <Project Path="KONTAXPRO.Desktop/KONTAXPRO.Desktop.csproj" />
   <Project Path="KONTAXPRO.Domain/KONTAXPRO.Domain.csproj" />
   <Project Path="KONTAXPRO.Infrastructure/KONTAXPRO.Infrastructure.csproj" />
+  <Project Path="KONTAXPRO.Tests/KONTAXPRO.Tests.csproj" />
 </Solution>

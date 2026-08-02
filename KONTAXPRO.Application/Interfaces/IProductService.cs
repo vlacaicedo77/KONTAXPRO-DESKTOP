@@ -27,8 +27,9 @@ public interface IProductService
         CancellationToken cancellationToken = default);
 
     Task<ProductoCodigoBarrasDto?> BuscarPorCodigoBarrasAsync(
-    string codigoBarras,
-    CancellationToken cancellationToken = default);
+        long empresaId,
+        string codigoBarras,
+        CancellationToken cancellationToken = default);
 
     Task<List<ProductoSugerenciaDto>> BuscarSimilaresAsync(
     long empresaId,

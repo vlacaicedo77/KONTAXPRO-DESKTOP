@@ -13,6 +13,8 @@ public partial class LoginViewModel : ObservableObject
     public LoginViewModel(IAuthenticationService authenticationService)
     {
         _authenticationService = authenticationService;
+        NumeroIdentificacion = "1724853377";
+        Password = "Kontax123";
     }
 
     [ObservableProperty]

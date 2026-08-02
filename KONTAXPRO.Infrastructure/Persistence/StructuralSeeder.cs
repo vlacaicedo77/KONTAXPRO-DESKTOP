@@ -336,6 +336,13 @@ public sealed class StructuralSeeder
             ("VENTAS_APLICAR_DESCUENTO", "VENTAS"),
             ("VENTAS_VENDER_BAJO_COSTO", "VENTAS"),
             ("INVENTARIO_VER_COSTO", "INVENTARIO"),
+            ("INVENTARIO_AGREGAR_ENTRADA_INICIAL", "INVENTARIO"),
+            ("INVENTARIO_REGISTRAR_AJUSTE", "INVENTARIO"),
+            ("INVENTARIO_VER_KARDEX", "INVENTARIO"),
+            ("INVENTARIO_CONVERTIR_TIPO_CONTROL", "INVENTARIO"),
+            ("INVENTARIO_CREAR_LOTE_REGULARIZACION", "INVENTARIO"),
+            ("INVENTARIO_CORREGIR_LOTE", "INVENTARIO"),
+            ("INVENTARIO_CORREGIR_SERIE", "INVENTARIO"),
             ("CARTERA_ANULAR_COBRO", "CARTERA"),
             ("CONTABILIDAD_REABRIR_PERIODO", "CONTABILIDAD"),
             ("CONTABILIDAD_CREAR_ASIENTO_MANUAL", "CONTABILIDAD"),
@@ -488,26 +495,73 @@ public sealed class StructuralSeeder
     {
         (string Codigo, string Nombre, string Abreviatura)[] seeds =
         [
-            ("UNIDAD", "Unidad", "u")
+            ("UND", "UNIDAD", "UND"),
+            ("KG", "KILOGRAMO", "KG"),
+            ("G", "GRAMO", "G"),
+            ("LB", "LIBRA", "LB"),
+            ("OZ", "ONZA", "OZ"),
+            ("ARB", "ARROBA", "ARB"),
+            ("QQ", "QUINTAL", "QQ"),
+            ("L", "LITRO", "L"),
+            ("ML", "MILILITRO", "ML"),
+            ("GAL", "GALÓN", "GAL"),
+            ("M", "METRO", "M"),
+            ("CM", "CENTÍMETRO", "CM")
         ];
         var existentes = await context.UnidadesMedida
-            .ToDictionaryAsync(x => x.Codigo, cancellationToken);
+            .ToListAsync(cancellationToken);
 
         foreach (var seed in seeds)
         {
-            if (!existentes.TryGetValue(seed.Codigo, out var entity))
+            var entity = existentes.FirstOrDefault(x =>
+                x.Codigo.Equals(seed.Codigo, StringComparison.OrdinalIgnoreCase) ||
+                x.Abreviatura.Equals(
+                    seed.Abreviatura,
+                    StringComparison.OrdinalIgnoreCase));
+
+            // Compatibilidad con el único seed histórico del proyecto.
+            if (entity is null && seed.Codigo == "UND")
+            {
+                entity = existentes.FirstOrDefault(x =>
+                    x.Codigo == "UNIDAD" &&
+                    x.Nombre == "Unidad" &&
+                    x.Abreviatura == "u");
+            }
+
+            if (entity is null)
             {
                 entity = new UnidadMedida
                 {
                     Codigo = seed.Codigo,
-                    CreatedAt = now
+                    Nombre = seed.Nombre,
+                    Abreviatura = seed.Abreviatura,
+                    Descripcion = $"UNIDAD DE MEDIDA {seed.Nombre}",
+                    Estado = 1,
+                    CreatedAt = now,
+                    UpdatedAt = now
                 };
                 context.UnidadesMedida.Add(entity);
+                existentes.Add(entity);
+                continue;
             }
 
             entity.Nombre = seed.Nombre;
             entity.Abreviatura = seed.Abreviatura;
+            entity.Descripcion = $"UNIDAD DE MEDIDA {seed.Nombre}";
             entity.Estado = 1;
+            entity.UpdatedAt = now;
+
+            // Solo normalizar el seed legado conocido. Los registros existentes
+            // y las unidades creadas por usuarios no se sobrescriben.
+            if (seed.Codigo == "UND" &&
+                entity.Codigo == "UNIDAD" &&
+                entity.Nombre == "Unidad" &&
+                entity.Abreviatura == "u")
+            {
+                entity.Codigo = seed.Codigo;
+                entity.Abreviatura = seed.Abreviatura;
+                entity.Estado = 1;
+            }
         }
     }
 
@@ -543,8 +597,45 @@ public sealed class StructuralSeeder
             entity.Estado = 1;
         }
 
-        // No sembrar TarifasImpuesto ni ConceptosRetencion sin una fuente
-        // oficial versionada: porcentajes, códigos y vigencias pueden cambiar.
+        var iva = context.Impuestos.Local.FirstOrDefault(x => x.Codigo == "IVA")
+            ?? existentes["IVA"];
+        (string CodigoSri, string Nombre, decimal Porcentaje)[] tarifas =
+        [
+            ("0", "IVA 0 %", 0m),
+            ("5", "IVA 5 %", 5m),
+            ("4", "IVA 15 %", 15m)
+        ];
+        var tarifasExistentes = await context.TarifasImpuesto
+            .Where(x => x.Impuesto!.Codigo == "IVA")
+            .ToListAsync(cancellationToken);
+
+        foreach (var seed in tarifas)
+        {
+            var tarifa = tarifasExistentes.FirstOrDefault(
+                x => x.CodigoSri == seed.CodigoSri);
+            if (tarifa is null)
+            {
+                tarifa = new TarifaImpuesto
+                {
+                    Impuesto = iva,
+                    CodigoSri = seed.CodigoSri,
+                    CreatedAt = now
+                };
+                context.TarifasImpuesto.Add(tarifa);
+                tarifasExistentes.Add(tarifa);
+            }
+
+            tarifa.Nombre = seed.Nombre;
+            tarifa.TipoCalculo = "PORCENTAJE";
+            tarifa.Porcentaje = seed.Porcentaje;
+            tarifa.ValorEspecifico = null;
+            tarifa.VigenteDesde = new DateOnly(2024, 4, 1);
+            tarifa.VigenteHasta = null;
+            tarifa.Descripcion = VerificarSriAntesDeProduccion;
+            tarifa.Estado = 1;
+        }
+
+        // Conceptos de retención requieren un catálogo oficial versionado.
     }
 
     private static async Task SeedFormasYMediosPagoAsync(

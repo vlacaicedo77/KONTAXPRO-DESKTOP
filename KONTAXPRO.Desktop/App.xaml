@@ -15,6 +15,10 @@
                 <ResourceDictionary Source="Styles/Colors.xaml"/>
                 <ResourceDictionary Source="Styles/LightTheme.xaml"/>
                 <ResourceDictionary Source="Styles/ButtonStyles.xaml"/>
+                <ResourceDictionary Source="Styles/DataGridStyles.xaml"/>
+                <ResourceDictionary Source="Styles/ScrollBarStyles.xaml"/>
+                <ResourceDictionary Source="Styles/CheckBoxStyles.xaml"/>
+                <ResourceDictionary Source="Styles/DatePickerStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>

@@ -87,3 +87,50 @@ public class AjusteInventarioDetalle
     public Producto? Producto { get; set; }
     public ProductoPresentacion? ProductoPresentacion { get; set; }
 }
+
+public class ConversionControlInventario
+{
+    public long Id { get; set; }
+    public long EmpresaId { get; set; }
+    public long ProductoId { get; set; }
+    public string TipoControlAnterior { get; set; } = string.Empty;
+    public string TipoControlNuevo { get; set; } = string.Empty;
+    public DateTime FechaConversion { get; set; }
+    public long UsuarioId { get; set; }
+    public string Motivo { get; set; } = string.Empty;
+    public string Estado { get; set; } = "CONFIRMADA";
+    public long? AnuladoPorUsuarioId { get; set; }
+    public DateTime? AnuladoAt { get; set; }
+    public string? MotivoAnulacion { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public Empresa? Empresa { get; set; }
+    public Producto? Producto { get; set; }
+    public Usuario? Usuario { get; set; }
+    public Usuario? AnuladoPorUsuario { get; set; }
+    public ICollection<ConversionControlInventarioDetalle> Detalles { get; set; } = [];
+    public ICollection<ConversionControlInventarioSerie> Series { get; set; } = [];
+}
+
+public class ConversionControlInventarioDetalle
+{
+    public long Id { get; set; }
+    public long ConversionControlInventarioId { get; set; }
+    public long BodegaId { get; set; }
+    public long? ProductoLoteId { get; set; }
+    public decimal CantidadBase { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public ConversionControlInventario? ConversionControlInventario { get; set; }
+    public Bodega? Bodega { get; set; }
+    public ProductoLote? ProductoLote { get; set; }
+}
+
+public class ConversionControlInventarioSerie
+{
+    public long Id { get; set; }
+    public long ConversionControlInventarioId { get; set; }
+    public long ProductoSerieId { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public ConversionControlInventario? ConversionControlInventario { get; set; }
+    public ProductoSerie? ProductoSerie { get; set; }
+}

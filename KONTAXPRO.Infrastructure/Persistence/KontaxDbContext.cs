@@ -228,6 +228,17 @@ public class KontaxDbContext : DbContext
     public DbSet<AjusteInventarioDetalle> AjustesInventarioDetalles
         => Set<AjusteInventarioDetalle>();
 
+    public DbSet<ConversionControlInventario> ConversionesControlInventario
+        => Set<ConversionControlInventario>();
+
+    public DbSet<ConversionControlInventarioDetalle>
+        ConversionesControlInventarioDetalles
+        => Set<ConversionControlInventarioDetalle>();
+
+    public DbSet<ConversionControlInventarioSerie>
+        ConversionesControlInventarioSeries
+        => Set<ConversionControlInventarioSerie>();
+
     public DbSet<ProductoCosto> ProductosCostos
         => Set<ProductoCosto>();
 

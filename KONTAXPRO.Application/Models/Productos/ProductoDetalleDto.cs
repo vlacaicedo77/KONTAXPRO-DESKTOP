@@ -12,6 +12,8 @@ public class ProductoDetalleDto
 
     public long UnidadMedidaBaseId { get; set; }
 
+    public string UnidadMedidaBaseAbreviatura { get; set; } = string.Empty;
+
     public List<ProductoImpuestoDto> Impuestos { get; set; } = [];
 
     public string Codigo { get; set; } = string.Empty;
@@ -55,4 +57,10 @@ public class ProductoDetalleDto
     public ProductoCostoDto Costo { get; set; } = new();
 
     public List<ProductoExistenciaDto> Existencias { get; set; } = [];
+
+    public List<ProductoInventarioInicialRequest> InventariosIniciales { get; set; } = [];
+
+    public bool PuedeCompletarInventarioInicial { get; set; } = true;
+
+    public string? MotivoNoPuedeCompletarInventarioInicial { get; set; }
 }

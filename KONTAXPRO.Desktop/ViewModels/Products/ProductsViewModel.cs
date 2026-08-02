@@ -388,6 +388,7 @@ public partial class ProductsViewModel : ObservableObject
             var resultado =
                 await _productService
                     .BuscarPorCodigoBarrasAsync(
+                        ObtenerEmpresaId(),
                         CodigoBarrasNuevoProducto);
 
             if (resultado != null)

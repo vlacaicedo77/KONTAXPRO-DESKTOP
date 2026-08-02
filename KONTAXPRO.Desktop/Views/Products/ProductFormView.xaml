@@ -4,6 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:behaviors="clr-namespace:KONTAXPRO.Desktop.Behaviors"
              mc:Ignorable="d">
 
     <UserControl.Resources>
@@ -138,111 +139,17 @@
 
         </Style>
 
-        <!-- ============================================================
-     CHECKBOX KONTAXPRO
-     ============================================================ -->
-
-        <Style x:Key="ProductCheckBoxStyle"
-               TargetType="CheckBox">
-
-            <Setter Property="Foreground"
-                    Value="{DynamicResource PrimaryTextBrush}" />
-
-            <Setter Property="Cursor"
-                    Value="Hand" />
-
-            <Setter Property="VerticalContentAlignment"
-                    Value="Center" />
-
-            <Setter Property="FocusVisualStyle"
-                    Value="{x:Null}" />
-
-
-            <Setter Property="Template">
-
-                <Setter.Value>
-
-                    <ControlTemplate TargetType="CheckBox">
-
-                        <StackPanel Orientation="Horizontal">
-
-                            <Border x:Name="CheckBorder"
-                                    Width="20"
-                                    Height="20"
-                                    CornerRadius="5"
-                                    Background="{DynamicResource InputBackgroundBrush}"
-                                    BorderBrush="{DynamicResource InputBorderBrush}"
-                                    BorderThickness="1.5"
-                                    VerticalAlignment="Center">
-
-                                <materialDesign:PackIcon x:Name="CheckIcon"
-                                                         Kind="Check"
-                                                         Width="14"
-                                                         Height="14"
-                                                         Foreground="White"
-                                                         HorizontalAlignment="Center"
-                                                         VerticalAlignment="Center"
-                                                         Visibility="Collapsed" />
-
-                            </Border>
-
-
-                            <ContentPresenter Margin="9,0,0,0"
-                                              VerticalAlignment="Center" />
-
-                        </StackPanel>
-
-
-                        <ControlTemplate.Triggers>
-
-                            <Trigger Property="IsMouseOver"
-                                     Value="True">
-
-                                <Setter TargetName="CheckBorder"
-                                        Property="BorderBrush"
-                                        Value="#A855F7" />
-
-                            </Trigger>
-
-
-                            <Trigger Property="IsChecked"
-                                     Value="True">
-
-                                <Setter TargetName="CheckBorder"
-                                        Property="Background"
-                                        Value="#9333EA" />
-
-                                <Setter TargetName="CheckBorder"
-                                        Property="BorderBrush"
-                                        Value="#9333EA" />
-
-                                <Setter TargetName="CheckIcon"
-                                        Property="Visibility"
-                                        Value="Visible" />
-
-                            </Trigger>
-
-
-                            <Trigger Property="IsEnabled"
-                                     Value="False">
-
-                                <Setter Property="Opacity"
-                                        Value="0.50" />
-
-                            </Trigger>
-
-                        </ControlTemplate.Triggers>
-
-                    </ControlTemplate>
-
-                </Setter.Value>
-
-            </Setter>
-
+        <Style x:Key="UpperTextBoxStyle"
+               TargetType="TextBox"
+               BasedOn="{StaticResource ModernTextBoxStyle}">
+            <Setter Property="CharacterCasing" Value="Upper" />
         </Style>
 
         <Style x:Key="ModernComboBoxStyle"
                TargetType="ComboBox">
+
+            <Setter Property="Tag"
+                    Value="-----Seleccione una opción-----" />
 
             <Setter Property="MinHeight"
                     Value="46" />
@@ -281,7 +188,7 @@
 
                     <ControlTemplate TargetType="ComboBox">
 
-                        <Grid>
+                        <Grid VerticalAlignment="Stretch">
 
                             <!-- CAMPO -->
                             <Border x:Name="ComboBorder"
@@ -306,6 +213,15 @@
                                                       ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
                                                       ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
                                                       TextElement.Foreground="{TemplateBinding Foreground}" />
+
+                                    <TextBlock x:Name="ComboPlaceholder"
+                                               Margin="13,0,8,0"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Left"
+                                               Text="{TemplateBinding Tag}"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"
+                                               IsHitTestVisible="False"
+                                               Visibility="Collapsed" />
 
 
                                     <!-- FLECHA -->
@@ -401,6 +317,13 @@
                                         Property="BorderThickness"
                                         Value="2" />
 
+                            </Trigger>
+
+                            <Trigger Property="SelectedIndex"
+                                     Value="-1">
+                                <Setter TargetName="ComboPlaceholder"
+                                        Property="Visibility"
+                                        Value="Visible" />
                             </Trigger>
 
 
@@ -572,8 +495,11 @@
              CONTENIDO
              ===================================================== -->
 
-        <ScrollViewer Grid.Row="1"
-                      VerticalScrollBarVisibility="Auto">
+        <ScrollViewer x:Name="FormScrollViewer"
+                      Grid.Row="1"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled"
+                      PreviewMouseWheel="FormScrollViewer_PreviewMouseWheel">
 
             <Grid Margin="26">
 
@@ -594,12 +520,26 @@
 
                     <RowDefinition Height="18" />
 
+                    <!-- Precios -->
+                    <RowDefinition Height="Auto" />
+
+                    <RowDefinition Height="18" />
+
+                    <!-- Costos y existencias -->
+                    <RowDefinition Height="Auto" />
+
+                    <RowDefinition Height="18" />
+
                     <!-- Inventario -->
                     <RowDefinition Height="Auto" />
 
                     <RowDefinition Height="18" />
 
                     <!-- Observaciones -->
+                    <RowDefinition Height="Auto" />
+
+                    <RowDefinition Height="18" />
+
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
@@ -637,12 +577,12 @@
                         </StackPanel>
 
 
-                        <!-- NOMBRE -->
+                        <TextBlock Style="{StaticResource FieldLabelStyle}">
+                            <Run Text="Nombre comercial" />
+                            <Run Text=" *" Foreground="#DC2626" FontWeight="Bold" />
+                        </TextBlock>
 
-                        <TextBlock Text="Nombre comercial *"
-                                   Style="{StaticResource FieldLabelStyle}" />
-
-                        <Grid Margin="0,0,0,15">
+                        <Grid Margin="0,0,0,5">
 
                             <!-- CAMPO -->
                             <Border x:Name="NombreField"
@@ -650,7 +590,8 @@
 
                                 <TextBox Text="{Binding Nombre,
                     UpdateSourceTrigger=PropertyChanged}"
-                                         Style="{StaticResource ModernTextBoxStyle}" />
+                                         x:Name="NombreProductoInput"
+                                         Style="{StaticResource UpperTextBoxStyle}" />
 
                             </Border>
 
@@ -809,6 +750,10 @@
                             </Popup>
 
                         </Grid>
+                        <TextBlock Text="Incluye la presentación o medida que distingue al producto. Ej.: Mulgatol 100 ML, Quemax 1 LT, Rey Quemante 1 GL o Clavo de Acero 1 Pulgada."
+                                   Style="{StaticResource FieldHelpStyle}"
+                                   TextWrapping="Wrap"
+                                   Margin="0,0,0,15" />
 
 
                         <!-- MODELO / ESPECIFICACIÓN -->
@@ -823,7 +768,7 @@
 
                                 <TextBox Text="{Binding Modelo,
                     UpdateSourceTrigger=PropertyChanged}"
-                                         Style="{StaticResource ModernTextBoxStyle}" />
+                                         Style="{StaticResource UpperTextBoxStyle}" />
 
                             </Border>
 
@@ -1027,8 +972,9 @@
 
                         <!-- CATEGORÍA -->
 
-                        <TextBlock Text="Categoría"
-                                   Style="{StaticResource FieldLabelStyle}" />
+                        <TextBlock Style="{StaticResource FieldLabelStyle}">
+                            <Run Text="Categoría" />
+                        </TextBlock>
 
                         <Grid Margin="0,0,0,5">
 
@@ -1065,8 +1011,9 @@
 
                         <!-- MARCA -->
 
-                        <TextBlock Text="Marca"
-                                   Style="{StaticResource FieldLabelStyle}" />
+                        <TextBlock Style="{StaticResource FieldLabelStyle}">
+                            <Run Text="Marca" />
+                        </TextBlock>
 
                         <Grid Margin="0,0,0,5">
 
@@ -1101,35 +1048,16 @@
 
                         <!-- IVA -->
 
-                        <TextBlock Text="IVA / impuesto"
-                                   Style="{StaticResource FieldLabelStyle}" />
+                        <TextBlock Style="{StaticResource FieldLabelStyle}">
+                            <Run Text="IVA / impuesto" />
+                            <Run Text=" *" Foreground="#DC2626" FontWeight="Bold" />
+                        </TextBlock>
 
                         <ComboBox ItemsSource="{Binding TarifasImpuesto}"
                                   DisplayMemberPath="Nombre"
                                   SelectedValuePath="Id"
                                   SelectedValue="{Binding TarifaImpuestoId}"
                                   Style="{StaticResource ModernComboBoxStyle}" />
-
-                        <TextBlock Text="Lista de precio base"
-                                   Style="{StaticResource FieldLabelStyle}"
-                                   Margin="0,14,0,0" />
-
-                        <ComboBox ItemsSource="{Binding ListasPrecio}"
-                                  DisplayMemberPath="Nombre"
-                                  SelectedValuePath="Id"
-                                  SelectedValue="{Binding ListaPrecioBaseId}"
-                                  Style="{StaticResource ModernComboBoxStyle}" />
-
-                        <TextBlock Text="Precio fijo"
-                                   Style="{StaticResource FieldLabelStyle}"
-                                   Margin="0,14,0,0" />
-
-                        <Border Style="{StaticResource FormFieldBorderStyle}">
-                            <TextBox Text="{Binding PrecioBase,
-                                UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{StaticResource ModernTextBoxStyle}" />
-                        </Border>
-
 
                     </StackPanel>
 
@@ -1196,15 +1124,18 @@
 
                                 <!-- NOMBRE PRESENTACIÓN -->
 
-                                <TextBlock Text="Nombre de presentación *"
-                                           Style="{StaticResource FieldLabelStyle}" />
+                                <TextBlock Style="{StaticResource FieldLabelStyle}">
+                                    <Run Text="Nombre de presentación" />
+                                    <Run Text=" *" Foreground="#DC2626" FontWeight="Bold" />
+                                </TextBlock>
 
                                 <Border Style="{StaticResource FormFieldBorderStyle}"
                                         Margin="0,0,0,15">
 
                                     <TextBox Text="{Binding PresentacionNombre,
-                                UpdateSourceTrigger=PropertyChanged}"
-                                             Style="{StaticResource ModernTextBoxStyle}" />
+                                UpdateSourceTrigger=PropertyChanged,
+                                Delay=75}"
+                                             Style="{StaticResource UpperTextBoxStyle}" />
 
                                 </Border>
 
@@ -1215,8 +1146,10 @@
 
                                 <!-- UNIDAD -->
 
-                                <TextBlock Text="Unidad de medida *"
-                                           Style="{StaticResource FieldLabelStyle}" />
+                                <TextBlock Style="{StaticResource FieldLabelStyle}">
+                                    <Run Text="Unidad de medida" />
+                                    <Run Text=" *" Foreground="#DC2626" FontWeight="Bold" />
+                                </TextBlock>
 
                                 <ComboBox ItemsSource="{Binding UnidadesMedida}"
                                           DisplayMemberPath="Nombre"
@@ -1242,7 +1175,7 @@
 
                                     <TextBox Text="{Binding CodigoBarras,
                                              UpdateSourceTrigger=PropertyChanged}"
-                                             Style="{StaticResource ModernTextBoxStyle}"
+                                             Style="{StaticResource UpperTextBoxStyle}"
                                              IsReadOnly="{Binding SinCodigoBarras}" />
 
                                 </Border>
@@ -1252,7 +1185,7 @@
 
                                 <CheckBox Content="No posee código de barras del fabricante"
                                           IsChecked="{Binding SinCodigoBarras}"
-                                          Style="{StaticResource ProductCheckBoxStyle}"
+                                          Style="{StaticResource KontaxCheckBoxStyle}"
                                           Margin="2,14,0,0"
                                           FontWeight="SemiBold" />
 
@@ -1296,43 +1229,76 @@
                                 <TextBlock Text="La BASE siempre se conserva; agrega cajas, paquetes u otras unidades comerciales."
                                            Style="{StaticResource FieldHelpStyle}"
                                            Margin="0,3,0,0" />
+                                <TextBlock Text="Factor: indica cuántas unidades base contiene cada presentación."
+                                           Style="{StaticResource FieldHelpStyle}"
+                                           Margin="0,2,0,0" />
                             </StackPanel>
                             <Button Grid.Column="1"
                                     Content="Agregar presentación"
                                     Command="{Binding AgregarPresentacionCommand}"
+                                    Click="AgregarPresentacionButton_Click"
                                     Style="{StaticResource PrimaryButtonStyle}" />
                         </Grid>
 
-                        <DataGrid ItemsSource="{Binding PresentacionesAdicionales}"
+                        <DataGrid x:Name="PresentacionesAdicionalesGrid"
+                                  ItemsSource="{Binding PresentacionesAdicionales}"
+                                  CellEditEnding="PresentacionesAdicionalesGrid_CellEditEnding"
+                                  Style="{StaticResource KontaxDataGridStyle}"
                                   AutoGenerateColumns="False"
                                   CanUserAddRows="False"
-                                  MinHeight="120">
+                                  MaxHeight="240"
+                                  VerticalScrollBarVisibility="Auto"
+                                  MinHeight="120"
+                                  HeadersVisibility="Column"
+                                  GridLinesVisibility="None"
+                                  RowBackground="{DynamicResource InputBackgroundBrush}"
+                                  AlternatingRowBackground="{DynamicResource SecondarySurfaceBrush}"
+                                  Background="{DynamicResource SecondarySurfaceBrush}"
+                                  Foreground="{DynamicResource PrimaryTextBrush}"
+                                  BorderBrush="{DynamicResource BorderBrush}"
+                                  BorderThickness="1"
+                                  RowHeight="48"
+                                  ColumnHeaderHeight="42">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="Código"
+                                <DataGridTextColumn Header="CÓDIGO"
                                                     Binding="{Binding Codigo, UpdateSourceTrigger=PropertyChanged}"
+                                                    EditingElementStyle="{StaticResource KontaxUpperDataGridTextBoxStyle}"
                                                     Width="110" />
-                                <DataGridTextColumn Header="Nombre"
-                                                    Binding="{Binding Nombre, UpdateSourceTrigger=PropertyChanged}"
-                                                    Width="*" />
-                                <DataGridTextColumn Header="Factor"
-                                                    Binding="{Binding FactorConversion, UpdateSourceTrigger=PropertyChanged}"
-                                                    Width="90" />
-                                <DataGridTextColumn Header="Código de barras"
-                                                    Binding="{Binding CodigoBarras, UpdateSourceTrigger=PropertyChanged}"
-                                                    Width="170" />
-                                <DataGridCheckBoxColumn Header="Compra"
-                                                        Binding="{Binding PermiteCompra}"
-                                                        Width="75" />
-                                <DataGridCheckBoxColumn Header="Venta"
-                                                        Binding="{Binding PermiteVenta}"
-                                                        Width="75" />
-                                <DataGridTemplateColumn Width="70">
+                                <DataGridTemplateColumn x:Name="NombrePresentacionAdicionalColumn"
+                                                        Header="NOMBRE"
+                                                        Width="*">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <Button Content="Quitar"
-                                                    Command="{Binding DataContext.QuitarPresentacionCommand,
+                                            <TextBox Text="{Binding Nombre,
+                                                UpdateSourceTrigger=PropertyChanged}"
+                                                     Style="{StaticResource KontaxUpperDataGridTextBoxStyle}"
+                                                     Loaded="PresentacionAdicionalNombre_Loaded"
+                                                     TextChanged="PresentacionAdicionalNombre_TextChanged" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn x:Name="FactorPresentacionAdicionalColumn"
+                                                    Header="FACTOR"
+                                                    Binding="{Binding FactorConversion, UpdateSourceTrigger=PropertyChanged}"
+                                                    Width="90" />
+                                <DataGridTextColumn Header="CÓDIGO DE BARRAS"
+                                                    Binding="{Binding CodigoBarras, UpdateSourceTrigger=PropertyChanged}"
+                                                    EditingElementStyle="{StaticResource KontaxUpperDataGridTextBoxStyle}"
+                                                    Width="170" />
+                                <DataGridTemplateColumn Header="ACCIONES" Width="90">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Button Command="{Binding DataContext.QuitarPresentacionCommand,
                                                         RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                                    CommandParameter="{Binding}" />
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip="QUITAR PRESENTACIÓN"
+                                                    Style="{StaticResource KontaxDeleteIconButtonStyle}">
+                                                <materialDesign:PackIcon Kind="TrashCanOutline"
+                                                                         Foreground="{Binding Foreground,
+                                                    RelativeSource={RelativeSource AncestorType=Button}}"
+                                                                         Width="18"
+                                                                         Height="18" />
+                                            </Button>
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
@@ -1343,12 +1309,427 @@
 
                 </Border>
 
+                <!-- PRECIOS -->
+                <Border Grid.Row="10"
+                        Grid.ColumnSpan="3"
+                        Style="{StaticResource FormSectionStyle}"
+                        Visibility="{Binding RegistrarInventarioInicial,
+                          Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                            <materialDesign:PackIcon Kind="TagMultipleOutline"
+                                                     Width="24" Height="24"
+                                                     Margin="0,0,10,0"
+                                                     Foreground="#9333EA" />
+                            <StackPanel>
+                                <TextBlock Text="Precios por lista"
+                                           Style="{StaticResource SectionTitleStyle}" />
+                                <TextBlock Text="Configura cada lista para la presentación seleccionada."
+                                           Style="{StaticResource FieldHelpStyle}" />
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Margin="0,0,0,14">
+                            <TextBlock Text="Presentación que estás configurando"
+                                       Style="{StaticResource FieldLabelStyle}" />
+                            <ComboBox ItemsSource="{Binding PresentacionesInventarioInicial}"
+                                      DisplayMemberPath="Nombre"
+                                      SelectedValuePath="Codigo"
+                                      SelectedValue="{Binding PresentacionPrecioCodigo}"
+                                      Style="{StaticResource ModernComboBoxStyle}"
+                                      Width="360"
+                                      HorizontalAlignment="Left" />
+                            <WrapPanel Margin="0,10,0,0">
+                                <Border Width="360"
+                                        Margin="0,0,12,0"
+                                        Padding="12,9"
+                                        CornerRadius="8"
+                                        Background="{DynamicResource InfoSoftBrush}"
+                                        BorderBrush="{DynamicResource BrandProBrush}"
+                                        BorderThickness="1">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <materialDesign:PackIcon Kind="CalculatorVariantOutline"
+                                                                 Width="20"
+                                                                 Height="20"
+                                                                 Margin="0,0,9,0"
+                                                                 VerticalAlignment="Center"
+                                                                 Foreground="{DynamicResource BrandProBrush}" />
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="Costo unitario base"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource PrimaryTextBrush}" />
+                                            <TextBlock Text="Costo de una unidad base"
+                                                       Style="{StaticResource FieldHelpStyle}" />
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="2"
+                                                   Text="{Binding CostoBaseInventarioInicial,
+                                                       StringFormat={}{0:0.00####}}"
+                                                   Margin="12,0,0,0"
+                                                   FontSize="16"
+                                                   FontWeight="Bold"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource BrandProBrush}" />
+                                    </Grid>
+                                </Border>
+                                <Border Width="360"
+                                        Padding="12,9"
+                                        CornerRadius="8"
+                                        Background="{DynamicResource InfoSoftBrush}"
+                                        BorderBrush="{DynamicResource BrandProBrush}"
+                                        BorderThickness="1">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <materialDesign:PackIcon Kind="PackageVariantClosed"
+                                                                 Width="20"
+                                                                 Height="20"
+                                                                 Margin="0,0,9,0"
+                                                                 VerticalAlignment="Center"
+                                                                 Foreground="{DynamicResource BrandProBrush}" />
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="Costo presentación"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource PrimaryTextBrush}" />
+                                            <TextBlock Text="Costo según su factor"
+                                                       Style="{StaticResource FieldHelpStyle}" />
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="2"
+                                                   Text="{Binding CostoPresentacionPrecio,
+                                                       StringFormat={}{0:0.00####}}"
+                                                   Margin="12,0,0,0"
+                                                   FontSize="16"
+                                                   FontWeight="Bold"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource BrandProBrush}" />
+                                    </Grid>
+                                </Border>
+                            </WrapPanel>
+                        </StackPanel>
+                        <ItemsControl ItemsSource="{Binding Precios}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Width="330"
+                                            Margin="0,0,14,14"
+                                            Padding="16"
+                                            CornerRadius="10"
+                                            Background="{DynamicResource SecondarySurfaceBrush}"
+                                            BorderBrush="{DynamicResource BorderBrush}"
+                                            BorderThickness="1">
+                                        <StackPanel>
+                                            <Grid Margin="0,0,0,14">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <Border Width="34"
+                                                        Height="34"
+                                                        CornerRadius="9"
+                                                        Background="{DynamicResource PurpleSoftBrush}"
+                                                        Margin="0,0,10,0">
+                                                    <materialDesign:PackIcon Kind="TagOutline"
+                                                                             Width="18"
+                                                                             Height="18"
+                                                                             Foreground="#9333EA"
+                                                                             HorizontalAlignment="Center"
+                                                                             VerticalAlignment="Center" />
+                                                </Border>
+                                                <StackPanel Grid.Column="1"
+                                                            VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding ListaNombre}"
+                                                               FontSize="15"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource PrimaryTextBrush}" />
+                                                    <TextBlock Text="{Binding AyudaMetodo}"
+                                                               TextWrapping="Wrap"
+                                                               Style="{StaticResource FieldHelpStyle}" />
+                                                </StackPanel>
+                                            </Grid>
+
+                                            <TextBlock Text="Método de cálculo"
+                                                       Style="{StaticResource FieldLabelStyle}" />
+                                            <ComboBox ItemsSource="{Binding Metodos}"
+                                                      SelectedItem="{Binding MetodoSeleccionado}"
+                                                      Style="{StaticResource ModernComboBoxStyle}"
+                                                      Margin="0,0,0,12" />
+
+                                            <Grid>
+                                                <StackPanel Visibility="{Binding UsaPorcentaje,
+                                                      Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                    <TextBlock Text="{Binding EtiquetaPorcentaje}"
+                                                               Style="{StaticResource FieldLabelStyle}" />
+                                                    <Border Style="{StaticResource FormFieldBorderStyle}">
+                                                        <TextBox Text="{Binding Porcentaje,
+                                                            UpdateSourceTrigger=LostFocus,
+                                                            StringFormat={}{0:0.######}}"
+                                                                 Language="en-US"
+                                                                 behaviors:DecimalInputBehavior.IsEnabled="True"
+                                                                 behaviors:DecimalInputBehavior.DecimalPlaces="6"
+                                                                 behaviors:DecimalInputBehavior.TrimTrailingZeros="True"
+                                                                 behaviors:DecimalInputBehavior.UpdateSourceWhileTyping="True"
+                                                                 behaviors:DecimalInputBehavior.ClearZeroOnFocus="{Binding EsListaBase}"
+                                                                 Style="{StaticResource ModernTextBoxStyle}" />
+                                                    </Border>
+                                                </StackPanel>
+                                                <StackPanel Visibility="{Binding UsaPorcentaje,
+                                                      Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                                                    <TextBlock Text="Precio de venta"
+                                                               Style="{StaticResource FieldLabelStyle}" />
+                                                    <Border Style="{StaticResource FormFieldBorderStyle}">
+                                                        <TextBox Text="{Binding Precio,
+                                                            UpdateSourceTrigger=LostFocus,
+                                                            StringFormat={}{0:0.######}}"
+                                                                 Language="en-US"
+                                                                 behaviors:DecimalInputBehavior.IsEnabled="True"
+                                                                 behaviors:DecimalInputBehavior.DecimalPlaces="6"
+                                                                 behaviors:DecimalInputBehavior.TrimTrailingZeros="True"
+                                                                 behaviors:DecimalInputBehavior.UpdateSourceWhileTyping="True"
+                                                                 Style="{StaticResource ModernTextBoxStyle}" />
+                                                    </Border>
+                                                </StackPanel>
+                                            </Grid>
+
+                                            <Border Margin="0,14,0,0"
+                                                    Padding="12"
+                                                    CornerRadius="8"
+                                                    Background="{DynamicResource InputBackgroundBrush}">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel>
+                                                        <TextBlock Text="Precio"
+                                                                   Style="{StaticResource FieldHelpStyle}" />
+                                                        <TextBlock Text="{Binding PrecioResultante,
+                                                            StringFormat={}{0:N2}}"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource BrandProBrush}" />
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="1">
+                                                        <TextBlock Text="Utilidad"
+                                                                   Style="{StaticResource FieldHelpStyle}" />
+                                                        <TextBlock Text="{Binding Utilidad,
+                                                            StringFormat={}{0:N2}}"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource PrimaryTextBrush}" />
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2">
+                                                        <TextBlock Text="Margen"
+                                                                   Style="{StaticResource FieldHelpStyle}" />
+                                                        <TextBlock Text="{Binding MargenSobreCosto,
+                                                            StringFormat={}{0:N2} %}"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource PrimaryTextBrush}" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Button Content="Agregar precios de presentación"
+                                Command="{Binding AgregarPreciosPresentacionCommand}"
+                                behaviors:CommitInputOnClickBehavior.IsEnabled="True"
+                                Style="{StaticResource PrimaryButtonStyle}"
+                                HorizontalAlignment="Left"
+                                Margin="0,2,0,14" />
+                        <TextBlock Text="Presentaciones con precios configurados"
+                                   Style="{StaticResource FieldLabelStyle}" />
+                        <TextBlock Text="Cada presentación debe aparecer en este listado antes de guardar el producto."
+                                   TextWrapping="Wrap"
+                                   Style="{StaticResource FieldHelpStyle}"
+                                   Margin="0,0,0,8" />
+                        <DataGrid ItemsSource="{Binding PreciosPresentacionesConfigurados}"
+                                  Style="{StaticResource KontaxDataGridStyle}"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  RowHeight="NaN"
+                                  MaxHeight="320"
+                                  VerticalScrollBarVisibility="Auto">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="PRESENTACIÓN"
+                                                    Binding="{Binding PresentacionNombre}"
+                                                    IsReadOnly="True"
+                                                    Width="*" />
+                                <DataGridTemplateColumn Header="DETALLE POR LISTA"
+                                                        Width="3*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <ItemsControl ItemsSource="{Binding Detalles}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <WrapPanel />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Width="205"
+                                                                Margin="0,2,8,2"
+                                                                Padding="9"
+                                                                CornerRadius="7"
+                                                                Background="{DynamicResource SecondarySurfaceBrush}"
+                                                                BorderBrush="{DynamicResource BorderBrush}"
+                                                                BorderThickness="1">
+                                                            <StackPanel>
+                                                                <TextBlock Text="{Binding ListaNombre}"
+                                                                           FontWeight="SemiBold"
+                                                                           Foreground="{DynamicResource PrimaryTextBrush}"
+                                                                           Margin="0,0,0,5" />
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="*" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <StackPanel>
+                                                                        <TextBlock Text="Precio"
+                                                                                   Style="{StaticResource FieldHelpStyle}" />
+                                                                        <TextBlock Text="{Binding Precio,
+                                                                            StringFormat={}{0:0.00}}"
+                                                                                   FontWeight="SemiBold"
+                                                                                   Foreground="{DynamicResource BrandProBrush}" />
+                                                                    </StackPanel>
+                                                                    <StackPanel Grid.Column="1">
+                                                                        <TextBlock Text="Utilidad"
+                                                                                   Style="{StaticResource FieldHelpStyle}" />
+                                                                        <TextBlock Text="{Binding Utilidad,
+                                                                            StringFormat={}{0:0.00}}" />
+                                                                    </StackPanel>
+                                                                    <StackPanel Grid.Column="2">
+                                                                        <TextBlock Text="Margen"
+                                                                                   Style="{StaticResource FieldHelpStyle}" />
+                                                                        <TextBlock Text="{Binding Margen,
+                                                                            StringFormat={}{0:0.##} %}" />
+                                                                    </StackPanel>
+                     </Grid>
+                 </StackPanel>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="ACCIONES"
+                                                        Width="85">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Button Command="{Binding DataContext.QuitarPreciosPresentacionCommand,
+                                                        RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip="ELIMINAR Y VOLVER A CALCULAR"
+                                                    Style="{StaticResource KontaxDeleteIconButtonStyle}">
+                                                <materialDesign:PackIcon Kind="TrashCanOutline" />
+                                            </Button>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </StackPanel>
+                </Border>
+
+                <!-- COSTOS Y EXISTENCIAS -->
+                <Grid Grid.Row="6"
+                      Grid.ColumnSpan="3"
+                      Visibility="{Binding IsEditing,
+                        Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="0.7*" />
+                        <ColumnDefinition Width="18" />
+                        <ColumnDefinition Width="1.3*" />
+                    </Grid.ColumnDefinitions>
+                    <Border Style="{StaticResource FormSectionStyle}">
+                        <StackPanel>
+                            <TextBlock Text="Costo"
+                                       Style="{StaticResource SectionTitleStyle}" />
+                            <TextBlock Text="Información calculada por compras y movimientos."
+                                       Style="{StaticResource FieldHelpStyle}"
+                                       Margin="0,3,0,14" />
+                            <TextBlock Text="Último precio de compra"
+                                       Style="{StaticResource FieldLabelStyle}" />
+                            <TextBlock Text="{Binding Costo.UltimoPrecioCompra,
+                                StringFormat={}{0:N2}}"
+                                       FontSize="18" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource PrimaryTextBrush}"
+                                       Margin="0,0,0,14" />
+                            <TextBlock Text="Último costo efectivo"
+                                       Style="{StaticResource FieldLabelStyle}" />
+                            <TextBlock Text="{Binding Costo.UltimoCostoEfectivo,
+                                StringFormat={}{0:N2}}"
+                                       FontSize="18" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource PrimaryTextBrush}"
+                                       Margin="0,0,0,14" />
+                             <TextBlock Text="Costo promedio actual"
+                                        Style="{StaticResource FieldLabelStyle}" />
+                             <TextBlock Text="{Binding CostoBaseInventarioInicial,
+                                 StringFormat={}{0:0.######}}"
+                                       FontSize="18" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource BrandProBrush}" />
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="2" Style="{StaticResource FormSectionStyle}">
+                        <StackPanel>
+                            <TextBlock Text="Existencias por bodega"
+                                       Style="{StaticResource SectionTitleStyle}" />
+                            <TextBlock Text="El stock es informativo; solo mínimo y ubicación son editables."
+                                       Style="{StaticResource FieldHelpStyle}"
+                                       Margin="0,3,0,14" />
+                            <DataGrid ItemsSource="{Binding Existencias}"
+                                      Style="{StaticResource KontaxDataGridStyle}"
+                                      AutoGenerateColumns="False"
+                                      CanUserAddRows="False"
+                                      MaxHeight="260"
+                                      VerticalScrollBarVisibility="Auto"
+                                      GridLinesVisibility="None"
+                                      HeadersVisibility="Column"
+                                      Background="{DynamicResource SecondarySurfaceBrush}"
+                                      RowBackground="{DynamicResource InputBackgroundBrush}"
+                                      Foreground="{DynamicResource PrimaryTextBrush}"
+                                      BorderBrush="{DynamicResource BorderBrush}"
+                                      RowHeight="46">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Bodega" Binding="{Binding BodegaDisplay}"
+                                                        IsReadOnly="True" Width="*" />
+                                    <DataGridTextColumn Header="Actual" Binding="{Binding StockActual, StringFormat=N2}"
+                                                        IsReadOnly="True" Width="80" />
+                                    <DataGridTextColumn Header="Reservado" Binding="{Binding StockReservado, StringFormat=N2}"
+                                                        IsReadOnly="True" Width="85" />
+                                    <DataGridTextColumn Header="Disponible" Binding="{Binding Disponible, StringFormat=N2}"
+                                                        IsReadOnly="True" Width="85" />
+                                    <DataGridTextColumn Header="Mínimo"
+                                                        Binding="{Binding StockMinimo, UpdateSourceTrigger=PropertyChanged}"
+                                                        Width="80" />
+                                    <DataGridTextColumn Header="Ubicación"
+                                                        Binding="{Binding Ubicacion, UpdateSourceTrigger=PropertyChanged}"
+                                                        EditingElementStyle="{StaticResource KontaxUpperDataGridTextBoxStyle}"
+                                                        Width="130" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
 
                 <!-- =================================================
                      INVENTARIO
                      ================================================= -->
 
-                <Border Grid.Row="4"
+                <Border Grid.Row="8"
                         Grid.ColumnSpan="3"
                         Style="{StaticResource FormSectionStyle}">
 
@@ -1378,141 +1759,737 @@
 
 
                         <Grid>
-
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="18" />
-                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="0.8*" />
+                                <ColumnDefinition Width="18" />
+                                <ColumnDefinition Width="1.2*" />
                             </Grid.ColumnDefinitions>
 
-
-                            <!-- IZQUIERDA -->
-
-                            <StackPanel>
-
-                                <TextBlock Text="Tipo de registro *"
-                                           Style="{StaticResource FieldLabelStyle}" />
-
-
+                            <Border x:Name="ConfiguracionProductoCard"
+                                    Padding="12"
+                                    VerticalAlignment="Stretch"
+                                    CornerRadius="10"
+                                    Background="{DynamicResource PurpleSoftBrush}"
+                                    BorderBrush="#9333EA"
+                                    BorderThickness="1">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal"
+                                                Margin="0,0,0,9">
+                                        <materialDesign:PackIcon Kind="TuneVariant"
+                                                                 Width="20"
+                                                                 Height="20"
+                                                                 Margin="0,0,8,0"
+                                                                 Foreground="#9333EA" />
+                                        <TextBlock Text="Configuración del producto"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource PrimaryTextBrush}"
+                                                   VerticalAlignment="Center" />
+                                    </StackPanel>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}">
+                                        <Run Text="Tipo de registro" />
+                                        <Run Text=" *" Foreground="#DC2626" FontWeight="Bold" />
+                                    </TextBlock>
                                     <ComboBox ItemsSource="{Binding TiposProducto}"
                                               SelectedItem="{Binding TipoProducto}"
                                               Style="{StaticResource ModernComboBoxStyle}" />
 
-
-                                <StackPanel Visibility="{Binding MostrarConfiguracionInventario,
-                                    Converter={StaticResource BooleanToVisibilityConverter}}">
-
-                                    <TextBlock Text="Tipo de control"
-                                               Style="{StaticResource FieldLabelStyle}"
-                                               Margin="0,14,0,6" />
-
-
-                                    <ComboBox ItemsSource="{Binding TiposControlInventario}"
-                                              SelectedItem="{Binding TipoControlInventario}"
-                                              Style="{StaticResource ModernComboBoxStyle}" />
-
-                                </StackPanel>
-
-                            </StackPanel>
-
-
-                            <!-- DERECHA -->
-
-                            <StackPanel Grid.Column="2"
-                                        Visibility="{Binding MostrarConfiguracionInventario,
-                                            Converter={StaticResource BooleanToVisibilityConverter}}">
-
-
-                                <Grid>
-
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="16" />
-                                        <ColumnDefinition Width="180" />
-                                    </Grid.ColumnDefinitions>
-
-                                    <StackPanel VerticalAlignment="Center">
-
-                                        <CheckBox Content="Alertar stock mínimo"
-                                                  IsChecked="{Binding AlertaStockMinimo}"
-                                                  Style="{StaticResource ProductCheckBoxStyle}"
-                                                  FontWeight="SemiBold" />
-
-                                        <TextBlock Text="Avisar cuando la existencia alcance el nivel mínimo."
-                                                   Style="{StaticResource FieldHelpStyle}" />
-
-                                    </StackPanel>
-
-                                    <StackPanel Grid.Column="2">
-
-                                        <TextBlock Text="Stock mínimo"
+                                    <StackPanel Margin="0,9,0,0"
+                                                Visibility="{Binding MostrarConfiguracionInventario,
+                                                    Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <TextBlock Text="Tipo de control"
                                                    Style="{StaticResource FieldLabelStyle}" />
+                                         <ComboBox ItemsSource="{Binding TiposControlInventario}"
+                                                   SelectedItem="{Binding TipoControlInventario}"
+                                                   IsEnabled="{Binding IsEditing,
+                                                       Converter={StaticResource BooleanInverterConverter}}"
+                                                   Style="{StaticResource ModernComboBoxStyle}" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
 
+                            <Border Grid.Column="2"
+                                    Grid.ColumnSpan="3"
+                                    Width="{Binding ActualWidth,
+                                        ElementName=ConfiguracionProductoCard}"
+                                    HorizontalAlignment="Left"
+                                    Padding="12"
+                                    VerticalAlignment="Stretch"
+                                    Background="{DynamicResource OrangeSoftBrush}"
+                                    BorderBrush="#F59E0B"
+                                    BorderThickness="1"
+                                    CornerRadius="10"
+                                    Visibility="{Binding MostrarConfiguracionCaducidad,
+                                        Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal"
+                                                Margin="0,0,0,9">
+                                        <materialDesign:PackIcon Kind="CalendarAlertOutline"
+                                                                 Width="20"
+                                                                 Height="20"
+                                                                 Margin="0,0,8,0"
+                                                                 Foreground="#F59E0B" />
+                                        <TextBlock Text="Control de caducidad"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource PrimaryTextBrush}"
+                                                   VerticalAlignment="Center" />
+                                    </StackPanel>
+                                    <CheckBox Content="Controlar fecha"
+                                              IsChecked="{Binding AlertaCaducidad}"
+                                              Style="{StaticResource KontaxCheckBoxStyle}" />
+                                    <StackPanel Margin="0,9,0,0"
+                                                Visibility="{Binding AlertaCaducidad,
+                                                    Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <TextBlock Text="Días de anticipación"
+                                                   Style="{StaticResource FieldLabelStyle}" />
                                         <Border Style="{StaticResource FormFieldBorderStyle}">
-
-                                            <TextBox Text="{Binding StockMinimo,
+                                            <TextBox Text="{Binding DiasAlertaCaducidad,
                                                         UpdateSourceTrigger=PropertyChanged}"
                                                      Style="{StaticResource ModernTextBoxStyle}" />
-
                                         </Border>
-
                                     </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
 
-                                </Grid>
-
-
-                                <Border Margin="0,18,0,0"
-                                        Padding="14"
-                                        Background="{DynamicResource OrangeSoftBrush}"
-                                        BorderBrush="#F59E0B"
-                                        BorderThickness="1"
-                                        CornerRadius="10"
-                                        Visibility="{Binding MostrarConfiguracionCaducidad,
-                                            Converter={StaticResource BooleanToVisibilityConverter}}">
-
-                                    <Grid>
-
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="18" />
-                                            <ColumnDefinition Width="190" />
-                                        </Grid.ColumnDefinitions>
-
-                                        <StackPanel>
-
-                                            <TextBlock Text="Control de caducidad"
+                        <Border Margin="0,22,0,0"
+                                Padding="16"
+                                CornerRadius="12"
+                                Background="{DynamicResource SuccessSoftBrush}"
+                                BorderBrush="{DynamicResource SelectionBorderBrush}"
+                                BorderThickness="1"
+                                Visibility="{Binding MostrarConfiguracionInventario,
+                                  Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel>
+                                <CheckBox Content="Registrar inventario inicial"
+                                          IsChecked="{Binding RegistrarInventarioInicial}"
+                                          Visibility="{Binding IsEditing,
+                                            Converter={StaticResource InverseBooleanToVisibilityConverter}}"
+                                          Style="{StaticResource KontaxCheckBoxStyle}"
+                                          FontWeight="SemiBold" />
+                                <TextBlock Text="Crea una entrada real, actualiza existencias y genera Kardex."
+                                           Style="{StaticResource FieldHelpStyle}"
+                                           Visibility="{Binding IsEditing,
+                                             Converter={StaticResource InverseBooleanToVisibilityConverter}}" />
+                                <TextBlock Text="Operaciones de inventario"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource PrimaryTextBrush}"
+                                           Visibility="{Binding IsEditing,
+                                             Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                <TextBlock Text="Las cantidades confirmadas se modifican mediante operaciones trazables."
+                                           Style="{StaticResource FieldHelpStyle}"
+                                           Visibility="{Binding IsEditing,
+                                             Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                <StackPanel Margin="0,12,0,0"
+                                            Visibility="{Binding IsEditing,
+                                              Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Command="{Binding AgregarEntradaInicialExistenteCommand}"
+                                                IsEnabled="{Binding PuedeCompletarInventarioInicial}"
+                                                ToolTip="Existencias omitidas durante la carga inicial."
+                                                Style="{StaticResource PrimaryButtonStyle}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="PackageVariantClosed"
+                                                                         Width="18" Height="18"
+                                                                         Margin="0,0,8,0" />
+                                                <TextBlock Text="Completar inventario inicial" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Command="{Binding AbrirAjusteCommand}"
+                                                ToolTip="Corrige diferencias físicas después de iniciada la operación."
+                                                Margin="10,0,0,0"
+                                                Style="{StaticResource PrimaryButtonStyle}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="TuneVariant"
+                                                                         Width="18" Height="18"
+                                                                         Margin="0,0,8,0" />
+                                                <TextBlock Text="Registrar ajuste" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Command="{Binding VerKardexCommand}"
+                                                ToolTip="Consulta entradas, salidas, existencias y costos."
+                                                Margin="10,0,0,0"
+                                                Style="{StaticResource NeutralButtonStyle}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="EyeOutline"
+                                                                         Width="18" Height="18"
+                                                                         Margin="0,0,8,0" />
+                                                <TextBlock Text="Ver Kardex" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Command="{Binding CancelarEntradaInicialExistenteCommand}"
+                                                Margin="10,0,0,0"
+                                                Style="{StaticResource DangerButtonStyle}"
+                                                Visibility="{Binding MostrarCancelarEntradaInicial,
+                                                  Converter={StaticResource BooleanToVisibilityConverter}}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="Close"
+                                                                         Width="18" Height="18"
+                                                                         Margin="0,0,8,0" />
+                                                <TextBlock Text="Cancelar entrada" />
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding MotivoNoPuedeCompletarInventarioInicial}"
+                                               Style="{StaticResource FieldHelpStyle}"
+                                               Foreground="#DC2626"
+                                               Margin="0,8,0,0"
+                                               Visibility="{Binding PuedeCompletarInventarioInicial,
+                                                 Converter={StaticResource InverseBooleanToVisibilityConverter}}" />
+                                    <Expander Margin="0,10,0,0"
+                                              HorizontalAlignment="Left">
+                                        <Expander.Header>
+                                            <TextBlock Text="MÁS OPERACIONES"
                                                        FontWeight="SemiBold"
                                                        Foreground="{DynamicResource PrimaryTextBrush}" />
-
-                                            <CheckBox Content="Controlar fecha de caducidad"
-                                                      IsChecked="{Binding AlertaCaducidad}"
-                                                      Style="{StaticResource ProductCheckBoxStyle}"
-                                                      Margin="0,10,0,0" />
-
+                                        </Expander.Header>
+                                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                            <Button Command="{Binding AbrirConversionCommand}"
+                                                    ToolTip="Clasifica el stock existente por lote o serie sin cambiar su cantidad."
+                                                    Style="{StaticResource NeutralButtonStyle}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="Refresh"
+                                                                             Width="18" Height="18"
+                                                                             Margin="0,0,8,0" />
+                                                    <TextBlock Text="Convertir tipo de control" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Command="{Binding AbrirCorreccionControlCommand}"
+                                                    ToolTip="Corrige identificadores o fechas; no modifica cantidades."
+                                                    Margin="10,0,0,0"
+                                                    Style="{StaticResource NeutralButtonStyle}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="PencilOutline"
+                                                                             Width="18" Height="18"
+                                                                             Margin="0,0,8,0" />
+                                                    <TextBlock Text="Corregir lotes / series" />
+                                                </StackPanel>
+                                            </Button>
                                         </StackPanel>
-
-                                        <StackPanel Grid.Column="2">
-
-                                            <TextBlock Text="Días de anticipación"
-                                                       Style="{StaticResource FieldLabelStyle}" />
-
+                                    </Expander>
+                                </StackPanel>
+                                <Grid Margin="0,16,0,0"
+                                      IsEnabled="True">
+                                    <Grid.Style>
+                                        <Style TargetType="Grid">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding MostrarCapturaInventarioInicial}"
+                                                             Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Grid.Style>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="14" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                         <Grid.RowDefinitions>
+                                             <RowDefinition Height="Auto" />
+                                             <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <Grid Grid.ColumnSpan="3">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="1.4*" />
+                                            <ColumnDefinition Width="12" />
+                                            <ColumnDefinition Width="1.2*" />
+                                            <ColumnDefinition Width="12" />
+                                            <ColumnDefinition Width="0.7*" />
+                                            <ColumnDefinition Width="12" />
+                                            <ColumnDefinition Width="0.8*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <StackPanel>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}">
+                                        <Run Text="Bodega" />
+                                        <Run Text=" *" Foreground="#DC2626" FontWeight="Bold" />
+                                    </TextBlock>
+                                    <ComboBox ItemsSource="{Binding Existencias}"
+                                                      DisplayMemberPath="BodegaDisplay"
+                                                      SelectedValuePath="BodegaId"
+                                                      SelectedValue="{Binding InventarioBodegaId}"
+                                                      Style="{StaticResource ModernComboBoxStyle}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2"
+                                                    VerticalAlignment="Stretch">
+                                            <TextBlock Style="{StaticResource FieldLabelStyle}">
+                                                <Run Text="Presentación de ingreso" />
+                                                <Run Text=" *" Foreground="#DC2626" FontWeight="Bold" />
+                                            </TextBlock>
+                                            <ComboBox ItemsSource="{Binding PresentacionesInventarioInicial}"
+                                                      DisplayMemberPath="Nombre"
+                                                      SelectedValuePath="Codigo"
+                                                      SelectedValue="{Binding InventarioPresentacionCodigo}"
+                                                      Style="{StaticResource ModernComboBoxStyle}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="4">
+                                            <TextBlock Style="{StaticResource FieldLabelStyle}">
+                                                <Run Text="Cantidad" />
+                                                <Run Text=" *" Foreground="#DC2626" FontWeight="Bold" />
+                                            </TextBlock>
                                             <Border Style="{StaticResource FormFieldBorderStyle}">
-
-                                                <TextBox Text="{Binding DiasAlertaCaducidad,
-                                                            UpdateSourceTrigger=PropertyChanged}"
-                                                         Style="{StaticResource ModernTextBoxStyle}" />
-
+                                                <TextBox Text="{Binding CantidadPresentacionesInicial,
+                                                    UpdateSourceTrigger=LostFocus,
+                                                    StringFormat={}{0:#,0.######}}"
+                                                          Language="en-US"
+                                                          behaviors:DecimalInputBehavior.IsEnabled="True"
+                                                          behaviors:DecimalInputBehavior.DecimalPlaces="2"
+                                                          behaviors:DecimalInputBehavior.ClearZeroOnFocus="True"
+                                                          Style="{StaticResource ModernTextBoxStyle}" />
                                             </Border>
-
                                         </StackPanel>
-
+                                        <StackPanel Grid.Column="6">
+                                            <TextBlock Style="{StaticResource FieldLabelStyle}">
+                                                <Run Text="Costo presentación" />
+                                                <Run Text=" *" Foreground="#DC2626" FontWeight="Bold" />
+                                            </TextBlock>
+                                            <Border Style="{StaticResource FormFieldBorderStyle}">
+                                                 <TextBox Text="{Binding CostoPresentacionInicial,
+                                                     UpdateSourceTrigger=LostFocus,
+                                                     StringFormat={}{0:0.00####}}"
+                                                           Language="en-US"
+                                                           behaviors:DecimalInputBehavior.IsEnabled="True"
+                                                           behaviors:DecimalInputBehavior.DecimalPlaces="6"
+                                                           behaviors:DecimalInputBehavior.MinimumDecimalPlaces="2"
+                                                           behaviors:DecimalInputBehavior.ClearZeroOnFocus="True"
+                                                           Style="{StaticResource ModernTextBoxStyle}" />
+                                            </Border>
+                                        </StackPanel>
+                                         <StackPanel Grid.Row="1"
+                                                     Grid.ColumnSpan="1"
+                                                     Margin="0,12,0,0">
+                                             <TextBlock Text="Ubicación (opcional)"
+                                                        Style="{StaticResource FieldLabelStyle}" />
+                                             <Border Style="{StaticResource FormFieldBorderStyle}">
+                                                 <TextBox Text="{Binding InventarioUbicacion,
+                                                     UpdateSourceTrigger=PropertyChanged}"
+                                                          MaxLength="255"
+                                                          Style="{StaticResource UpperTextBoxStyle}" />
+                                             </Border>
+                                             <TextBlock Text="Ej.: Pasillo 1, Percha H o Estante 2."
+                                                        Style="{StaticResource FieldHelpStyle}"
+                                                        Margin="0,4,0,0" />
+                                         </StackPanel>
+                                         <StackPanel Grid.Row="1"
+                                                     Grid.Column="2"
+                                                     Margin="0,12,0,0">
+                                             <TextBlock Text="Stock mínimo"
+                                                        Style="{StaticResource FieldLabelStyle}" />
+                                             <Border Style="{StaticResource FormFieldBorderStyle}">
+                                                 <TextBox Text="{Binding InventarioStockMinimo,
+                                                     UpdateSourceTrigger=LostFocus,
+                                                     StringFormat={}{0:0.######}}"
+                                                          Language="en-US"
+                                                          behaviors:DecimalInputBehavior.IsEnabled="True"
+                                                          behaviors:DecimalInputBehavior.DecimalPlaces="6"
+                                                          behaviors:DecimalInputBehavior.ClearZeroOnFocus="True"
+                                                          behaviors:DecimalInputBehavior.TrimTrailingZeros="True"
+                                                          Style="{StaticResource ModernTextBoxStyle}" />
+                                             </Border>
+                                             <TextBlock Text="Nivel de reposición para esta bodega."
+                                                        Style="{StaticResource FieldHelpStyle}"
+                                                        Margin="0,4,0,0" />
+                                         </StackPanel>
+                                         <StackPanel Grid.Row="1"
+                                                     Grid.Column="4"
+                                                     Grid.ColumnSpan="3"
+                                                     Margin="0,12,0,0"
+                                                     VerticalAlignment="Top">
+                                             <TextBlock Text="Resumen del ingreso"
+                                                        Style="{StaticResource FieldLabelStyle}" />
+                                             <Border MinHeight="46"
+                                                     Padding="12,6"
+                                                     CornerRadius="8"
+                                                     Background="{DynamicResource InfoSoftBrush}"
+                                                     BorderBrush="{DynamicResource BrandProBrush}"
+                                                     BorderThickness="1">
+                                                 <Grid>
+                                                     <Grid.ColumnDefinitions>
+                                                         <ColumnDefinition Width="Auto" />
+                                                         <ColumnDefinition Width="*" />
+                                                     </Grid.ColumnDefinitions>
+                                                     <materialDesign:PackIcon Kind="InformationOutline"
+                                                                              Width="18"
+                                                                              Height="18"
+                                                                              Margin="0,0,9,0"
+                                                                              VerticalAlignment="Center"
+                                                                              Foreground="{DynamicResource BrandProBrush}" />
+                                                     <TextBlock Grid.Column="1"
+                                                                Text="{Binding ResumenInventarioInicial}"
+                                                                FontWeight="SemiBold"
+                                                                TextWrapping="Wrap"
+                                                                VerticalAlignment="Center"
+                                                                Foreground="{DynamicResource PrimaryTextBrush}" />
+                                                 </Grid>
+                                             </Border>
+                                         </StackPanel>
                                     </Grid>
-
-                                </Border>
-
+                                    <StackPanel Grid.Row="1"
+                                                Grid.ColumnSpan="3"
+                                                Margin="0,18,0,0">
+                                        <StackPanel>
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding TipoControlInventario}"
+                                                                     Value="LOTE">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding TipoControlInventario}"
+                                                                     Value="LOTE_Y_SERIE">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
+                                            <Grid Margin="0,0,0,8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel>
+                                                    <TextBlock Text="Lotes"
+                                                               Style="{StaticResource SectionTitleStyle}" />
+                                                    <TextBlock Text="Distribuye la cantidad base entre los lotes."
+                                                               Style="{StaticResource FieldHelpStyle}" />
+                                                </StackPanel>
+                                                 <Button Grid.Column="1"
+                                                         Content="Agregar lote"
+                                                         Command="{Binding AgregarLoteInicialCommand}"
+                                                         Click="AgregarLoteButton_Click"
+                                                         Style="{StaticResource PrimaryButtonStyle}" />
+                                             </Grid>
+                                             <DataGrid x:Name="LotesInventarioInicialGrid"
+                                                       ItemsSource="{Binding LotesInventarioInicial}"
+                                                       Style="{StaticResource KontaxDataGridStyle}"
+                                                       AutoGenerateColumns="False"
+                                                       CanUserAddRows="False"
+                                                       VerticalScrollBarVisibility="Disabled"
+                                                       >
+                                                <DataGrid.Columns>
+                                                     <DataGridTemplateColumn x:Name="NumeroLoteInicialColumn"
+                                                                             Header="LOTE"
+                                                                             Width="*">
+                                                        <DataGridTemplateColumn.CellTemplate>
+                                                            <DataTemplate>
+                                                                <Border Background="{DynamicResource InputBackgroundBrush}"
+                                                                        CornerRadius="6"
+                                                                        Padding="0">
+                                                                     <TextBox Text="{Binding NumeroLote,
+                                                                                 UpdateSourceTrigger=PropertyChanged}"
+                                                                              Loaded="NumeroLoteInicial_Loaded"
+                                                                              Style="{StaticResource KontaxUpperDataGridTextBoxStyle}" />
+                                                                </Border>
+                                                            </DataTemplate>
+                                                        </DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
+                                                    <DataGridTemplateColumn Header="CANTIDAD BASE" Width="125">
+                                                        <DataGridTemplateColumn.CellTemplate>
+                                                            <DataTemplate>
+                                                                <TextBox Text="{Binding CantidadBase,
+                                                                    UpdateSourceTrigger=LostFocus,
+                                                                    StringFormat={}{0:#,0.######}}"
+                                                                          Language="en-US"
+                                                                          behaviors:DecimalInputBehavior.IsEnabled="True"
+                                                                          behaviors:DecimalInputBehavior.DecimalPlaces="6"
+                                                                          behaviors:DecimalInputBehavior.ClearZeroOnFocus="True"
+                                                                          Style="{StaticResource KontaxUpperDataGridTextBoxStyle}" />
+                                                            </DataTemplate>
+                                                        </DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
+                                                    <DataGridTemplateColumn x:Name="ElaboracionLoteColumn"
+                                                        Header="ELABORACIÓN"
+                                                        Width="135">
+                                                        <DataGridTemplateColumn.CellTemplate>
+                                                            <DataTemplate>
+                                                                <TextBox Text="{Binding FechaElaboracion,
+                                                                    StringFormat=dd/MM/yyyy,
+                                                                    UpdateSourceTrigger=LostFocus,
+                                                                    ValidatesOnExceptions=True}"
+                                                                         Language="es-EC"
+                                                                         ToolTip="DD/MM/AAAA (opcional)"
+                                                                         behaviors:DateInputBehavior.IsEnabled="True"
+                                                                         Style="{StaticResource KontaxUpperDataGridTextBoxStyle}" />
+                                                            </DataTemplate>
+                                                        </DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
+                                                    <DataGridTemplateColumn x:Name="CaducidadLoteColumn"
+                                                        Header="CADUCIDAD"
+                                                        Width="135">
+                                                        <DataGridTemplateColumn.CellTemplate>
+                                                            <DataTemplate>
+                                                                <TextBox Text="{Binding FechaCaducidad,
+                                                                    StringFormat=dd/MM/yyyy,
+                                                                    UpdateSourceTrigger=LostFocus,
+                                                                    ValidatesOnExceptions=True}"
+                                                                         Language="es-EC"
+                                                                         ToolTip="DD/MM/AAAA"
+                                                                         behaviors:DateInputBehavior.IsEnabled="True"
+                                                                         Style="{StaticResource KontaxUpperDataGridTextBoxStyle}" />
+                                                            </DataTemplate>
+                                                        </DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
+                                                    <DataGridTemplateColumn Header="ACCIONES" Width="85">
+                                                        <DataGridTemplateColumn.CellTemplate>
+                                                            <DataTemplate>
+                                                                <Button Command="{Binding DataContext.QuitarLoteInicialCommand,
+                                                                    RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                                        CommandParameter="{Binding}"
+                                                                        ToolTip="QUITAR LOTE"
+                                                                        Style="{StaticResource KontaxDeleteIconButtonStyle}">
+                                                                    <materialDesign:PackIcon Kind="TrashCanOutline"
+                                                                                             Foreground="{Binding Foreground,
+                                                                        RelativeSource={RelativeSource AncestorType=Button}}" />
+                                                                </Button>
+                                                            </DataTemplate>
+                                                        </DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                            <Border Margin="0,8,0,0"
+                                                    Padding="10"
+                                                    CornerRadius="8"
+                                                    Background="{DynamicResource InputBackgroundBrush}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding TotalLotesInicial,
+                                                        StringFormat=Asignado: {0:0.##}}"
+                                                                FontWeight="SemiBold"
+                                                                Foreground="{DynamicResource PrimaryTextBrush}" />
+                                                    <TextBlock Text="  —  "
+                                                               Foreground="{DynamicResource SecondaryTextBrush}" />
+                                                    <TextBlock Text="{Binding CantidadBaseInicial,
+                                                        StringFormat=Requerido: {0:0.##}}"
+                                                               Foreground="{DynamicResource PrimaryTextBrush}" />
+                                                    <TextBlock Text="  —  "
+                                                               Foreground="{DynamicResource SecondaryTextBrush}" />
+                                                    <TextBlock Text="{Binding CantidadLotesPendiente,
+                                                        StringFormat=Pendiente: {0:0.##}}"
+                                                                FontWeight="Bold"
+                                                                Foreground="{DynamicResource WarningTextBrush}" />
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
+                                        <StackPanel Margin="0,12,0,0">
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding TipoControlInventario}"
+                                                                     Value="SERIE">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding TipoControlInventario}"
+                                                                     Value="LOTE_Y_SERIE">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
+                                            <Grid Margin="0,0,0,8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel>
+                                                    <TextBlock Text="Series"
+                                                               Style="{StaticResource SectionTitleStyle}" />
+                                                    <TextBlock Text="Agrega una serie por unidad base y asocia su lote cuando corresponda."
+                                                               TextWrapping="Wrap"
+                                                               Style="{StaticResource FieldHelpStyle}" />
+                                                </StackPanel>
+                                                 <Button Grid.Column="1"
+                                                         Content="Agregar serie"
+                                                         Command="{Binding AgregarSerieInicialCommand}"
+                                                         Click="AgregarSerieButton_Click"
+                                                         Style="{StaticResource PrimaryButtonStyle}" />
+                                             </Grid>
+                                             <DataGrid x:Name="SeriesInventarioInicialGrid"
+                                                       ItemsSource="{Binding SeriesInventarioInicial}"
+                                                        Style="{StaticResource KontaxDataGridStyle}"
+                                                       AutoGenerateColumns="False"
+                                                       CanUserAddRows="False"
+                                                       VerticalScrollBarVisibility="Disabled"
+                                                       >
+                                                <DataGrid.Columns>
+                                                    <DataGridTemplateColumn x:Name="NumeroSerieInicialColumn"
+                                                                            Header="SERIE"
+                                                                            Width="*">
+                                                        <DataGridTemplateColumn.CellTemplate>
+                                                            <DataTemplate>
+                                                                <TextBox Text="{Binding NumeroSerie,
+                                                                    UpdateSourceTrigger=PropertyChanged}"
+                                                                         Loaded="NumeroSerieInicial_Loaded"
+                                                                         Style="{StaticResource KontaxUpperDataGridTextBoxStyle}" />
+                                                            </DataTemplate>
+                                                        </DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
+                                                    <DataGridTemplateColumn x:Name="LoteAsociadoSerieColumn"
+                                                        Header="LOTE ASOCIADO"
+                                                        Width="150">
+                                                        <DataGridTemplateColumn.CellStyle>
+                                                            <Style TargetType="DataGridCell"
+                                                                   BasedOn="{StaticResource KontaxDataGridCellStyle}">
+                                                                <Setter Property="Padding" Value="4,2" />
+                                                            </Style>
+                                                        </DataGridTemplateColumn.CellStyle>
+                                                        <DataGridTemplateColumn.CellTemplate>
+                                                            <DataTemplate>
+                                                                <ComboBox ItemsSource="{Binding DataContext.LotesInventarioInicial,
+                                                                    RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                                          DisplayMemberPath="NumeroLote"
+                                                                          SelectedValuePath="NumeroLote"
+                                                                           SelectedValue="{Binding NumeroLote,
+                                                                             UpdateSourceTrigger=PropertyChanged}"
+                                                                           Height="38"
+                                                                           MinHeight="38"
+                                                                           VerticalAlignment="Center"
+                                                                           Style="{StaticResource ModernComboBoxStyle}" />
+                                                            </DataTemplate>
+                                                        </DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
+                                                    <DataGridTemplateColumn Header="ACCIONES" Width="85">
+                                                        <DataGridTemplateColumn.CellTemplate>
+                                                            <DataTemplate>
+                                                                <Button Command="{Binding DataContext.QuitarSerieInicialCommand,
+                                                                    RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                                        CommandParameter="{Binding}"
+                                                                        ToolTip="QUITAR SERIE"
+                                                                        Style="{StaticResource KontaxDeleteIconButtonStyle}">
+                                                                    <materialDesign:PackIcon Kind="TrashCanOutline" />
+                                                                </Button>
+                                                            </DataTemplate>
+                                                        </DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                            <Border Margin="0,8,0,0"
+                                                    Padding="10"
+                                                    CornerRadius="8"
+                                                    Background="{DynamicResource InputBackgroundBrush}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding TotalSeriesInicial,
+                                                        StringFormat=Agregadas: {0}}"
+                                                                FontWeight="SemiBold"
+                                                                Foreground="{DynamicResource PrimaryTextBrush}" />
+                                                    <TextBlock Text="  —  "
+                                                               Foreground="{DynamicResource SecondaryTextBrush}" />
+                                                    <TextBlock Text="{Binding CantidadBaseInicial,
+                                                        StringFormat=Requeridas: {0:0.##}}"
+                                                               Foreground="{DynamicResource PrimaryTextBrush}" />
+                                                    <TextBlock Text="  —  "
+                                                               Foreground="{DynamicResource SecondaryTextBrush}" />
+                                                    <TextBlock Text="{Binding CantidadSeriesPendiente,
+                                                        StringFormat=Pendientes: {0:0.##}}"
+                                                                FontWeight="Bold"
+                                                                Foreground="{DynamicResource WarningTextBrush}" />
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Grid>
+                                <Button Content="Agregar existencia inicial"
+                                        Command="{Binding AgregarInventarioInicialCommand}"
+                                        Style="{StaticResource PrimaryButtonStyle}"
+                                        HorizontalAlignment="Left"
+                                        Margin="0,16,0,10"
+                                        Visibility="{Binding MostrarCapturaInventarioInicial,
+                                          Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                <TextBlock Text="Los ingresos confirmados son históricos. Para corregir cantidades, lotes o series utiliza un ajuste de inventario."
+                                           TextWrapping="Wrap"
+                                           Margin="0,0,0,8"
+                                           Style="{StaticResource FieldHelpStyle}"
+                                           Visibility="{Binding IsEditing,
+                                             Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                <DataGrid ItemsSource="{Binding InventariosIniciales}"
+                                          Style="{StaticResource KontaxDataGridStyle}"
+                                          AutoGenerateColumns="False"
+                                          RowHeight="NaN"
+                                          MaxHeight="220"
+                                          VerticalScrollBarVisibility="Auto"
+                                          Visibility="{Binding RegistrarInventarioInicial,
+                                            Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="PRESENTACIÓN"
+                                                            Binding="{Binding PresentacionNombre}"
+                                                            IsReadOnly="True"
+                                                            Width="1.2*"
+                                                            MinWidth="125" />
+                                        <DataGridTextColumn Header="BODEGA"
+                                                            Binding="{Binding BodegaDisplay}"
+                                                            IsReadOnly="True" Width="1.6*" />
+                                        <DataGridTextColumn Header="ESTADO"
+                                                            Binding="{Binding EstadoTexto}"
+                                                            IsReadOnly="True" Width="105" />
+                                        <DataGridTextColumn Header="CANTIDAD"
+                                                            Binding="{Binding CantidadPresentaciones, StringFormat={}{0:#,0.######}}"
+                                                            IsReadOnly="True" Width="110" />
+                                        <DataGridTextColumn Header="COSTO PRESENT."
+                                                            Binding="{Binding CostoUnitarioPresentacion, StringFormat={}{0:0.00####}}"
+                                                            IsReadOnly="True" Width="125" />
+                                        <DataGridTextColumn Header="UBICACIÓN"
+                                                            Binding="{Binding Ubicacion}"
+                                                            IsReadOnly="True"
+                                                            Visibility="Collapsed"
+                                                            Width="0" />
+                                        <DataGridTemplateColumn x:Name="LotesInventarioAgregadoColumn"
+                                                                Header="LOTES"
+                                                                Width="1.5*">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding ResumenLotes}"
+                                                               TextWrapping="Wrap"
+                                                               VerticalAlignment="Center" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTemplateColumn x:Name="SeriesInventarioAgregadoColumn"
+                                                                Header="SERIES"
+                                                                Width="2*">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding ResumenSeries}"
+                                                               TextWrapping="NoWrap"
+                                                               VerticalAlignment="Center" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTemplateColumn Header="ACCIONES" Width="85">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Grid>
+                                                        <Button Command="{Binding DataContext.QuitarInventarioInicialCommand,
+                                                            RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                                CommandParameter="{Binding}"
+                                                                Visibility="{Binding EsHistorico,
+                                                                  Converter={StaticResource InverseBooleanToVisibilityConverter}}"
+                                                                ToolTip="QUITAR INGRESO PENDIENTE"
+                                                                Style="{StaticResource KontaxDeleteIconButtonStyle}">
+                                                            <materialDesign:PackIcon Kind="TrashCanOutline" />
+                                                        </Button>
+                                                        <Button Command="{Binding DataContext.VerMovimientoInventarioInicialCommand,
+                                                            RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                                CommandParameter="{Binding}"
+                                                                Visibility="{Binding EsHistorico,
+                                                                  Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                                ToolTip="VER MOVIMIENTO"
+                                                                Style="{StaticResource KontaxDeleteIconButtonStyle}">
+                                                            <materialDesign:PackIcon Kind="EyeOutline" />
+                                                        </Button>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
                             </StackPanel>
-
-                        </Grid>
+                        </Border>
 
                     </StackPanel>
 
@@ -1523,7 +2500,7 @@
                      OBSERVACIONES
                      ================================================= -->
 
-                <Border Grid.Row="6"
+                <Border Grid.Row="12"
                         Grid.ColumnSpan="3"
                         Style="{StaticResource FormSectionStyle}">
 
@@ -1554,6 +2531,916 @@
 
         </ScrollViewer>
 
+
+        <!-- CORRECCIÓN CONTROLADA DE LOTES Y SERIES -->
+        <Border Grid.Row="0" Grid.RowSpan="3" Panel.ZIndex="96"
+                Background="{DynamicResource OverlayBrush}"
+                Visibility="{Binding IsCorreccionControlOpen,
+                  Converter={StaticResource BooleanToVisibilityConverter}}" />
+        <Border Grid.Row="0" Grid.RowSpan="3" Panel.ZIndex="97"
+                Margin="42" Padding="22" CornerRadius="16"
+                Background="{DynamicResource ElevatedSurfaceBrush}"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                Visibility="{Binding IsCorreccionControlOpen,
+                  Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="14" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="14" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="DatabaseEditOutline"
+                                                 Width="22" Height="22"
+                                                 Margin="0,0,9,0"
+                                                 VerticalAlignment="Center"
+                                                 Foreground="{DynamicResource BrandProBrush}" />
+                        <TextBlock Text="Corrección controlada de lotes y series"
+                                   VerticalAlignment="Center"
+                                   Style="{StaticResource SectionTitleStyle}" />
+                    </StackPanel>
+                    <TextBlock Text="Solo se corrigen datos identificativos. Las cantidades y estados históricos no se modifican."
+                               Style="{StaticResource FieldHelpStyle}" />
+                    <TextBlock Text="Motivo de la corrección *"
+                               Style="{StaticResource FieldLabelStyle}" Margin="0,12,0,0" />
+                    <Border Style="{StaticResource FormFieldBorderStyle}">
+                        <TextBox Text="{Binding CorreccionMotivo, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource UpperTextBoxStyle}" />
+                    </Border>
+                </StackPanel>
+                <Grid Grid.Row="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="Lotes" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,0,0,8" />
+                        <DataGrid ItemsSource="{Binding LotesCorreccion}"
+                                  Style="{StaticResource KontaxDataGridStyle}"
+                                  AutoGenerateColumns="False" CanUserAddRows="False"
+                                  VerticalScrollBarVisibility="Auto">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="NÚMERO" Binding="{Binding NumeroLote, UpdateSourceTrigger=PropertyChanged}" Width="*" />
+                                <DataGridTemplateColumn x:Name="ElaboracionCorreccionLoteColumn"
+                                                        Header="ELABORACIÓN" Width="135">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBox Text="{Binding FechaElaboracion,
+                                                StringFormat=dd/MM/yyyy,
+                                                UpdateSourceTrigger=LostFocus,
+                                                ValidatesOnExceptions=True}"
+                                                     Language="es-EC"
+                                                     ToolTip="DD/MM/AAAA (opcional)"
+                                                     behaviors:DateInputBehavior.IsEnabled="True"
+                                                     Style="{StaticResource KontaxUpperDataGridTextBoxStyle}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn x:Name="CaducidadCorreccionLoteColumn"
+                                                        Header="CADUCIDAD" Width="135">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBox Text="{Binding FechaCaducidad,
+                                                StringFormat=dd/MM/yyyy,
+                                                UpdateSourceTrigger=LostFocus,
+                                                ValidatesOnExceptions=True}"
+                                                     Language="es-EC"
+                                                     ToolTip="DD/MM/AAAA"
+                                                     behaviors:DateInputBehavior.IsEnabled="True"
+                                                     Style="{StaticResource KontaxUpperDataGridTextBoxStyle}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="" Width="52">
+                                    <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                        <Button Command="{Binding DataContext.GuardarCorreccionLoteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}" Style="{StaticResource PrimaryButtonStyle}"
+                                                Width="32" Height="32" Padding="0"
+                                                ToolTip="GUARDAR CAMBIOS DEL LOTE">
+                                            <materialDesign:PackIcon Kind="ContentSaveOutline"
+                                                                     Width="16" Height="16"
+                                                                     Foreground="White" />
+                                        </Button>
+                                    </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Series disponibles" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,0,0,8" />
+                        <DataGrid ItemsSource="{Binding SeriesCorreccion}"
+                                  Style="{StaticResource KontaxDataGridStyle}"
+                                  AutoGenerateColumns="False" CanUserAddRows="False"
+                                  VerticalScrollBarVisibility="Auto">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="SERIE" Binding="{Binding NumeroSerie, UpdateSourceTrigger=PropertyChanged}" Width="*" />
+                                <DataGridTextColumn Header="LOTE" Binding="{Binding NumeroLote}" IsReadOnly="True" Width="130" />
+                                <DataGridTemplateColumn Header="" Width="52">
+                                    <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                        <Button Command="{Binding DataContext.GuardarCorreccionSerieCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}" Style="{StaticResource PrimaryButtonStyle}"
+                                                Width="32" Height="32" Padding="0"
+                                                ToolTip="GUARDAR CAMBIOS DE LA SERIE">
+                                            <materialDesign:PackIcon Kind="ContentSaveOutline"
+                                                                     Width="16" Height="16"
+                                                                     Foreground="White" />
+                                        </Button>
+                                    </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </StackPanel>
+                </Grid>
+                <Grid Grid.Row="4">
+                    <TextBlock Text="{Binding MensajeError}" Foreground="#EF4444"
+                               TextWrapping="Wrap" VerticalAlignment="Center" />
+                    <Border Padding="10,6" CornerRadius="7"
+                            HorizontalAlignment="Center"
+                            Background="{DynamicResource SuccessSoftBrush}"
+                            Visibility="{Binding CorreccionMensajeExito,
+                              Converter={StaticResource StringToVisibilityConverter}}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="CheckCircleOutline"
+                                                     Width="17" Height="17"
+                                                     Margin="0,0,6,0"
+                                                     Foreground="{DynamicResource BrandProBrush}" />
+                            <TextBlock Text="{Binding CorreccionMensajeExito}"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource BrandProBrush}" />
+                        </StackPanel>
+                    </Border>
+                    <Button Content="Cerrar" Command="{Binding CerrarCorreccionControlCommand}"
+                            HorizontalAlignment="Right" Style="{StaticResource DangerButtonStyle}" />
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- CONVERSIÓN DE CONTROL -->
+        <Border Grid.Row="0" Grid.RowSpan="3" Panel.ZIndex="94"
+                Background="{DynamicResource OverlayBrush}"
+                Visibility="{Binding IsConversionOpen,
+                  Converter={StaticResource BooleanToVisibilityConverter}}" />
+        <Border Grid.Row="0" Grid.RowSpan="3" Panel.ZIndex="95"
+                Margin="34" Padding="22" CornerRadius="16"
+                Background="{DynamicResource ElevatedSurfaceBrush}"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                Visibility="{Binding IsConversionOpen,
+                  Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="14" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="14" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="SwapHorizontal"
+                                                 Width="22" Height="22"
+                                                 Margin="0,0,9,0"
+                                                 VerticalAlignment="Center"
+                                                 Foreground="{DynamicResource BrandProBrush}" />
+                        <TextBlock Text="Convertir control de inventario"
+                                   VerticalAlignment="Center"
+                                   Style="{StaticResource SectionTitleStyle}" />
+                    </StackPanel>
+                    <TextBlock Text="Clasifica el stock existente sin crear entradas ni salidas ficticias."
+                               Style="{StaticResource FieldHelpStyle}" />
+                    <Grid Margin="0,14,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="0.7*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="0.7*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="1.6*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Control actual" Style="{StaticResource FieldLabelStyle}" />
+                            <ComboBox ItemsSource="{Binding TiposControlInventario}"
+                                      SelectedItem="{Binding ConversionTipoAnterior, Mode=OneWay}"
+                                      IsEnabled="False"
+                                      Style="{StaticResource ModernComboBoxStyle}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Nuevo control *" Style="{StaticResource FieldLabelStyle}" />
+                            <ComboBox ItemsSource="{Binding TiposControlDestino}"
+                                      SelectedItem="{Binding ConversionTipoNuevo}"
+                                      Style="{StaticResource ModernComboBoxStyle}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="4">
+                            <TextBlock Text="Motivo *" Style="{StaticResource FieldLabelStyle}" />
+                            <Border Style="{StaticResource FormFieldBorderStyle}">
+                                <TextBox Text="{Binding ConversionMotivo, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource UpperTextBoxStyle}" />
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                    <Border Margin="0,12,0,0" Padding="12"
+                            CornerRadius="10"
+                            Background="{DynamicResource OrangeSoftBrush}"
+                            BorderBrush="#F59E0B" BorderThickness="1"
+                            Visibility="{Binding MostrarConversionCaducidad,
+                              Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="18" />
+                                <ColumnDefinition Width="220" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                    <materialDesign:PackIcon Kind="CalendarAlertOutline"
+                                                             Width="20" Height="20"
+                                                             Margin="0,0,8,0"
+                                                             Foreground="#F59E0B" />
+                                    <TextBlock Text="Control de caducidad"
+                                               VerticalAlignment="Center"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource PrimaryTextBrush}" />
+                                </StackPanel>
+                                <CheckBox Content="Controlar fecha"
+                                          IsChecked="{Binding ConversionControlCaducidad}"
+                                          Style="{StaticResource KontaxCheckBoxStyle}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2"
+                                        Visibility="{Binding ConversionControlCaducidad,
+                                          Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <TextBlock Text="Días de anticipación"
+                                           Style="{StaticResource FieldLabelStyle}" />
+                                <Border Style="{StaticResource FormFieldBorderStyle}">
+                                    <TextBox Text="{Binding ConversionDiasAnticipacionCaducidad,
+                                        UpdateSourceTrigger=PropertyChanged}"
+                                             VerticalContentAlignment="Center"
+                                             Style="{StaticResource ModernTextBoxStyle}" />
+                                </Border>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding ConversionBodegas}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource FormSectionStyle}" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding BodegaDisplay}" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource PrimaryTextBrush}" />
+                                        <Border Margin="0,9,0,0" Padding="14,10"
+                                                CornerRadius="10"
+                                                Background="{DynamicResource SuccessSoftBrush}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="12" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Border Width="42" Height="42" CornerRadius="10"
+                                                        VerticalAlignment="Center"
+                                                        Background="{DynamicResource ElevatedSurfaceBrush}">
+                                                    <materialDesign:PackIcon Kind="Warehouse"
+                                                                             Width="22" Height="22"
+                                                                             HorizontalAlignment="Center"
+                                                                             VerticalAlignment="Center"
+                                                                             Foreground="{DynamicResource BrandProBrush}" />
+                                                </Border>
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="STOCK A CONVERTIR"
+                                                               FontSize="11" FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource SecondaryTextBrush}" />
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="{Binding StockActual, StringFormat={}{0:0.######}}"
+                                                                   FontSize="22" FontWeight="Bold"
+                                                                   Foreground="{DynamicResource PrimaryTextBrush}" />
+                                                        <TextBlock Text="{Binding DataContext.ConversionUnidadBase,
+                                                            RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                   Margin="6,0,0,2"
+                                                                   VerticalAlignment="Bottom"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource PrimaryTextBrush}" />
+                                                    </StackPanel>
+                                                    <TextBlock Text="Cantidad base que debe distribuirse completamente en esta bodega."
+                                                               Margin="0,3,0,0" FontSize="11"
+                                                               Foreground="{DynamicResource SecondaryTextBrush}" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="3" VerticalAlignment="Center">
+                                                    <TextBlock Text="RESERVADO"
+                                                               HorizontalAlignment="Right"
+                                                               FontSize="11"
+                                                               Foreground="{DynamicResource SecondaryTextBrush}" />
+                                                    <TextBlock Text="{Binding StockReservado, StringFormat={}{0:0.######}}"
+                                                               HorizontalAlignment="Right"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource PrimaryTextBrush}" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                        <StackPanel Margin="0,12,0,0"
+                                                    Visibility="{Binding DataContext.ConversionDestinoLotes,
+                                                      RelativeSource={RelativeSource AncestorType=UserControl},
+                                                      Converter={StaticResource BooleanToVisibilityConverter}}">
+                                             <Button Content="Agregar lote" HorizontalAlignment="Left"
+                                                    Command="{Binding DataContext.AgregarLoteConversionCommand,
+                                                     RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                     CommandParameter="{Binding}"
+                                                     Click="AgregarLoteConversionButton_Click"
+                                                     Style="{StaticResource PrimaryButtonStyle}" />
+                                            <TextBlock Margin="0,14,0,4"
+                                                       Foreground="{DynamicResource SecondaryTextBrush}">
+                                                <Run Text="Asignado: " /><Run Text="{Binding CantidadLotesAsignada, Mode=OneWay, StringFormat={}{0:0.######}}" FontWeight="SemiBold" />
+                                                <Run Text="  —  Requerido: " /><Run Text="{Binding StockActual, Mode=OneWay, StringFormat={}{0:0.######}}" FontWeight="SemiBold" />
+                                                <Run Text="  —  Pendiente: " Foreground="{DynamicResource WarningTextBrush}" /><Run Text="{Binding CantidadLotesPendiente, Mode=OneWay, StringFormat={}{0:0.######}}" FontWeight="SemiBold" Foreground="{DynamicResource WarningTextBrush}" />
+                                            </TextBlock>
+                                            <DataGrid ItemsSource="{Binding Lotes}" Margin="0,8,0,0"
+                                                      Tag="LOTES_CONVERSION"
+                                                      Loaded="ConversionLotesGrid_Loaded"
+                                                       Style="{StaticResource KontaxDataGridStyle}"
+                                                      AutoGenerateColumns="False" CanUserAddRows="False">
+                                                <DataGrid.Columns>
+                                                    <DataGridTemplateColumn Header="LOTE" Width="190">
+                                                        <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                                            <TextBox Text="{Binding NumeroLote, UpdateSourceTrigger=PropertyChanged}"
+                                                                     Tag="LOTE_CONVERSION"
+                                                                     Loaded="NumeroLoteConversion_Loaded"
+                                                                     MinHeight="38"
+                                                                     VerticalAlignment="Center"
+                                                                     VerticalContentAlignment="Center"
+                                                                     Style="{StaticResource KontaxUpperDataGridTextBoxStyle}" />
+                                                        </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
+                                                    <DataGridTemplateColumn Header="CANTIDAD BASE" Width="135">
+                                                        <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                                            <TextBox Text="{Binding CantidadBase, UpdateSourceTrigger=PropertyChanged, StringFormat={}{0:#,0.######}}"
+                                                                     Language="en-US"
+                                                                     behaviors:DecimalInputBehavior.IsEnabled="True"
+                                                                     behaviors:DecimalInputBehavior.DecimalPlaces="6"
+                                                                     behaviors:DecimalInputBehavior.ClearZeroOnFocus="True"
+                                                                     MinHeight="38"
+                                                                     VerticalAlignment="Center"
+                                                                     VerticalContentAlignment="Center"
+                                                                     Style="{StaticResource KontaxUpperDataGridTextBoxStyle}" />
+                                                        </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
+                                                    <DataGridTemplateColumn Header="ELABORACIÓN" Width="130">
+                                                        <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                                            <TextBox Text="{Binding FechaElaboracion, StringFormat=dd/MM/yyyy, UpdateSourceTrigger=LostFocus, ValidatesOnExceptions=True}"
+                                                                     Language="es-EC" ToolTip="DD/MM/AAAA (opcional)"
+                                                                     behaviors:DateInputBehavior.IsEnabled="True"
+                                                                     MinHeight="38"
+                                                                     VerticalAlignment="Center"
+                                                                     VerticalContentAlignment="Center"
+                                                                     Style="{StaticResource KontaxUpperDataGridTextBoxStyle}" />
+                                                        </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
+                                                    <DataGridTemplateColumn Header="CADUCIDAD" Width="130">
+                                                        <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                                            <TextBox Text="{Binding FechaCaducidad, StringFormat=dd/MM/yyyy, UpdateSourceTrigger=LostFocus, ValidatesOnExceptions=True}"
+                                                                     Language="es-EC" ToolTip="DD/MM/AAAA"
+                                                                     behaviors:DateInputBehavior.IsEnabled="True"
+                                                                     MinHeight="38"
+                                                                     VerticalAlignment="Center"
+                                                                     VerticalContentAlignment="Center"
+                                                                     Style="{StaticResource KontaxUpperDataGridTextBoxStyle}" />
+                                                        </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
+                                                    <DataGridTemplateColumn Header="REGULARIZACIÓN" Width="140">
+                                                        <DataGridTemplateColumn.CellTemplate>
+                                                            <DataTemplate>
+                                                                <CheckBox IsChecked="{Binding EsRegularizacion, UpdateSourceTrigger=PropertyChanged}"
+                                                                          HorizontalAlignment="Center"
+                                                                          VerticalAlignment="Center"
+                                                                          ToolTip="Marca un lote creado para regularizar stock existente pendiente de verificación."
+                                                                          Style="{StaticResource KontaxCheckBoxStyle}" />
+                                                            </DataTemplate>
+                                                        </DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
+                                                    <DataGridTemplateColumn Header="ACCIONES" Width="85">
+                                                        <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                                            <Button Command="{Binding DataContext.QuitarLoteConversionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                    CommandParameter="{Binding}" Style="{StaticResource KontaxDeleteIconButtonStyle}">
+                                                                <materialDesign:PackIcon Kind="TrashCanOutline" />
+                                                            </Button>
+                                                        </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
+                                                 </DataGrid.Columns>
+                                             </DataGrid>
+                                            <TextBlock Margin="0,7,0,0"
+                                                       Text="Regularización es opcional: úsala únicamente cuando el lote real de esas unidades no sea conocido y deba verificarse posteriormente."
+                                                       TextWrapping="Wrap"
+                                                       Style="{StaticResource FieldHelpStyle}" />
+                                        </StackPanel>
+                                        <StackPanel Margin="0,12,0,0"
+                                                    Visibility="{Binding DataContext.ConversionDestinoSeries,
+                                                      RelativeSource={RelativeSource AncestorType=UserControl},
+                                                      Converter={StaticResource BooleanToVisibilityConverter}}">
+                                             <Button Content="Agregar serie" HorizontalAlignment="Left"
+                                                    Command="{Binding DataContext.AgregarSerieConversionCommand,
+                                                     RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                     CommandParameter="{Binding}"
+                                                     Click="AgregarSerieConversionButton_Click"
+                                                     Style="{StaticResource PrimaryButtonStyle}" />
+                                            <TextBlock Margin="0,14,0,4"
+                                                       Foreground="{DynamicResource SecondaryTextBrush}">
+                                                <Run Text="Asignado: " /><Run Text="{Binding CantidadSeriesAsignada, Mode=OneWay}" FontWeight="SemiBold" />
+                                                <Run Text="  —  Requerido: " /><Run Text="{Binding StockActual, Mode=OneWay, StringFormat={}{0:0.######}}" FontWeight="SemiBold" />
+                                                <Run Text="  —  Pendiente: " Foreground="{DynamicResource WarningTextBrush}" /><Run Text="{Binding CantidadSeriesPendiente, Mode=OneWay, StringFormat={}{0:0.######}}" FontWeight="SemiBold" Foreground="{DynamicResource WarningTextBrush}" />
+                                            </TextBlock>
+                                            <DataGrid ItemsSource="{Binding Series}" Margin="0,8,0,0"
+                                                      Tag="SERIES_CONVERSION"
+                                                       Style="{StaticResource KontaxDataGridStyle}"
+                                                      AutoGenerateColumns="False" CanUserAddRows="False">
+                                                <DataGrid.Columns>
+                                                    <DataGridTemplateColumn Header="SERIE" Width="240">
+                                                        <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                                            <TextBox Text="{Binding NumeroSerie, UpdateSourceTrigger=PropertyChanged}"
+                                                                     Tag="SERIE_CONVERSION"
+                                                                     Loaded="NumeroSerieConversion_Loaded"
+                                                                     MinHeight="38"
+                                                                     VerticalAlignment="Center"
+                                                                     VerticalContentAlignment="Center"
+                                                                     Style="{StaticResource KontaxUpperDataGridTextBoxStyle}" />
+                                                        </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
+                                                    <DataGridTemplateColumn Header="LOTE ASOCIADO" Width="220">
+                                                        <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                                            <TextBox Text="{Binding NumeroLote, UpdateSourceTrigger=PropertyChanged}"
+                                                                     MinHeight="38"
+                                                                     VerticalAlignment="Center"
+                                                                     VerticalContentAlignment="Center"
+                                                                     Style="{StaticResource KontaxUpperDataGridTextBoxStyle}" />
+                                                        </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
+                                                    <DataGridTemplateColumn Header="ACCIONES" Width="85">
+                                                        <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                                            <Button Command="{Binding DataContext.QuitarSerieConversionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                    CommandParameter="{Binding}" Style="{StaticResource KontaxDeleteIconButtonStyle}">
+                                                                <materialDesign:PackIcon Kind="TrashCanOutline" />
+                                                            </Button>
+                                                        </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+                <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <TextBlock Text="{Binding MensajeError}" Foreground="#EF4444"
+                               VerticalAlignment="Center" Margin="0,0,16,0" TextWrapping="Wrap" />
+                    <Button Content="Cancelar" Command="{Binding CerrarConversionCommand}"
+                            Style="{StaticResource DangerButtonStyle}" />
+                    <Button Content="Confirmar conversión" Command="{Binding ConfirmarConversionCommand}"
+                            IsEnabled="{Binding PuedeConfirmarConversion}"
+                            Margin="10,0,0,0" Style="{StaticResource PrimaryButtonStyle}" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- AJUSTE DE INVENTARIO -->
+        <Border Grid.Row="0" Grid.RowSpan="3" Panel.ZIndex="92"
+                Background="{DynamicResource OverlayBrush}"
+                Visibility="{Binding IsAjusteOpen,
+                  Converter={StaticResource BooleanToVisibilityConverter}}" />
+        <Border Grid.Row="0" Grid.RowSpan="3" Panel.ZIndex="93"
+                Width="760" MaxHeight="720" Padding="22" CornerRadius="16"
+                HorizontalAlignment="Center" VerticalAlignment="Center"
+                Background="{DynamicResource ElevatedSurfaceBrush}"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                Visibility="{Binding IsAjusteOpen,
+                  Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="14" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="14" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="ClipboardEditOutline"
+                                                 Width="22" Height="22"
+                                                 Margin="0,0,9,0"
+                                                 VerticalAlignment="Center"
+                                                 Foreground="{DynamicResource BrandProBrush}" />
+                        <TextBlock Text="Registrar ajuste de inventario"
+                                   VerticalAlignment="Center"
+                                   Style="{StaticResource SectionTitleStyle}" />
+                    </StackPanel>
+                    <TextBlock Text="Genera un movimiento trazable; no modifica directamente el stock histórico."
+                               Style="{StaticResource FieldHelpStyle}" Margin="31,3,0,0" />
+                </StackPanel>
+                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                  <StackPanel Margin="0,0,8,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="14" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="12" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="12" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Tipo de ajuste *" Style="{StaticResource FieldLabelStyle}" />
+                            <ComboBox ItemsSource="{Binding TiposAjuste}"
+                                      SelectedItem="{Binding AjusteTipo}"
+                                      Style="{StaticResource ModernComboBoxStyle}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Bodega *" Style="{StaticResource FieldLabelStyle}" />
+                            <ComboBox ItemsSource="{Binding Existencias}"
+                                      DisplayMemberPath="BodegaDisplay" SelectedValuePath="BodegaId"
+                                      SelectedValue="{Binding AjusteBodegaId}"
+                                      Style="{StaticResource ModernComboBoxStyle}" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="2">
+                            <TextBlock Text="Presentación *" Style="{StaticResource FieldLabelStyle}" />
+                            <ComboBox ItemsSource="{Binding PresentacionesOperacion}"
+                                      DisplayMemberPath="Nombre" SelectedValuePath="Id"
+                                      SelectedValue="{Binding AjustePresentacionId}"
+                                      Style="{StaticResource ModernComboBoxStyle}" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="2" Grid.Column="2">
+                            <TextBlock Text="Cantidad presentación *" Style="{StaticResource FieldLabelStyle}" />
+                            <Border Style="{StaticResource FormFieldBorderStyle}">
+                                <TextBox Text="{Binding AjusteCantidad, StringFormat={}{0:0.######}, UpdateSourceTrigger=LostFocus}"
+                                         GotKeyboardFocus="ZeroNumericTextBox_GotKeyboardFocus"
+                                         LostKeyboardFocus="ZeroNumericTextBox_LostKeyboardFocus"
+                                          Style="{StaticResource ModernTextBoxStyle}" />
+                            </Border>
+                        </StackPanel>
+                        <StackPanel Grid.Row="4">
+                            <TextBlock Text="{Binding AjusteEtiquetaCosto}" Style="{StaticResource FieldLabelStyle}" />
+                            <Border Style="{StaticResource FormFieldBorderStyle}">
+                                <TextBox Text="{Binding AjusteCostoPresentacion, StringFormat={}{0:0.00####}, UpdateSourceTrigger=LostFocus}"
+                                         IsReadOnly="{Binding AjusteEsSalida}"
+                                         GotKeyboardFocus="ZeroNumericTextBox_GotKeyboardFocus"
+                                         LostKeyboardFocus="ZeroNumericTextBox_LostKeyboardFocus"
+                                          Style="{StaticResource ModernTextBoxStyle}" />
+                            </Border>
+                            <TextBlock Text="{Binding AjusteOrigenCosto}"
+                                       Style="{StaticResource FieldHelpStyle}"
+                                       TextWrapping="Wrap" Margin="0,3,0,0" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="4" Grid.Column="2">
+                            <TextBlock Text="Motivo *" Style="{StaticResource FieldLabelStyle}" />
+                            <Border Style="{StaticResource FormFieldBorderStyle}">
+                                <TextBox Text="{Binding AjusteMotivo, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource UpperTextBoxStyle}" />
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel Margin="0,14,0,0"
+                                Visibility="{Binding MostrarAjusteLotes,
+                                  Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Grid Margin="0,0,0,8">
+                            <TextBlock Text="LOTES DEL AJUSTE"
+                                       Style="{StaticResource FieldLabelStyle}"
+                                       VerticalAlignment="Center" />
+                            <Button Content="+ AGREGAR LOTE"
+                                    Command="{Binding AgregarLoteAjusteCommand}"
+                                    HorizontalAlignment="Right"
+                                    Style="{StaticResource PrimaryButtonStyle}" />
+                        </Grid>
+                        <DataGrid ItemsSource="{Binding AjusteLotes}"
+                                  Style="{StaticResource KontaxDataGridStyle}"
+                                  AutoGenerateColumns="False" CanUserAddRows="False"
+                                  RowHeight="NaN" MinRowHeight="54"
+                                  MaxHeight="280" VerticalScrollBarVisibility="Auto">
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Header="LOTE" Width="2*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Margin="3">
+                                                <ComboBox ItemsSource="{Binding Sugerencias}"
+                                                          DisplayMemberPath="NumeroLote"
+                                                          SelectedValuePath="NumeroLote"
+                                                          SelectedValue="{Binding NumeroLote, UpdateSourceTrigger=PropertyChanged}"
+                                                          Text="{Binding NumeroLote, UpdateSourceTrigger=PropertyChanged}"
+                                                          IsEditable="{Binding DataContext.AjusteEsEntrada,
+                                                        RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                          IsTextSearchEnabled="True"
+                                                          StaysOpenOnEdit="True"
+                                                          IsDropDownOpen="{Binding MostrarSugerencias, Mode=TwoWay}"
+                                                          MinHeight="36"
+                                                          VerticalContentAlignment="Center"
+                                                          Style="{StaticResource ModernComboBoxStyle}">
+                                                    <ComboBox.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <StackPanel Margin="2">
+                                                                <TextBlock Text="{Binding NumeroLote}" FontWeight="SemiBold" />
+                                                                <TextBlock FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}">
+                                                                    <Run Text="Disponible: " />
+                                                                    <Run Text="{Binding Disponible, StringFormat={}{0:0.######}}" />
+                                                                    <Run Text="  ·  Cad.: " />
+                                                                    <Run Text="{Binding FechaCaducidad, StringFormat={}{0:dd/MM/yyyy}}" />
+                                                                </TextBlock>
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ComboBox.ItemTemplate>
+                                                </ComboBox>
+                                                <TextBlock Visibility="{Binding EsExistente,
+                                                    Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                                           FontSize="11">
+                                                    <Run Text="LOTE EXISTENTE  ·  Disponible: " />
+                                                    <Run Text="{Binding StockActual, StringFormat={}{0:0.######}}" />
+                                                </TextBlock>
+                                                <TextBlock Text="NUEVO LOTE"
+                                                           Visibility="{Binding EsNuevo,
+                                                    Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                           Foreground="{DynamicResource BrandProBrush}"
+                                                           FontSize="11" FontWeight="SemiBold" />
+                                                <StackPanel Visibility="{Binding TieneLoteSimilar,
+                                                    Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                    <TextBlock Foreground="#F59E0B" TextWrapping="Wrap">
+                                                        <Run Text="Existe un lote posiblemente equivalente: " />
+                                                        <Run Text="{Binding LoteSimilar.NumeroLote}" FontWeight="Bold" />
+                                                    </TextBlock>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Button Content="USAR EXISTENTE"
+                                                                Command="{Binding DataContext.UsarLoteSimilarCommand,
+                                                                    RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                CommandParameter="{Binding}"
+                                                                Style="{StaticResource NeutralButtonStyle}" />
+                                                        <Button Content="CREAR DE TODAS FORMAS" Margin="6,0,0,0"
+                                                                Command="{Binding DataContext.CrearLoteSimilarCommand,
+                                                                    RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                CommandParameter="{Binding}"
+                                                                Style="{StaticResource DangerButtonStyle}" />
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="CANTIDAD BASE" Width="115">
+                                    <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                        <TextBox Text="{Binding CantidadBase, UpdateSourceTrigger=LostFocus,
+                                                          StringFormat={}{0:#,0.######}}"
+                                                 Language="en-US"
+                                                 behaviors:DecimalInputBehavior.IsEnabled="True"
+                                                 behaviors:DecimalInputBehavior.DecimalPlaces="6"
+                                                 behaviors:DecimalInputBehavior.ClearZeroOnFocus="True"
+                                                 Style="{StaticResource KontaxUpperDataGridTextBoxStyle}" />
+                                    </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn x:Name="AjusteLoteElaboracionColumn"
+                                                        Header="ELABORACIÓN" Width="110">
+                                    <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                        <TextBox Text="{Binding FechaElaboracion, StringFormat=dd/MM/yyyy,
+                                                          UpdateSourceTrigger=LostFocus, ValidatesOnExceptions=True}"
+                                                 IsReadOnly="{Binding EsExistente}"
+                                                 Language="es-EC" ToolTip="DD/MM/AAAA (opcional)"
+                                                 behaviors:DateInputBehavior.IsEnabled="True"
+                                                 Style="{StaticResource KontaxUpperDataGridTextBoxStyle}" />
+                                    </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn x:Name="AjusteLoteCaducidadColumn"
+                                                        Header="CADUCIDAD" Width="110">
+                                    <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                        <TextBox Text="{Binding FechaCaducidad, StringFormat=dd/MM/yyyy,
+                                                          UpdateSourceTrigger=LostFocus, ValidatesOnExceptions=True}"
+                                                 IsReadOnly="{Binding EsExistente}"
+                                                 Language="es-EC" ToolTip="DD/MM/AAAA"
+                                                 behaviors:DateInputBehavior.IsEnabled="True"
+                                                 Style="{StaticResource KontaxUpperDataGridTextBoxStyle}" />
+                                    </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="" Width="46">
+                                    <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                        <Button Command="{Binding DataContext.QuitarLoteAjusteCommand,
+                                                    RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"
+                                                Style="{StaticResource KontaxDeleteIconButtonStyle}">
+                                            <materialDesign:PackIcon Kind="TrashCanOutline" Width="15" Height="15" />
+                                        </Button>
+                                    </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <Border Margin="0,8,0,0" Padding="10" CornerRadius="8"
+                                Background="{DynamicResource InputBackgroundBrush}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding AjusteLotesAsignado, Mode=OneWay, StringFormat=Asignado: {0:0.######}}"
+                                           FontWeight="SemiBold" />
+                                <TextBlock Text="  —  " />
+                                <TextBlock Text="{Binding AjusteCantidadBase, Mode=OneWay, StringFormat=Requerido: {0:0.######}}" />
+                                <TextBlock Text="  —  " />
+                                <TextBlock Text="{Binding AjusteLotesPendiente, Mode=OneWay, StringFormat=Pendiente: {0:0.######}}"
+                                           Foreground="#F59E0B" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,14,0,0"
+                                Visibility="{Binding MostrarAjusteSeriesNuevas,
+                                  Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Grid Margin="0,0,0,8">
+                            <TextBlock Text="SERIES NUEVAS" Style="{StaticResource FieldLabelStyle}" />
+                            <Button Content="+ AGREGAR SERIE"
+                                    Command="{Binding AgregarSerieNuevaAjusteCommand}"
+                                    HorizontalAlignment="Right"
+                                    Style="{StaticResource PrimaryButtonStyle}" />
+                        </Grid>
+                        <DataGrid ItemsSource="{Binding AjusteSeriesNuevas}"
+                                  Style="{StaticResource KontaxDataGridStyle}"
+                                  AutoGenerateColumns="False" CanUserAddRows="False"
+                                  RowHeight="NaN" MinRowHeight="54" MaxHeight="240">
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Header="SERIE" Width="*">
+                                    <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                        <TextBox Text="{Binding NumeroSerie, UpdateSourceTrigger=PropertyChanged}"
+                                                 Style="{StaticResource KontaxUpperDataGridTextBoxStyle}" />
+                                    </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn x:Name="AjusteSerieNuevaLoteColumn"
+                                                        Header="LOTE ASOCIADO" Width="180">
+                                    <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                        <ComboBox ItemsSource="{Binding DataContext.AjusteLotes,
+                                                    RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                  DisplayMemberPath="NumeroLote" SelectedValuePath="NumeroLote"
+                                                  SelectedValue="{Binding NumeroLote}"
+                                                  IsEnabled="{Binding DataContext.MostrarLoteAsociadoSeries,
+                                                    RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                  Style="{StaticResource ModernComboBoxStyle}" />
+                                    </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="" Width="46">
+                                    <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                        <Button Command="{Binding DataContext.QuitarSerieNuevaAjusteCommand,
+                                                    RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"
+                                                Style="{StaticResource KontaxDeleteIconButtonStyle}">
+                                            <materialDesign:PackIcon Kind="TrashCanOutline" Width="15" Height="15" />
+                                        </Button>
+                                    </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <Border Margin="0,8,0,0" Padding="10" CornerRadius="8"
+                                Background="{DynamicResource InputBackgroundBrush}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding AjusteSeriesNuevasRegistradas, Mode=OneWay, StringFormat=Registradas: {0}}"
+                                           FontWeight="SemiBold" />
+                                <TextBlock Text="  —  " />
+                                <TextBlock Text="{Binding AjusteCantidadBase, Mode=OneWay, StringFormat=Requeridas: {0:0}}" />
+                                <TextBlock Text="  —  " />
+                                <TextBlock Text="{Binding AjusteSeriesPendientes, Mode=OneWay, StringFormat=Pendientes: {0:0}}"
+                                           Foreground="#F59E0B" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,14,0,0"
+                                Visibility="{Binding MostrarAjusteSeriesDisponibles,
+                                  Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock Text="SERIES DISPONIBLES" Style="{StaticResource FieldLabelStyle}" />
+                        <Border Padding="10" CornerRadius="8"
+                                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                            <ItemsControl ItemsSource="{Binding AjusteSeriesDisponibles}">
+                                <ItemsControl.ItemTemplate><DataTemplate>
+                                    <CheckBox IsChecked="{Binding IsSelected}" Margin="0,3"
+                                              Style="{StaticResource KontaxCheckBoxStyle}">
+                                        <TextBlock>
+                                            <Run Text="{Binding NumeroSerie}" FontWeight="SemiBold" />
+                                            <Run Text="  ·  Lote: " />
+                                            <Run Text="{Binding NumeroLote}" />
+                                            <Run Text="  ·  Ubicación: " />
+                                            <Run Text="{Binding Ubicacion}" />
+                                        </TextBlock>
+                                    </CheckBox>
+                                </DataTemplate></ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Border>
+                        <Border Margin="0,8,0,0" Padding="10" CornerRadius="8"
+                                Background="{DynamicResource InputBackgroundBrush}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding AjusteSeriesSeleccionadas, Mode=OneWay, StringFormat=Seleccionadas: {0}}"
+                                           FontWeight="SemiBold" />
+                                <TextBlock Text="  —  " />
+                                <TextBlock Text="{Binding AjusteCantidadBase, Mode=OneWay, StringFormat=Requeridas: {0:0}}" />
+                                <TextBlock Text="  —  " />
+                                <TextBlock Text="{Binding AjusteSeriesPendientes, Mode=OneWay, StringFormat=Pendientes: {0:0}}"
+                                           Foreground="#F59E0B" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </Border>
+                        <TextBlock Text="Distribución automática por lote"
+                                   Style="{StaticResource FieldLabelStyle}" Margin="0,9,0,2" />
+                        <TextBlock Text="{Binding AjusteResumenDistribucionSeries, Mode=OneWay}"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                    <TextBlock Text="Observación" Style="{StaticResource FieldLabelStyle}" Margin="0,14,0,0" />
+                    <Border Style="{StaticResource FormFieldBorderStyle}">
+                        <TextBox Text="{Binding AjusteObservacion, UpdateSourceTrigger=PropertyChanged}"
+                                 AcceptsReturn="True" MinHeight="70"
+                                 Style="{StaticResource ModernTextBoxStyle}" />
+                    </Border>
+                    <TextBlock Text="{Binding MensajeError}" Foreground="#EF4444"
+                               TextWrapping="Wrap" Margin="0,10,0,0" />
+                  </StackPanel>
+                </ScrollViewer>
+                <StackPanel Grid.Row="4" Orientation="Horizontal"
+                            HorizontalAlignment="Right">
+                    <Button Content="Cancelar" Command="{Binding CerrarAjusteCommand}"
+                            Style="{StaticResource DangerButtonStyle}" />
+                    <Button Content="Registrar ajuste" Command="{Binding RegistrarAjusteCommand}"
+                            Margin="10,0,0,0" Style="{StaticResource PrimaryButtonStyle}" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- KARDEX -->
+        <Border Grid.Row="0" Grid.RowSpan="3" Panel.ZIndex="90"
+                Background="{DynamicResource OverlayBrush}"
+                Visibility="{Binding IsKardexOpen,
+                  Converter={StaticResource BooleanToVisibilityConverter}}" />
+        <Border Grid.Row="0" Grid.RowSpan="3" Panel.ZIndex="91"
+                Margin="38" Padding="20" CornerRadius="16"
+                Background="{DynamicResource ElevatedSurfaceBrush}"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                Visibility="{Binding IsKardexOpen,
+                  Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="12" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="14" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="History"
+                                                     Width="22" Height="22"
+                                                     Margin="0,0,9,0"
+                                                     VerticalAlignment="Center"
+                                                     Foreground="{DynamicResource BrandProBrush}" />
+                            <TextBlock Text="Kardex del producto"
+                                       VerticalAlignment="Center"
+                                       Style="{StaticResource SectionTitleStyle}" />
+                        </StackPanel>
+                        <TextBlock Text="Movimientos históricos; esta consulta no modifica existencias."
+                                   Style="{StaticResource FieldHelpStyle}" />
+                    </StackPanel>
+                    <ProgressBar Grid.Column="1" Width="110" Height="4"
+                                 IsIndeterminate="True"
+                                 Visibility="{Binding IsKardexLoading,
+                                   Converter={StaticResource BooleanToVisibilityConverter}}" />
+                </Grid>
+                <DataGrid Grid.Row="2" ItemsSource="{Binding KardexItems}"
+                           Style="{StaticResource KontaxDataGridStyle}"
+                           AutoGenerateColumns="False" IsReadOnly="True"
+                           VerticalScrollBarVisibility="Auto"
+                           HorizontalScrollBarVisibility="Auto">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="FECHA" Binding="{Binding Fecha, StringFormat={}{0:dd/MM/yyyy HH:mm}}" Width="130" />
+                        <DataGridTextColumn Header="MOVIMIENTO" Binding="{Binding NumeroMovimiento}" Width="125" />
+                        <DataGridTextColumn Header="TIPO" Binding="{Binding Tipo}" Width="125" />
+                        <DataGridTextColumn Header="ORIGEN" Binding="{Binding Origen}" Width="120" />
+                        <DataGridTextColumn Header="DOCUMENTO" Binding="{Binding Documento}" Width="120" />
+                        <DataGridTextColumn Header="BODEGA" Binding="{Binding Bodega}" Width="170" />
+                        <DataGridTextColumn Header="PRESENTACIÓN" Binding="{Binding Presentacion}" Width="140" />
+                        <DataGridTextColumn Header="CANT. PRESENT." Binding="{Binding CantidadPresentacion, StringFormat={}{0:0.######}}" Width="110" />
+                        <DataGridTextColumn Header="FACTOR" Binding="{Binding Factor, StringFormat={}{0:0.######}}" Width="85" />
+                        <DataGridTextColumn Header="ENTRADA" Binding="{Binding EntradaBase, StringFormat={}{0:0.######}}" Width="90" />
+                        <DataGridTextColumn Header="SALIDA" Binding="{Binding SalidaBase, StringFormat={}{0:0.######}}" Width="90" />
+                        <DataGridTextColumn Header="ANTERIOR" Binding="{Binding StockAnterior, StringFormat={}{0:0.######}}" Width="95" />
+                        <DataGridTextColumn Header="NUEVO" Binding="{Binding StockNuevo, StringFormat={}{0:0.######}}" Width="95" />
+                        <DataGridTextColumn Header="COSTO UNIT." Binding="{Binding CostoUnitario, StringFormat={}{0:0.00####}}" Width="100" />
+                        <DataGridTextColumn Header="COSTO TOTAL" Binding="{Binding CostoTotal, StringFormat={}{0:0.00}}" Width="105" />
+                        <DataGridTextColumn Header="PROM. ANT." Binding="{Binding CostoPromedioAnterior, StringFormat={}{0:0.00####}}" Width="100" />
+                        <DataGridTextColumn Header="PROM. NUEVO" Binding="{Binding CostoPromedioNuevo, StringFormat={}{0:0.00####}}" Width="105" />
+                        <DataGridTextColumn Header="USUARIO" Binding="{Binding Usuario}" Width="180" />
+                        <DataGridTextColumn Header="OBSERVACIÓN" Binding="{Binding Observacion}" Width="220" />
+                    </DataGrid.Columns>
+                </DataGrid>
+                <Button Grid.Row="4" Content="Cerrar"
+                        Command="{Binding CerrarKardexCommand}"
+                        HorizontalAlignment="Right"
+                        Style="{StaticResource DangerButtonStyle}" />
+            </Grid>
+        </Border>
 
         <!-- =====================================================
              FOOTER
@@ -1788,9 +3675,10 @@
 
                 <Border Style="{StaticResource FormFieldBorderStyle}">
 
-                    <TextBox Text="{Binding QuickCatalogName,
+                    <TextBox x:Name="QuickCatalogNameInput"
+                             Text="{Binding QuickCatalogName,
                                 UpdateSourceTrigger=PropertyChanged}"
-                             Style="{StaticResource ModernTextBoxStyle}" />
+                                                         Style="{StaticResource UpperTextBoxStyle}" />
 
                 </Border>
 

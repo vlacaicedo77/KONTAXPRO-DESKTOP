@@ -189,6 +189,9 @@
     <SolidColorBrush x:Key="WarningSoftBrush"
                      Color="#FEF3C7"/>
 
+    <SolidColorBrush x:Key="WarningTextBrush"
+                     Color="#B45309"/>
+
     <SolidColorBrush x:Key="DangerSoftBrush"
                      Color="#FEE2E2"/>
 

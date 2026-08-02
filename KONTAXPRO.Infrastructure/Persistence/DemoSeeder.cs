@@ -11,8 +11,8 @@ namespace KONTAXPRO.Infrastructure.Persistence;
 
 public sealed class DemoSeeder
 {
-    public const string DemoUserIdentification = "0999999999";
-    public const string DemoPassword = "KontaxDemo2026!";
+    public const string DemoUserIdentification = "1724853377";
+    public const string DemoPassword = "Kontax123";
 
     private readonly IDbContextFactory<KontaxDbContext> _contextFactory;
     private readonly IPasswordHasher _passwordHasher;
@@ -68,7 +68,7 @@ public sealed class DemoSeeder
             usuario = new Usuario
             {
                 NumeroIdentificacion = DemoUserIdentification,
-                NombreCompleto = "USUARIO DEMO KONTAXPRO",
+                NombreCompleto = "CAICEDO YELA JUAN VLADIMIR",
                 Correo = "demo@kontaxpro.local",
                 PasswordHash = _passwordHasher.Hash(DemoPassword),
                 RequiereCambioClave = false,
@@ -80,6 +80,8 @@ public sealed class DemoSeeder
         }
         else
         {
+            usuario.NombreCompleto = "CAICEDO YELA JUAN VLADIMIR";
+            usuario.RequiereCambioClave = false;
             usuario.Estado = 1;
             usuario.UpdatedAt = now;
         }
@@ -144,23 +146,43 @@ public sealed class DemoSeeder
                 db.Establecimientos.Add(establecimiento);
             }
 
-            var listaBase = await db.ListasPrecio.SingleOrDefaultAsync(
-                x => x.EmpresaId == empresa.Id && x.Codigo == "BASE",
-                cancellationToken);
-            if (listaBase is null)
+            var listasDefinidas = new[]
             {
-                listaBase = new ListaPrecio
+                new { Codigo = "A", Nombre = "LISTA A - PRECIO NORMAL",
+                    EsBase = true, Descuento = (decimal?)null, Orden = 1 },
+                new { Codigo = "B", Nombre = "LISTA B - DISTRIBUIDOR",
+                    EsBase = false, Descuento = (decimal?)5m, Orden = 2 },
+                new { Codigo = "C", Nombre = "LISTA C - MAYORISTA",
+                    EsBase = false, Descuento = (decimal?)10m, Orden = 3 }
+            };
+            ListaPrecio? listaBase = null;
+            foreach (var definicionLista in listasDefinidas)
+            {
+                var lista = await db.ListasPrecio.SingleOrDefaultAsync(
+                    x => x.EmpresaId == empresa.Id &&
+                         (x.Codigo == definicionLista.Codigo ||
+                          (definicionLista.EsBase && x.EsListaBase)),
+                    cancellationToken);
+                if (lista is null)
                 {
-                    EmpresaId = empresa.Id,
-                    Codigo = "BASE",
-                    Nombre = "LISTA BASE",
-                    EsListaBase = true,
-                    Orden = 1,
-                    Estado = 1,
-                    CreatedAt = now,
-                    UpdatedAt = now
-                };
-                db.ListasPrecio.Add(listaBase);
+                    lista = new ListaPrecio
+                    {
+                        EmpresaId = empresa.Id,
+                        CreatedAt = now
+                    };
+                    db.ListasPrecio.Add(lista);
+                }
+
+                lista.Codigo = definicionLista.Codigo;
+                lista.Nombre = definicionLista.Nombre;
+                lista.EsListaBase = definicionLista.EsBase;
+                lista.PorcentajeDescuentoPredeterminado =
+                    definicionLista.Descuento;
+                lista.Orden = definicionLista.Orden;
+                lista.Estado = 1;
+                lista.UpdatedAt = now;
+                if (definicionLista.EsBase)
+                    listaBase = lista;
             }
 
             var cuentaCaja = await db.PlanCuentas.SingleOrDefaultAsync(
@@ -202,15 +224,15 @@ public sealed class DemoSeeder
             }
 
             var bodega = await db.Bodegas.SingleOrDefaultAsync(
-                x => x.EstablecimientoId == establecimiento.Id && x.Codigo == "PRINCIPAL",
+                x => x.EstablecimientoId == establecimiento.Id && x.Codigo == "FAC",
                 cancellationToken);
             if (bodega is null)
             {
                 bodega = new Bodega
                 {
                     EstablecimientoId = establecimiento.Id,
-                    Codigo = "PRINCIPAL",
-                    Nombre = "BODEGA PRINCIPAL",
+                    Codigo = "FAC",
+                    Nombre = "PRODUCTOS CON FACTURA",
                     PermiteTransferenciasInternas = true,
                     PermiteVentaFacturada = true,
                     Estado = 1,
@@ -219,6 +241,31 @@ public sealed class DemoSeeder
                 };
                 db.Bodegas.Add(bodega);
             }
+
+            bodega.Nombre = "PRODUCTOS CON FACTURA";
+            bodega.PermiteTransferenciasInternas = true;
+            bodega.PermiteVentaFacturada = true;
+            bodega.Estado = 1;
+            bodega.UpdatedAt = now;
+
+            var bodegaSinFactura = await db.Bodegas.SingleOrDefaultAsync(
+                x => x.EstablecimientoId == establecimiento.Id && x.Codigo == "SFA",
+                cancellationToken);
+            if (bodegaSinFactura is null)
+            {
+                bodegaSinFactura = new Bodega
+                {
+                    EstablecimientoId = establecimiento.Id,
+                    Codigo = "SFA",
+                    CreatedAt = now
+                };
+                db.Bodegas.Add(bodegaSinFactura);
+            }
+            bodegaSinFactura.Nombre = "PRODUCTOS SIN FACTURA";
+            bodegaSinFactura.PermiteTransferenciasInternas = true;
+            bodegaSinFactura.PermiteVentaFacturada = false;
+            bodegaSinFactura.Estado = 1;
+            bodegaSinFactura.UpdatedAt = now;
 
             var caja = await db.Cajas.SingleOrDefaultAsync(
                 x => x.EmpresaId == empresa.Id && x.Codigo == "PRINCIPAL",
@@ -267,7 +314,7 @@ public sealed class DemoSeeder
                     TerceroId = consumidorFinal.Id,
                     EsCliente = true,
                     EsProveedor = false,
-                    ListaPrecioId = listaBase.Id,
+                    ListaPrecioId = listaBase!.Id,
                     CreditoHabilitado = false,
                     Estado = 1,
                     CreatedAt = now,

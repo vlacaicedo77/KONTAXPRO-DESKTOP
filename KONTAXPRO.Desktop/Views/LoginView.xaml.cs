@@ -29,6 +29,7 @@ public partial class LoginWindow : Window
     {
         Activate();
 
+        PasswordInput.Password = _viewModel.Password;
         NumeroIdentificacionInput.Focus();
         Keyboard.Focus(NumeroIdentificacionInput);
     }

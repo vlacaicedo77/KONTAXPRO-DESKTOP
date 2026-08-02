@@ -1794,6 +1794,62 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "conversiones_control_inventario",
+                schema: "s_inventario",
+                columns: table => new
+                {
+                    id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    empresa_id = table.Column<long>(type: "bigint", nullable: false),
+                    producto_id = table.Column<long>(type: "bigint", nullable: false),
+                    tipo_control_anterior = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    tipo_control_nuevo = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    fecha_conversion = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    usuario_id = table.Column<long>(type: "bigint", nullable: false),
+                    motivo = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    estado = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    anulado_por_usuario_id = table.Column<long>(type: "bigint", nullable: true),
+                    anulado_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    motivo_anulacion = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_conversiones_control_inventario", x => x.id);
+                    table.CheckConstraint("ck_conversion_control_motivo", "length(btrim(motivo)) > 0");
+                    table.CheckConstraint("ck_conversion_control_tipos", "tipo_control_anterior IN ('NORMAL','LOTE','SERIE','LOTE_Y_SERIE') AND tipo_control_nuevo IN ('NORMAL','LOTE','SERIE','LOTE_Y_SERIE') AND tipo_control_anterior <> tipo_control_nuevo");
+                    table.ForeignKey(
+                        name: "FK_conversiones_control_inventario_empresas_empresa_id",
+                        column: x => x.empresa_id,
+                        principalSchema: "s_configuracion",
+                        principalTable: "empresas",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_conversiones_control_inventario_productos_producto_id",
+                        column: x => x.producto_id,
+                        principalSchema: "s_inventario",
+                        principalTable: "productos",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_conversiones_control_inventario_usuarios_anulado_por_usuari~",
+                        column: x => x.anulado_por_usuario_id,
+                        principalSchema: "s_seguridad",
+                        principalTable: "usuarios",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_conversiones_control_inventario_usuarios_usuario_id",
+                        column: x => x.usuario_id,
+                        principalSchema: "s_seguridad",
+                        principalTable: "usuarios",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "productos_costos",
                 schema: "s_inventario",
                 columns: table => new
@@ -3299,6 +3355,46 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "conversiones_control_inventario_detalles",
+                schema: "s_inventario",
+                columns: table => new
+                {
+                    id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    conversion_control_inventario_id = table.Column<long>(type: "bigint", nullable: false),
+                    bodega_id = table.Column<long>(type: "bigint", nullable: false),
+                    producto_lote_id = table.Column<long>(type: "bigint", nullable: true),
+                    cantidad_base = table.Column<decimal>(type: "numeric(18,6)", precision: 18, scale: 6, nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_conversiones_control_inventario_detalles", x => x.id);
+                    table.CheckConstraint("ck_conversion_control_detalle_cantidad", "cantidad_base >= 0");
+                    table.ForeignKey(
+                        name: "FK_conversiones_control_inventario_detalles_bodegas_bodega_id",
+                        column: x => x.bodega_id,
+                        principalSchema: "s_inventario",
+                        principalTable: "bodegas",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_conversiones_control_inventario_detalles_conversiones_contr~",
+                        column: x => x.conversion_control_inventario_id,
+                        principalSchema: "s_inventario",
+                        principalTable: "conversiones_control_inventario",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_conversiones_control_inventario_detalles_productos_lotes_pr~",
+                        column: x => x.producto_lote_id,
+                        principalSchema: "s_inventario",
+                        principalTable: "productos_lotes",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "productos_lotes_existencias",
                 schema: "s_inventario",
                 columns: table => new
@@ -4471,6 +4567,36 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                         column: x => x.usuario_id,
                         principalSchema: "s_seguridad",
                         principalTable: "usuarios",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "conversiones_control_inventario_series",
+                schema: "s_inventario",
+                columns: table => new
+                {
+                    id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    conversion_control_inventario_id = table.Column<long>(type: "bigint", nullable: false),
+                    producto_serie_id = table.Column<long>(type: "bigint", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_conversiones_control_inventario_series", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_conversiones_control_inventario_series_conversiones_control~",
+                        column: x => x.conversion_control_inventario_id,
+                        principalSchema: "s_inventario",
+                        principalTable: "conversiones_control_inventario",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_conversiones_control_inventario_series_productos_series_pro~",
+                        column: x => x.producto_serie_id,
+                        principalSchema: "s_inventario",
+                        principalTable: "productos_series",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                 });
@@ -6190,6 +6316,61 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                 table: "configuracion_cuentas",
                 columns: new[] { "empresa_id", "tipo_configuracion_contable_id" },
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_conversiones_control_inventario_anulado_por_usuario_id",
+                schema: "s_inventario",
+                table: "conversiones_control_inventario",
+                column: "anulado_por_usuario_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_conversiones_control_inventario_empresa_id_producto_id_fech~",
+                schema: "s_inventario",
+                table: "conversiones_control_inventario",
+                columns: new[] { "empresa_id", "producto_id", "fecha_conversion" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_conversiones_control_inventario_producto_id",
+                schema: "s_inventario",
+                table: "conversiones_control_inventario",
+                column: "producto_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_conversiones_control_inventario_usuario_id",
+                schema: "s_inventario",
+                table: "conversiones_control_inventario",
+                column: "usuario_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_conversiones_control_inventario_detalles_bodega_id",
+                schema: "s_inventario",
+                table: "conversiones_control_inventario_detalles",
+                column: "bodega_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_conversiones_control_inventario_detalles_conversion_control~",
+                schema: "s_inventario",
+                table: "conversiones_control_inventario_detalles",
+                column: "conversion_control_inventario_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_conversiones_control_inventario_detalles_producto_lote_id",
+                schema: "s_inventario",
+                table: "conversiones_control_inventario_detalles",
+                column: "producto_lote_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_conversiones_control_inventario_series_conversion_control_i~",
+                schema: "s_inventario",
+                table: "conversiones_control_inventario_series",
+                columns: new[] { "conversion_control_inventario_id", "producto_serie_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_conversiones_control_inventario_series_producto_serie_id",
+                schema: "s_inventario",
+                table: "conversiones_control_inventario_series",
+                column: "producto_serie_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_cuentas_bancarias_cuenta_contable_id_empresa_id",
@@ -8285,6 +8466,14 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                 schema: "s_contabilidad");
 
             migrationBuilder.DropTable(
+                name: "conversiones_control_inventario_detalles",
+                schema: "s_inventario");
+
+            migrationBuilder.DropTable(
+                name: "conversiones_control_inventario_series",
+                schema: "s_inventario");
+
+            migrationBuilder.DropTable(
                 name: "cuentas_por_cobrar_movimientos",
                 schema: "s_cartera");
 
@@ -8455,6 +8644,10 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
             migrationBuilder.DropTable(
                 name: "tipos_configuracion_contable",
                 schema: "s_catalogos");
+
+            migrationBuilder.DropTable(
+                name: "conversiones_control_inventario",
+                schema: "s_inventario");
 
             migrationBuilder.DropTable(
                 name: "cobros_aplicaciones_reversos",

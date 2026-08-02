@@ -17,7 +17,13 @@ public interface IProductCatalogService
     Task<List<CatalogItemDto>> ObtenerTarifasImpuestoAsync(
         CancellationToken cancellationToken = default);
 
-    Task<List<CatalogItemDto>> ObtenerListasPrecioAsync(
+    Task<List<global::KONTAXPRO.Application.Models.Productos.ListaPrecioEditorDto>>
+        ObtenerListasPrecioAsync(
+        long empresaId,
+        CancellationToken cancellationToken = default);
+
+    Task<List<global::KONTAXPRO.Application.Models.Productos.ProductoExistenciaDto>>
+        ObtenerBodegasAsync(
         long empresaId,
         CancellationToken cancellationToken = default);
 

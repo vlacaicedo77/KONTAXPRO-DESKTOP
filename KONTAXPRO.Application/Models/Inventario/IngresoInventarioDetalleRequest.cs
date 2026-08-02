@@ -19,6 +19,9 @@ public class IngresoInventarioDetalleRequest
     /// </summary>
     public decimal CostoTotal { get; set; }
 
+    public string? Ubicacion { get; set; }
+    public decimal StockMinimo { get; set; }
+
     public string? NumeroLote { get; set; }
 
     public DateOnly? FechaElaboracion { get; set; }
@@ -27,5 +30,23 @@ public class IngresoInventarioDetalleRequest
 
     public List<string> NumerosSerie { get; set; } = [];
 
+    public List<IngresoInventarioLoteRequest> Lotes { get; set; } = [];
+    public List<IngresoInventarioSerieRequest> Series { get; set; } = [];
+
     public string? Observacion { get; set; }
+}
+
+public sealed class IngresoInventarioSerieRequest
+{
+    public string NumeroSerie { get; set; } = string.Empty;
+    public string? NumeroLote { get; set; }
+}
+
+public sealed class IngresoInventarioLoteRequest
+{
+    public string NumeroLote { get; set; } = string.Empty;
+    public decimal CantidadBase { get; set; }
+    public DateOnly? FechaElaboracion { get; set; }
+    public DateOnly? FechaCaducidad { get; set; }
+    public bool PermitirCrearLoteSimilar { get; set; }
 }

@@ -493,7 +493,7 @@
                     <CheckBox Grid.Column="2"
                               Content="Solo productos activos"
                               IsChecked="{Binding MostrarSoloActivos}"
-                              Foreground="{DynamicResource PrimaryTextBrush}"
+                              Style="{StaticResource KontaxCheckBoxStyle}"
                               VerticalAlignment="Center"/>
 
 
@@ -527,6 +527,7 @@
                 <Grid>
 
                     <DataGrid ItemsSource="{Binding Productos}"
+                              Style="{StaticResource KontaxDataGridStyle}"
                               SelectedItem="{Binding ProductoSeleccionado}"
                               AutoGenerateColumns="False"
                               CanUserAddRows="False"
@@ -544,60 +545,6 @@
                               ColumnHeaderHeight="46"
                               SelectionMode="Single"
                               SelectionUnit="FullRow">
-
-                        <DataGrid.ColumnHeaderStyle>
-
-                            <Style TargetType="DataGridColumnHeader">
-
-                                <Setter Property="Background"
-                                        Value="{DynamicResource TableHeaderBrush}"/>
-
-                                <Setter Property="Foreground"
-                                        Value="{DynamicResource PrimaryTextBrush}"/>
-
-                                <Setter Property="BorderBrush"
-                                        Value="{DynamicResource BorderBrush}"/>
-
-                                <Setter Property="BorderThickness"
-                                        Value="0,0,1,1"/>
-
-                                <Setter Property="FontWeight"
-                                        Value="SemiBold"/>
-
-                                <Setter Property="Padding"
-                                        Value="8,0"/>
-
-                            </Style>
-
-                        </DataGrid.ColumnHeaderStyle>
-
-
-                        <DataGrid.RowStyle>
-
-                            <Style TargetType="DataGridRow">
-
-                                <Setter Property="Foreground"
-                                        Value="{DynamicResource PrimaryTextBrush}"/>
-
-                                <Style.Triggers>
-
-                                    <Trigger Property="IsSelected"
-                                             Value="True">
-
-                                        <Setter Property="Background"
-                                                Value="{DynamicResource TableSelectedRowBrush}"/>
-
-                                        <Setter Property="Foreground"
-                                                Value="{DynamicResource PrimaryTextBrush}"/>
-
-                                    </Trigger>
-
-                                </Style.Triggers>
-
-                            </Style>
-
-                        </DataGrid.RowStyle>
-
 
                         <DataGrid.Columns>
 
@@ -995,7 +942,8 @@
                                                      HorizontalAlignment="Center"
                                                      VerticalAlignment="Center" />
 
-                            <TextBox Grid.Column="1"
+                            <TextBox x:Name="CodigoBarrasVerificacionInput"
+                                     Grid.Column="1"
                                      Text="{Binding CodigoBarrasNuevoProducto,
                                  UpdateSourceTrigger=PropertyChanged}"
                                      BorderThickness="0"
@@ -1003,7 +951,12 @@
                                      Foreground="{DynamicResource PrimaryTextBrush}"
                                      CaretBrush="{DynamicResource BrandProBrush}"
                                      FontSize="14"
-                                     VerticalContentAlignment="Center" />
+                                     VerticalContentAlignment="Center">
+                                <TextBox.InputBindings>
+                                    <KeyBinding Key="Enter"
+                                                Command="{Binding VerificarCodigoBarrasCommand}" />
+                                </TextBox.InputBindings>
+                            </TextBox>
 
                         </Grid>
 

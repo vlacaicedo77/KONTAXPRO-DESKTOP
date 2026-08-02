@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace KONTAXPRO.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(KontaxDbContext))]
-    [Migration("20260726143217_InitialCreate")]
+    [Migration("20260731162534_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -5498,6 +5498,169 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("ck_bodegas_estado", "estado IN (0, 1)");
                         });
+                });
+
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Inventario.ConversionControlInventario", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime?>("AnuladoAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("anulado_at");
+
+                    b.Property<long?>("AnuladoPorUsuarioId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("anulado_por_usuario_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<long>("EmpresaId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("empresa_id");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("estado");
+
+                    b.Property<DateTime>("FechaConversion")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_conversion");
+
+                    b.Property<string>("Motivo")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("motivo");
+
+                    b.Property<string>("MotivoAnulacion")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("motivo_anulacion");
+
+                    b.Property<long>("ProductoId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("producto_id");
+
+                    b.Property<string>("TipoControlAnterior")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("tipo_control_anterior");
+
+                    b.Property<string>("TipoControlNuevo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("tipo_control_nuevo");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<long>("UsuarioId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("usuario_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnuladoPorUsuarioId");
+
+                    b.HasIndex("ProductoId");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.HasIndex("EmpresaId", "ProductoId", "FechaConversion");
+
+                    b.ToTable("conversiones_control_inventario", "s_inventario", t =>
+                        {
+                            t.HasCheckConstraint("ck_conversion_control_motivo", "length(btrim(motivo)) > 0");
+
+                            t.HasCheckConstraint("ck_conversion_control_tipos", "tipo_control_anterior IN ('NORMAL','LOTE','SERIE','LOTE_Y_SERIE') AND tipo_control_nuevo IN ('NORMAL','LOTE','SERIE','LOTE_Y_SERIE') AND tipo_control_anterior <> tipo_control_nuevo");
+                        });
+                });
+
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Inventario.ConversionControlInventarioDetalle", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("BodegaId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("bodega_id");
+
+                    b.Property<decimal>("CantidadBase")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)")
+                        .HasColumnName("cantidad_base");
+
+                    b.Property<long>("ConversionControlInventarioId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("conversion_control_inventario_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<long?>("ProductoLoteId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("producto_lote_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BodegaId");
+
+                    b.HasIndex("ConversionControlInventarioId");
+
+                    b.HasIndex("ProductoLoteId");
+
+                    b.ToTable("conversiones_control_inventario_detalles", "s_inventario", t =>
+                        {
+                            t.HasCheckConstraint("ck_conversion_control_detalle_cantidad", "cantidad_base >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Inventario.ConversionControlInventarioSerie", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("ConversionControlInventarioId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("conversion_control_inventario_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<long>("ProductoSerieId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("producto_serie_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductoSerieId");
+
+                    b.HasIndex("ConversionControlInventarioId", "ProductoSerieId")
+                        .IsUnique();
+
+                    b.ToTable("conversiones_control_inventario_series", "s_inventario");
                 });
 
             modelBuilder.Entity("KONTAXPRO.Domain.Entities.Inventario.ListaPrecio", b =>
@@ -11434,6 +11597,85 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                     b.Navigation("Establecimiento");
                 });
 
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Inventario.ConversionControlInventario", b =>
+                {
+                    b.HasOne("KONTAXPRO.Domain.Entities.Seguridad.Usuario", "AnuladoPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("AnuladoPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Configuracion.Empresa", "Empresa")
+                        .WithMany()
+                        .HasForeignKey("EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Inventario.Producto", "Producto")
+                        .WithMany()
+                        .HasForeignKey("ProductoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Seguridad.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AnuladoPorUsuario");
+
+                    b.Navigation("Empresa");
+
+                    b.Navigation("Producto");
+
+                    b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Inventario.ConversionControlInventarioDetalle", b =>
+                {
+                    b.HasOne("KONTAXPRO.Domain.Entities.Inventario.Bodega", "Bodega")
+                        .WithMany()
+                        .HasForeignKey("BodegaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Inventario.ConversionControlInventario", "ConversionControlInventario")
+                        .WithMany("Detalles")
+                        .HasForeignKey("ConversionControlInventarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Inventario.ProductoLote", "ProductoLote")
+                        .WithMany()
+                        .HasForeignKey("ProductoLoteId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Bodega");
+
+                    b.Navigation("ConversionControlInventario");
+
+                    b.Navigation("ProductoLote");
+                });
+
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Inventario.ConversionControlInventarioSerie", b =>
+                {
+                    b.HasOne("KONTAXPRO.Domain.Entities.Inventario.ConversionControlInventario", "ConversionControlInventario")
+                        .WithMany("Series")
+                        .HasForeignKey("ConversionControlInventarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Inventario.ProductoSerie", "ProductoSerie")
+                        .WithMany()
+                        .HasForeignKey("ProductoSerieId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ConversionControlInventario");
+
+                    b.Navigation("ProductoSerie");
+                });
+
             modelBuilder.Entity("KONTAXPRO.Domain.Entities.Inventario.ListaPrecio", b =>
                 {
                     b.HasOne("KONTAXPRO.Domain.Entities.Configuracion.Empresa", "Empresa")
@@ -13259,6 +13501,13 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("KONTAXPRO.Domain.Entities.Inventario.Bodega", b =>
                 {
                     b.Navigation("ProductosExistencias");
+                });
+
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Inventario.ConversionControlInventario", b =>
+                {
+                    b.Navigation("Detalles");
+
+                    b.Navigation("Series");
                 });
 
             modelBuilder.Entity("KONTAXPRO.Domain.Entities.Inventario.ListaPrecio", b =>

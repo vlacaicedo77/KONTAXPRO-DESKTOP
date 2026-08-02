@@ -1,5 +1,6 @@
 ﻿using KONTAXPRO.Application.Interfaces;
 using KONTAXPRO.Application.Models.Common;
+using KONTAXPRO.Application.Models.Productos;
 using KONTAXPRO.Domain.Entities.Catalogos;
 using KONTAXPRO.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -85,7 +86,11 @@ public class ProductCatalogService : IProductCatalogService
 
         return await context.TarifasImpuesto
             .AsNoTracking()
-            .Where(x => x.Estado == 1)
+            .Where(x => x.Estado == 1 &&
+                        x.Impuesto!.Estado == 1 &&
+                        x.VigenteDesde <= DateOnly.FromDateTime(DateTime.UtcNow) &&
+                        (x.VigenteHasta == null ||
+                         x.VigenteHasta >= DateOnly.FromDateTime(DateTime.UtcNow)))
             .OrderBy(x => x.Porcentaje)
             .Select(x => new CatalogItemDto
             {
@@ -95,7 +100,7 @@ public class ProductCatalogService : IProductCatalogService
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<List<CatalogItemDto>> ObtenerListasPrecioAsync(
+    public async Task<List<ListaPrecioEditorDto>> ObtenerListasPrecioAsync(
         long empresaId,
         CancellationToken cancellationToken = default)
     {
@@ -106,10 +111,35 @@ public class ProductCatalogService : IProductCatalogService
             .Where(x => x.EmpresaId == empresaId && x.Estado == 1)
             .OrderByDescending(x => x.EsListaBase)
             .ThenBy(x => x.Orden)
-            .Select(x => new CatalogItemDto
+            .Select(x => new ListaPrecioEditorDto
             {
                 Id = x.Id,
-                Nombre = x.Nombre
+                Codigo = x.Codigo,
+                Nombre = x.Nombre,
+                EsListaBase = x.EsListaBase,
+                PorcentajeDescuentoPredeterminado =
+                    x.PorcentajeDescuentoPredeterminado
+            })
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<List<ProductoExistenciaDto>> ObtenerBodegasAsync(
+        long empresaId,
+        CancellationToken cancellationToken = default)
+    {
+        await using var context =
+            await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+        return await context.Bodegas.AsNoTracking()
+            .Where(x => x.Estado == 1 &&
+                        x.Establecimiento!.EmpresaId == empresaId)
+            .OrderBy(x => x.Codigo)
+            .ThenBy(x => x.Nombre)
+            .Select(x => new ProductoExistenciaDto
+            {
+                BodegaId = x.Id,
+                BodegaCodigo = x.Codigo,
+                BodegaNombre = x.Nombre
             })
             .ToListAsync(cancellationToken);
     }
@@ -119,7 +149,7 @@ public class ProductCatalogService : IProductCatalogService
         string nombre,
         CancellationToken cancellationToken = default)
     {
-        nombre = nombre.Trim();
+        nombre = nombre.Trim().ToUpperInvariant();
 
         if (empresaId <= 0)
         {
@@ -191,7 +221,7 @@ public class ProductCatalogService : IProductCatalogService
         string nombre,
         CancellationToken cancellationToken = default)
     {
-        nombre = nombre.Trim();
+        nombre = nombre.Trim().ToUpperInvariant();
 
         if (string.IsNullOrWhiteSpace(nombre))
         {
