@@ -412,6 +412,67 @@
 
         </Style>
 
+        <Style x:Key="AjusteDataGridTextBoxStyle"
+               TargetType="TextBox"
+               BasedOn="{StaticResource KontaxUpperDataGridTextBoxStyle}">
+            <Setter Property="Height" Value="40" />
+            <Setter Property="MinHeight" Value="40" />
+            <Setter Property="Margin" Value="3" />
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="Background"
+                    Value="{DynamicResource InputBackgroundBrush}" />
+            <Setter Property="Foreground"
+                    Value="{DynamicResource PrimaryTextBrush}" />
+            <Setter Property="CaretBrush"
+                    Value="{DynamicResource FocusBorderBrush}" />
+            <Setter Property="BorderBrush"
+                    Value="{DynamicResource InputBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="AjusteInputBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="9"
+                                Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                          VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="AjusteInputBorder"
+                                        Property="BorderBrush"
+                                        Value="{DynamicResource FocusBorderBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsReadOnly" Value="True">
+                                <Setter TargetName="AjusteInputBorder"
+                                        Property="Background"
+                                        Value="{DynamicResource InputSecondaryBackgroundBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.55" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="AjusteDataGridComboBoxStyle"
+               TargetType="ComboBox"
+               BasedOn="{StaticResource ModernComboBoxStyle}">
+            <Setter Property="Height" Value="40" />
+            <Setter Property="MinHeight" Value="40" />
+            <Setter Property="Margin" Value="3" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+
     </UserControl.Resources>
 
 
@@ -2784,7 +2845,9 @@
                         </Grid>
                     </Border>
                 </StackPanel>
-                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                <ScrollViewer Grid.Row="2"
+                              VerticalScrollBarVisibility="Auto"
+                              PreviewMouseWheel="FormScrollViewer_PreviewMouseWheel">
                     <ItemsControl ItemsSource="{Binding ConversionBodegas}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
@@ -3012,8 +3075,9 @@
                 Visibility="{Binding IsAjusteOpen,
                   Converter={StaticResource BooleanToVisibilityConverter}}" />
         <Border Grid.Row="0" Grid.RowSpan="3" Panel.ZIndex="93"
-                Width="760" MaxHeight="720" Padding="22" CornerRadius="16"
-                HorizontalAlignment="Center" VerticalAlignment="Center"
+                Margin="28" MaxWidth="1120" MaxHeight="820"
+                Padding="24" CornerRadius="16"
+                HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                 Background="{DynamicResource ElevatedSurfaceBrush}"
                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
                 Visibility="{Binding IsAjusteOpen,
@@ -3040,65 +3104,90 @@
                     <TextBlock Text="Genera un movimiento trazable; no modifica directamente el stock histórico."
                                Style="{StaticResource FieldHelpStyle}" Margin="31,3,0,0" />
                 </StackPanel>
-                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
-                  <StackPanel Margin="0,0,8,0">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="14" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="12" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="12" />
-                            <RowDefinition Height="Auto" />
+                <ScrollViewer Grid.Row="2"
+                              VerticalScrollBarVisibility="Auto"
+                              PreviewMouseWheel="FormScrollViewer_PreviewMouseWheel">
+                  <StackPanel Margin="0,0,8,24">
+                     <Grid>
+                         <Grid.ColumnDefinitions>
+                             <ColumnDefinition Width="*" />
+                             <ColumnDefinition Width="16" />
+                             <ColumnDefinition Width="*" />
+                             <ColumnDefinition Width="16" />
+                             <ColumnDefinition Width="*" />
+                         </Grid.ColumnDefinitions>
+                         <Grid.RowDefinitions>
+                             <RowDefinition Height="Auto" />
+                             <RowDefinition Height="14" />
+                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
-                        <StackPanel>
-                            <TextBlock Text="Tipo de ajuste *" Style="{StaticResource FieldLabelStyle}" />
+                         <StackPanel>
+                             <TextBlock Style="{StaticResource FieldLabelStyle}">
+                                 <Run Text="Tipo de ajuste" />
+                                 <Run Text=" *" Foreground="#DC2626" FontWeight="Bold" />
+                             </TextBlock>
                             <ComboBox ItemsSource="{Binding TiposAjuste}"
                                       SelectedItem="{Binding AjusteTipo}"
                                       Style="{StaticResource ModernComboBoxStyle}" />
                         </StackPanel>
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="Bodega *" Style="{StaticResource FieldLabelStyle}" />
+                          <StackPanel Grid.Column="2">
+                              <TextBlock Style="{StaticResource FieldLabelStyle}">
+                                  <Run Text="Bodega" />
+                                  <Run Text=" *" Foreground="#DC2626" FontWeight="Bold" />
+                              </TextBlock>
                             <ComboBox ItemsSource="{Binding Existencias}"
                                       DisplayMemberPath="BodegaDisplay" SelectedValuePath="BodegaId"
                                       SelectedValue="{Binding AjusteBodegaId}"
                                       Style="{StaticResource ModernComboBoxStyle}" />
                         </StackPanel>
-                        <StackPanel Grid.Row="2">
-                            <TextBlock Text="Presentación *" Style="{StaticResource FieldLabelStyle}" />
+                          <StackPanel Grid.Column="4">
+                              <TextBlock Style="{StaticResource FieldLabelStyle}">
+                                  <Run Text="Presentación" />
+                                  <Run Text=" *" Foreground="#DC2626" FontWeight="Bold" />
+                              </TextBlock>
                             <ComboBox ItemsSource="{Binding PresentacionesOperacion}"
                                       DisplayMemberPath="Nombre" SelectedValuePath="Id"
                                       SelectedValue="{Binding AjustePresentacionId}"
                                       Style="{StaticResource ModernComboBoxStyle}" />
                         </StackPanel>
-                        <StackPanel Grid.Row="2" Grid.Column="2">
-                            <TextBlock Text="Cantidad presentación *" Style="{StaticResource FieldLabelStyle}" />
+                          <StackPanel Grid.Row="2">
+                              <TextBlock Style="{StaticResource FieldLabelStyle}">
+                                  <Run Text="Cantidad presentación" />
+                                  <Run Text=" *" Foreground="#DC2626" FontWeight="Bold" />
+                              </TextBlock>
                             <Border Style="{StaticResource FormFieldBorderStyle}">
                                 <TextBox Text="{Binding AjusteCantidad, StringFormat={}{0:0.######}, UpdateSourceTrigger=LostFocus}"
-                                         GotKeyboardFocus="ZeroNumericTextBox_GotKeyboardFocus"
-                                         LostKeyboardFocus="ZeroNumericTextBox_LostKeyboardFocus"
-                                          Style="{StaticResource ModernTextBoxStyle}" />
+                                         behaviors:DecimalInputBehavior.IsEnabled="True"
+                                         behaviors:DecimalInputBehavior.DecimalPlaces="6"
+                                         behaviors:DecimalInputBehavior.UpdateSourceWhileTyping="True"
+                                         behaviors:DecimalInputBehavior.ClearZeroOnFocus="True"
+                                         Style="{StaticResource ModernTextBoxStyle}" />
                             </Border>
                         </StackPanel>
-                        <StackPanel Grid.Row="4">
-                            <TextBlock Text="{Binding AjusteEtiquetaCosto}" Style="{StaticResource FieldLabelStyle}" />
+                          <StackPanel Grid.Row="2" Grid.Column="2">
+                              <TextBlock Style="{StaticResource FieldLabelStyle}">
+                                  <Run Text="{Binding AjusteEtiquetaCosto, Mode=OneWay}" />
+                                  <Run Text="{Binding AjusteAsteriscoCosto, Mode=OneWay}"
+                                       Foreground="#DC2626" FontWeight="Bold" />
+                              </TextBlock>
                             <Border Style="{StaticResource FormFieldBorderStyle}">
                                 <TextBox Text="{Binding AjusteCostoPresentacion, StringFormat={}{0:0.00####}, UpdateSourceTrigger=LostFocus}"
                                          IsReadOnly="{Binding AjusteEsSalida}"
-                                         GotKeyboardFocus="ZeroNumericTextBox_GotKeyboardFocus"
-                                         LostKeyboardFocus="ZeroNumericTextBox_LostKeyboardFocus"
-                                          Style="{StaticResource ModernTextBoxStyle}" />
+                                         behaviors:DecimalInputBehavior.IsEnabled="True"
+                                         behaviors:DecimalInputBehavior.DecimalPlaces="6"
+                                         behaviors:DecimalInputBehavior.UpdateSourceWhileTyping="True"
+                                         behaviors:DecimalInputBehavior.ClearZeroOnFocus="True"
+                                         Style="{StaticResource ModernTextBoxStyle}" />
                             </Border>
                             <TextBlock Text="{Binding AjusteOrigenCosto}"
                                        Style="{StaticResource FieldHelpStyle}"
                                        TextWrapping="Wrap" Margin="0,3,0,0" />
                         </StackPanel>
-                        <StackPanel Grid.Row="4" Grid.Column="2">
-                            <TextBlock Text="Motivo *" Style="{StaticResource FieldLabelStyle}" />
+                          <StackPanel Grid.Row="2" Grid.Column="4">
+                             <TextBlock Style="{StaticResource FieldLabelStyle}">
+                                 <Run Text="Motivo" />
+                                 <Run Text=" *" Foreground="#DC2626" FontWeight="Bold" />
+                             </TextBlock>
                             <Border Style="{StaticResource FormFieldBorderStyle}">
                                 <TextBox Text="{Binding AjusteMotivo, UpdateSourceTrigger=PropertyChanged}"
                                          Style="{StaticResource UpperTextBoxStyle}" />
@@ -3112,61 +3201,161 @@
                             <TextBlock Text="LOTES DEL AJUSTE"
                                        Style="{StaticResource FieldLabelStyle}"
                                        VerticalAlignment="Center" />
-                            <Button Content="+ AGREGAR LOTE"
-                                    Command="{Binding AgregarLoteAjusteCommand}"
-                                    HorizontalAlignment="Right"
-                                    Style="{StaticResource PrimaryButtonStyle}" />
-                        </Grid>
-                        <DataGrid ItemsSource="{Binding AjusteLotes}"
-                                  Style="{StaticResource KontaxDataGridStyle}"
-                                  AutoGenerateColumns="False" CanUserAddRows="False"
-                                  RowHeight="NaN" MinRowHeight="54"
-                                  MaxHeight="280" VerticalScrollBarVisibility="Auto">
-                            <DataGrid.Columns>
-                                <DataGridTemplateColumn Header="LOTE" Width="2*">
+                              <Button Content="+ AGREGAR LOTE"
+                                      Command="{Binding AgregarLoteAjusteCommand}"
+                                      IsEnabled="{Binding PuedeAgregarLoteAjuste}"
+                                      Visibility="{Binding AjusteEsEntrada,
+                                          Converter={StaticResource BooleanToVisibilityConverter}}"
+                                      Click="AgregarLoteAjusteButton_Click"
+                                     HorizontalAlignment="Right"
+                                     Style="{StaticResource PrimaryButtonStyle}" />
+                         </Grid>
+                         <DataGrid x:Name="AjusteLotesGrid"
+                                   ItemsSource="{Binding AjusteLotes}"
+                                   Style="{StaticResource KontaxDataGridStyle}"
+                                   AutoGenerateColumns="False" CanUserAddRows="False"
+                                   RowHeight="NaN" MinRowHeight="54"
+                                   MaxHeight="320" VerticalScrollBarVisibility="Auto">
+                             <DataGrid.Columns>
+                                 <DataGridTemplateColumn x:Name="AjusteLoteNumeroColumn"
+                                                         Header="LOTE" Width="3*">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <StackPanel Margin="3">
-                                                <ComboBox ItemsSource="{Binding Sugerencias}"
-                                                          DisplayMemberPath="NumeroLote"
-                                                          SelectedValuePath="NumeroLote"
-                                                          SelectedValue="{Binding NumeroLote, UpdateSourceTrigger=PropertyChanged}"
-                                                          Text="{Binding NumeroLote, UpdateSourceTrigger=PropertyChanged}"
-                                                          IsEditable="{Binding DataContext.AjusteEsEntrada,
-                                                        RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                          IsTextSearchEnabled="True"
-                                                          StaysOpenOnEdit="True"
-                                                          IsDropDownOpen="{Binding MostrarSugerencias, Mode=TwoWay}"
-                                                          MinHeight="36"
-                                                          VerticalContentAlignment="Center"
-                                                          Style="{StaticResource ModernComboBoxStyle}">
-                                                    <ComboBox.ItemTemplate>
-                                                        <DataTemplate>
-                                                            <StackPanel Margin="2">
-                                                                <TextBlock Text="{Binding NumeroLote}" FontWeight="SemiBold" />
-                                                                <TextBlock FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}">
-                                                                    <Run Text="Disponible: " />
-                                                                    <Run Text="{Binding Disponible, StringFormat={}{0:0.######}}" />
-                                                                    <Run Text="  ·  Cad.: " />
-                                                                    <Run Text="{Binding FechaCaducidad, StringFormat={}{0:dd/MM/yyyy}}" />
-                                                                </TextBlock>
-                                                            </StackPanel>
-                                                        </DataTemplate>
-                                                    </ComboBox.ItemTemplate>
-                                                </ComboBox>
-                                                <TextBlock Visibility="{Binding EsExistente,
-                                                    Converter={StaticResource BooleanToVisibilityConverter}}"
-                                                           Foreground="{DynamicResource TextSecondaryBrush}"
-                                                           FontSize="11">
-                                                    <Run Text="LOTE EXISTENTE  ·  Disponible: " />
-                                                    <Run Text="{Binding StockActual, StringFormat={}{0:0.######}}" />
-                                                </TextBlock>
-                                                <TextBlock Text="NUEVO LOTE"
-                                                           Visibility="{Binding EsNuevo,
-                                                    Converter={StaticResource BooleanToVisibilityConverter}}"
-                                                           Foreground="{DynamicResource BrandProBrush}"
-                                                           FontSize="11" FontWeight="SemiBold" />
-                                                <StackPanel Visibility="{Binding TieneLoteSimilar,
+                                                <Grid Visibility="{Binding DataContext.AjusteEsEntrada,
+                                                    RelativeSource={RelativeSource AncestorType=UserControl},
+                                                    Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                      <Border Style="{StaticResource FormFieldBorderStyle}"
+                                                              Height="40" MinHeight="40"
+                                                              BorderThickness="1">
+                                                         <TextBox x:Name="AjusteLoteEntradaInput"
+                                                                 Text="{Binding NumeroLote,
+                                                                    UpdateSourceTrigger=PropertyChanged}"
+                                                                  Height="38" MinHeight="38"
+                                                                  Padding="10,4"
+                                                                  LostKeyboardFocus="AjusteLoteEntradaInput_LostKeyboardFocus"
+                                                                  >
+                                                             <TextBox.Style>
+                                                                  <Style TargetType="TextBox"
+                                                                         BasedOn="{StaticResource ModernTextBoxStyle}">
+                                                                      <Setter Property="CharacterCasing"
+                                                                              Value="Upper" />
+                                                                      <Style.Triggers>
+                                                                         <DataTrigger Binding="{Binding EsExistente}"
+                                                                                      Value="True">
+                                                                             <Setter Property="Foreground"
+                                                                                     Value="{DynamicResource BrandProBrush}" />
+                                                                             <Setter Property="FontWeight"
+                                                                                     Value="SemiBold" />
+                                                                         </DataTrigger>
+                                                                         <DataTrigger Binding="{Binding EsNuevo}"
+                                                                                      Value="True">
+                                                                             <Setter Property="Foreground"
+                                                                                     Value="{DynamicResource WarningTextBrush}" />
+                                                                             <Setter Property="FontWeight"
+                                                                                     Value="SemiBold" />
+                                                                         </DataTrigger>
+                                                                     </Style.Triggers>
+                                                                 </Style>
+                                                             </TextBox.Style>
+                                                         </TextBox>
+                                                    </Border>
+                                                    <Popup PlacementTarget="{Binding ElementName=AjusteLoteEntradaInput}"
+                                                           Placement="Bottom"
+                                                           VerticalOffset="3"
+                                                           Width="{Binding ActualWidth,
+                                                               ElementName=AjusteLoteEntradaInput}"
+                                                           MinWidth="340"
+                                                           MaxHeight="280"
+                                                           AllowsTransparency="True"
+                                                           PopupAnimation="Fade"
+                                                           StaysOpen="False"
+                                                           IsOpen="{Binding MostrarSugerencias,
+                                                               Mode=TwoWay}">
+                                                        <Border Background="{DynamicResource CardBackgroundBrush}"
+                                                                BorderBrush="{DynamicResource InputBorderBrush}"
+                                                                BorderThickness="1"
+                                                                CornerRadius="8"
+                                                                Padding="3">
+                                                              <ListBox ItemsSource="{Binding Sugerencias}"
+                                                                      SelectedItem="{Binding LoteSugeridoSeleccionado,
+                                                                          Mode=TwoWay,
+                                                                          UpdateSourceTrigger=PropertyChanged}"
+                                                                      SelectionChanged="AjusteLoteSugerencia_SelectionChanged"
+                                                                      SelectionMode="Single"
+                                                                     Background="Transparent"
+                                                                     BorderThickness="0"
+                                                                     Foreground="{DynamicResource PrimaryTextBrush}"
+                                                                     MaxHeight="270"
+                                                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                                                     ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                                                <ListBox.ItemContainerStyle>
+                                                                    <Style TargetType="ListBoxItem">
+                                                                        <Setter Property="Background" Value="Transparent" />
+                                                                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                                                        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                                                                        <Setter Property="Template">
+                                                                            <Setter.Value>
+                                                                                <ControlTemplate TargetType="ListBoxItem">
+                                                                                    <Border x:Name="SuggestionItemBorder"
+                                                                                            Background="{TemplateBinding Background}"
+                                                                                            CornerRadius="6"
+                                                                                            Padding="9,7">
+                                                                                        <ContentPresenter />
+                                                                                    </Border>
+                                                                                    <ControlTemplate.Triggers>
+                                                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                                                            <Setter TargetName="SuggestionItemBorder"
+                                                                                                    Property="Background"
+                                                                                                    Value="{DynamicResource HoverBrush}" />
+                                                                                        </Trigger>
+                                                                                        <Trigger Property="IsSelected" Value="True">
+                                                                                            <Setter TargetName="SuggestionItemBorder"
+                                                                                                    Property="Background"
+                                                                                                    Value="{DynamicResource TableSelectedRowBrush}" />
+                                                                                        </Trigger>
+                                                                                    </ControlTemplate.Triggers>
+                                                                                </ControlTemplate>
+                                                                            </Setter.Value>
+                                                                        </Setter>
+                                                                    </Style>
+                                                                </ListBox.ItemContainerStyle>
+                                                                 <ListBox.ItemTemplate>
+                                                                     <DataTemplate>
+                                                                         <Grid MinHeight="22">
+                                                                             <TextBlock Text="{Binding NumeroLote, Mode=OneWay}"
+                                                                                        FontWeight="SemiBold"
+                                                                                        VerticalAlignment="Center"
+                                                                                        TextWrapping="NoWrap" />
+                                                                         </Grid>
+                                                                     </DataTemplate>
+                                                                 </ListBox.ItemTemplate>
+                                                            </ListBox>
+                                                        </Border>
+                                                    </Popup>
+                                                </Grid>
+                                                  <Border Height="40" MinHeight="40"
+                                                          Padding="10,0"
+                                                          CornerRadius="9"
+                                                          VerticalAlignment="Center"
+                                                          Background="{DynamicResource InputBackgroundBrush}"
+                                                          BorderBrush="{DynamicResource InputBorderBrush}"
+                                                          BorderThickness="1"
+                                                          Visibility="{Binding DataContext.AjusteEsSalida,
+                                                              RelativeSource={RelativeSource AncestorType=UserControl},
+                                                              Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                      <TextBlock VerticalAlignment="Center"
+                                                                 Foreground="{DynamicResource PrimaryTextBrush}"
+                                                                 TextWrapping="NoWrap">
+                                                          <Run Text="{Binding NumeroLote, Mode=OneWay}"
+                                                               FontWeight="Bold" />
+                                                          <Run Text="  →  Disponible: " />
+                                                          <Run Text="{Binding StockActual, Mode=OneWay,
+                                                              StringFormat={}{0:0.######}}"
+                                                               FontWeight="SemiBold" />
+                                                      </TextBlock>
+                                                  </Border>
+                                                 <StackPanel Visibility="{Binding TieneLoteSimilar,
                                                     Converter={StaticResource BooleanToVisibilityConverter}}">
                                                     <TextBlock Foreground="#F59E0B" TextWrapping="Wrap">
                                                         <Run Text="Existe un lote posiblemente equivalente: " />
@@ -3189,40 +3378,44 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTemplateColumn Header="CANTIDAD BASE" Width="115">
-                                    <DataGridTemplateColumn.CellTemplate><DataTemplate>
-                                        <TextBox Text="{Binding CantidadBase, UpdateSourceTrigger=LostFocus,
-                                                          StringFormat={}{0:#,0.######}}"
-                                                 Language="en-US"
-                                                 behaviors:DecimalInputBehavior.IsEnabled="True"
-                                                 behaviors:DecimalInputBehavior.DecimalPlaces="6"
-                                                 behaviors:DecimalInputBehavior.ClearZeroOnFocus="True"
-                                                 Style="{StaticResource KontaxUpperDataGridTextBoxStyle}" />
+                                 <DataGridTemplateColumn x:Name="AjusteLoteCantidadColumn"
+                                                         Header="CANTIDAD" Width="140">
+                                     <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                         <TextBox x:Name="AjusteLoteCantidadInput"
+                                                  Text="{Binding CantidadBase, UpdateSourceTrigger=LostFocus,
+                                                           StringFormat={}{0:#,0.######}}"
+                                                  Language="en-US"
+                                                  behaviors:DecimalInputBehavior.IsEnabled="True"
+                                                  behaviors:DecimalInputBehavior.DecimalPlaces="6"
+                                                  behaviors:DecimalInputBehavior.UpdateSourceWhileTyping="True"
+                                                  behaviors:DecimalInputBehavior.ClearZeroOnFocus="True"
+                                                  Style="{StaticResource AjusteDataGridTextBoxStyle}" />
                                     </DataTemplate></DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTemplateColumn x:Name="AjusteLoteElaboracionColumn"
-                                                        Header="ELABORACIÓN" Width="110">
+                                 <DataGridTemplateColumn x:Name="AjusteLoteElaboracionColumn"
+                                                         Header="ELABORACIÓN" Width="145">
                                     <DataGridTemplateColumn.CellTemplate><DataTemplate>
                                         <TextBox Text="{Binding FechaElaboracion, StringFormat=dd/MM/yyyy,
                                                           UpdateSourceTrigger=LostFocus, ValidatesOnExceptions=True}"
-                                                 IsReadOnly="{Binding EsExistente}"
-                                                 Language="es-EC" ToolTip="DD/MM/AAAA (opcional)"
-                                                 behaviors:DateInputBehavior.IsEnabled="True"
-                                                 Style="{StaticResource KontaxUpperDataGridTextBoxStyle}" />
+                                                  IsReadOnly="{Binding EsExistente}"
+                                                  Language="es-EC" ToolTip="DD/MM/AAAA (opcional)"
+                                                  behaviors:DateInputBehavior.IsEnabled="True"
+                                                  Style="{StaticResource AjusteDataGridTextBoxStyle}" />
                                     </DataTemplate></DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTemplateColumn x:Name="AjusteLoteCaducidadColumn"
-                                                        Header="CADUCIDAD" Width="110">
+                                 <DataGridTemplateColumn x:Name="AjusteLoteCaducidadColumn"
+                                                         Header="CADUCIDAD" Width="145">
                                     <DataGridTemplateColumn.CellTemplate><DataTemplate>
                                         <TextBox Text="{Binding FechaCaducidad, StringFormat=dd/MM/yyyy,
                                                           UpdateSourceTrigger=LostFocus, ValidatesOnExceptions=True}"
-                                                 IsReadOnly="{Binding EsExistente}"
-                                                 Language="es-EC" ToolTip="DD/MM/AAAA"
-                                                 behaviors:DateInputBehavior.IsEnabled="True"
-                                                 Style="{StaticResource KontaxUpperDataGridTextBoxStyle}" />
+                                                  IsReadOnly="{Binding EsExistente}"
+                                                  Language="es-EC" ToolTip="DD/MM/AAAA"
+                                                  behaviors:DateInputBehavior.IsEnabled="True"
+                                                  Style="{StaticResource AjusteDataGridTextBoxStyle}" />
                                     </DataTemplate></DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTemplateColumn Header="" Width="46">
+                                 <DataGridTemplateColumn x:Name="AjusteLoteAccionesColumn"
+                                                         Header="ACCIONES" Width="86">
                                     <DataGridTemplateColumn.CellTemplate><DataTemplate>
                                         <Button Command="{Binding DataContext.QuitarLoteAjusteCommand,
                                                     RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -3238,10 +3431,14 @@
                                 Background="{DynamicResource InputBackgroundBrush}">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="{Binding AjusteLotesAsignado, Mode=OneWay, StringFormat=Asignado: {0:0.######}}"
-                                           FontWeight="SemiBold" />
-                                <TextBlock Text="  —  " />
-                                <TextBlock Text="{Binding AjusteCantidadBase, Mode=OneWay, StringFormat=Requerido: {0:0.######}}" />
-                                <TextBlock Text="  —  " />
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource PrimaryTextBrush}" />
+                                <TextBlock Text="  —  "
+                                           Foreground="{DynamicResource SecondaryTextBrush}" />
+                                <TextBlock Text="{Binding AjusteCantidadBase, Mode=OneWay, StringFormat=Requerido: {0:0.######}}"
+                                           Foreground="{DynamicResource PrimaryTextBrush}" />
+                                <TextBlock Text="  —  "
+                                           Foreground="{DynamicResource SecondaryTextBrush}" />
                                 <TextBlock Text="{Binding AjusteLotesPendiente, Mode=OneWay, StringFormat=Pendiente: {0:0.######}}"
                                            Foreground="#F59E0B" FontWeight="SemiBold" />
                             </StackPanel>
@@ -3253,20 +3450,26 @@
                                   Converter={StaticResource BooleanToVisibilityConverter}}">
                         <Grid Margin="0,0,0,8">
                             <TextBlock Text="SERIES NUEVAS" Style="{StaticResource FieldLabelStyle}" />
-                            <Button Content="+ AGREGAR SERIE"
-                                    Command="{Binding AgregarSerieNuevaAjusteCommand}"
-                                    HorizontalAlignment="Right"
-                                    Style="{StaticResource PrimaryButtonStyle}" />
-                        </Grid>
-                        <DataGrid ItemsSource="{Binding AjusteSeriesNuevas}"
-                                  Style="{StaticResource KontaxDataGridStyle}"
-                                  AutoGenerateColumns="False" CanUserAddRows="False"
-                                  RowHeight="NaN" MinRowHeight="54" MaxHeight="240">
-                            <DataGrid.Columns>
-                                <DataGridTemplateColumn Header="SERIE" Width="*">
-                                    <DataGridTemplateColumn.CellTemplate><DataTemplate>
-                                        <TextBox Text="{Binding NumeroSerie, UpdateSourceTrigger=PropertyChanged}"
-                                                 Style="{StaticResource KontaxUpperDataGridTextBoxStyle}" />
+                             <Button Content="+ AGREGAR SERIE"
+                                     Command="{Binding AgregarSerieNuevaAjusteCommand}"
+                                     IsEnabled="{Binding PuedeAgregarSerieNuevaAjuste}"
+                                     Click="AgregarSerieAjusteButton_Click"
+                                     HorizontalAlignment="Right"
+                                     Style="{StaticResource PrimaryButtonStyle}" />
+                         </Grid>
+                         <DataGrid x:Name="AjusteSeriesNuevasGrid"
+                                   ItemsSource="{Binding AjusteSeriesNuevas}"
+                                   Style="{StaticResource KontaxDataGridStyle}"
+                                   AutoGenerateColumns="False" CanUserAddRows="False"
+                                   RowHeight="NaN" MinRowHeight="54"
+                                   MaxHeight="320"
+                                   VerticalScrollBarVisibility="Auto">
+                             <DataGrid.Columns>
+                                 <DataGridTemplateColumn x:Name="AjusteSerieNumeroColumn"
+                                                         Header="SERIE" Width="*">
+                                     <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                         <TextBox Text="{Binding NumeroSerie, UpdateSourceTrigger=PropertyChanged}"
+                                                  Style="{StaticResource AjusteDataGridTextBoxStyle}" />
                                     </DataTemplate></DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
                                 <DataGridTemplateColumn x:Name="AjusteSerieNuevaLoteColumn"
@@ -3274,14 +3477,16 @@
                                     <DataGridTemplateColumn.CellTemplate><DataTemplate>
                                         <ComboBox ItemsSource="{Binding DataContext.AjusteLotes,
                                                     RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                  DisplayMemberPath="NumeroLote" SelectedValuePath="NumeroLote"
-                                                  SelectedValue="{Binding NumeroLote}"
-                                                  IsEnabled="{Binding DataContext.MostrarLoteAsociadoSeries,
-                                                    RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                  Style="{StaticResource ModernComboBoxStyle}" />
+                                                  DisplayMemberPath="NumeroLote" SelectedValuePath="FilaId"
+                                                  SelectedValue="{Binding LoteFilaId,
+                                                      Mode=TwoWay,
+                                                      UpdateSourceTrigger=PropertyChanged}"
+                                                   IsEnabled="{Binding DataContext.MostrarLoteAsociadoSeries,
+                                                     RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                   Style="{StaticResource AjusteDataGridComboBoxStyle}" />
                                     </DataTemplate></DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTemplateColumn Header="" Width="46">
+                                 <DataGridTemplateColumn Header="ACCIONES" Width="86">
                                     <DataGridTemplateColumn.CellTemplate><DataTemplate>
                                         <Button Command="{Binding DataContext.QuitarSerieNuevaAjusteCommand,
                                                     RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -3297,10 +3502,14 @@
                                 Background="{DynamicResource InputBackgroundBrush}">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="{Binding AjusteSeriesNuevasRegistradas, Mode=OneWay, StringFormat=Registradas: {0}}"
-                                           FontWeight="SemiBold" />
-                                <TextBlock Text="  —  " />
-                                <TextBlock Text="{Binding AjusteCantidadBase, Mode=OneWay, StringFormat=Requeridas: {0:0}}" />
-                                <TextBlock Text="  —  " />
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource PrimaryTextBrush}" />
+                                <TextBlock Text="  —  "
+                                           Foreground="{DynamicResource SecondaryTextBrush}" />
+                                <TextBlock Text="{Binding AjusteCantidadBase, Mode=OneWay, StringFormat=Requeridas: {0:0}}"
+                                           Foreground="{DynamicResource PrimaryTextBrush}" />
+                                <TextBlock Text="  —  "
+                                           Foreground="{DynamicResource SecondaryTextBrush}" />
                                 <TextBlock Text="{Binding AjusteSeriesPendientes, Mode=OneWay, StringFormat=Pendientes: {0:0}}"
                                            Foreground="#F59E0B" FontWeight="SemiBold" />
                             </StackPanel>
@@ -3318,12 +3527,10 @@
                                     <CheckBox IsChecked="{Binding IsSelected}" Margin="0,3"
                                               Style="{StaticResource KontaxCheckBoxStyle}">
                                         <TextBlock>
-                                            <Run Text="{Binding NumeroSerie}" FontWeight="SemiBold" />
-                                            <Run Text="  ·  Lote: " />
-                                            <Run Text="{Binding NumeroLote}" />
-                                            <Run Text="  ·  Ubicación: " />
-                                            <Run Text="{Binding Ubicacion}" />
-                                        </TextBlock>
+                                             <Run Text="{Binding NumeroSerie}" FontWeight="SemiBold" />
+                                             <Run Text="  ·  Lote: " />
+                                             <Run Text="{Binding NumeroLote}" />
+                                         </TextBlock>
                                     </CheckBox>
                                 </DataTemplate></ItemsControl.ItemTemplate>
                             </ItemsControl>
@@ -3332,20 +3539,51 @@
                                 Background="{DynamicResource InputBackgroundBrush}">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="{Binding AjusteSeriesSeleccionadas, Mode=OneWay, StringFormat=Seleccionadas: {0}}"
-                                           FontWeight="SemiBold" />
-                                <TextBlock Text="  —  " />
-                                <TextBlock Text="{Binding AjusteCantidadBase, Mode=OneWay, StringFormat=Requeridas: {0:0}}" />
-                                <TextBlock Text="  —  " />
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource PrimaryTextBrush}" />
+                                <TextBlock Text="  —  "
+                                           Foreground="{DynamicResource SecondaryTextBrush}" />
+                                <TextBlock Text="{Binding AjusteCantidadBase, Mode=OneWay, StringFormat=Requeridas: {0:0}}"
+                                           Foreground="{DynamicResource PrimaryTextBrush}" />
+                                <TextBlock Text="  —  "
+                                           Foreground="{DynamicResource SecondaryTextBrush}" />
                                 <TextBlock Text="{Binding AjusteSeriesPendientes, Mode=OneWay, StringFormat=Pendientes: {0:0}}"
                                            Foreground="#F59E0B" FontWeight="SemiBold" />
                             </StackPanel>
                         </Border>
-                        <TextBlock Text="Distribución automática por lote"
-                                   Style="{StaticResource FieldLabelStyle}" Margin="0,9,0,2" />
-                        <TextBlock Text="{Binding AjusteResumenDistribucionSeries, Mode=OneWay}"
-                                   TextWrapping="Wrap" />
+                        <Border Margin="0,8,0,0"
+                                Padding="10,7"
+                                CornerRadius="8"
+                                Background="{DynamicResource InfoSoftBrush}"
+                                BorderBrush="{DynamicResource BrandProBrush}"
+                                BorderThickness="1">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <materialDesign:PackIcon Kind="InformationOutline"
+                                                         Width="16" Height="16"
+                                                         Margin="0,1,8,0"
+                                                         VerticalAlignment="Top"
+                                                         Foreground="{DynamicResource BrandProBrush}" />
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="Distribución automática por lote"
+                                               FontSize="11"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource PrimaryTextBrush}" />
+                                    <TextBlock Text="{Binding AjusteResumenDistribucionSeries, Mode=OneWay}"
+                                               Margin="0,1,0,0"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
                     </StackPanel>
-                    <TextBlock Text="Observación" Style="{StaticResource FieldLabelStyle}" Margin="0,14,0,0" />
+                    <TextBlock Text="Observación"
+                               Style="{StaticResource FieldLabelStyle}"
+                               Margin="0,14,0,6" />
                     <Border Style="{StaticResource FormFieldBorderStyle}">
                         <TextBox Text="{Binding AjusteObservacion, UpdateSourceTrigger=PropertyChanged}"
                                  AcceptsReturn="True" MinHeight="70"
@@ -3360,6 +3598,7 @@
                     <Button Content="Cancelar" Command="{Binding CerrarAjusteCommand}"
                             Style="{StaticResource DangerButtonStyle}" />
                     <Button Content="Registrar ajuste" Command="{Binding RegistrarAjusteCommand}"
+                            IsEnabled="{Binding PuedeRegistrarAjuste}"
                             Margin="10,0,0,0" Style="{StaticResource PrimaryButtonStyle}" />
                 </StackPanel>
             </Grid>

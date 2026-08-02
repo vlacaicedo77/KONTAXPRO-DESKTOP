@@ -32,6 +32,7 @@ public class AjusteInventarioRulesTests
     [InlineData("LT510", "lt510")]
     [InlineData("LT-510", "LT 510")]
     [InlineData("ABC-2026-510", "510")]
+    [InlineData("PBJ-208-TJ-A", "208")]
     public void BusquedaParcialFlexible_EncuentraLote(
         string codigo, string consulta) =>
         Assert.True(AjusteInventarioRules.CoincideBusquedaLote(
@@ -71,6 +72,22 @@ public class AjusteInventarioRulesTests
     }
 
     [Fact]
+    public void SalidaConLotesPrecargados_IgnoraCantidadesEnCero()
+    {
+        var error = AjusteInventarioRules.ValidarLotes(2,
+            [new("A", 0, 8, true), new("B", 2, 3, true)], true);
+        Assert.Null(error);
+    }
+
+    [Fact]
+    public void SalidaConTodosLosLotesEnCero_SeRechaza()
+    {
+        var error = AjusteInventarioRules.ValidarLotes(2,
+            [new("A", 0, 8, true), new("B", 0, 3, true)], true);
+        Assert.NotNull(error);
+    }
+
+    [Fact]
     public void SalidaDeLoteSinStock_SeRechaza()
     {
         var error = AjusteInventarioRules.ValidarLotes(2,
@@ -103,6 +120,26 @@ public class AjusteInventarioRulesTests
     }
 
     [Fact]
+    public void SerieYaExistenteEnProducto_SeRechaza()
+    {
+        HashSet<string> existentes = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "SN001"
+        };
+        var error = AjusteInventarioRules.ValidarSeriesNuevas(1,
+            [new(" sn001 ", null)], existentes);
+        Assert.Contains("ya existe", error);
+    }
+
+    [Fact]
+    public void FilaDeSerieVacia_SeRechaza()
+    {
+        var error = AjusteInventarioRules.ValidarSeriesNuevas(1,
+            [new("SN001", null), new("", null)], new HashSet<string>());
+        Assert.Contains("vacías", error);
+    }
+
+    [Fact]
     public void CantidadSerializadaFraccionaria_SeRechaza()
     {
         var error = AjusteInventarioRules.ValidarSeries(1.5m,
@@ -125,5 +162,176 @@ public class AjusteInventarioRulesTests
         var error = AjusteInventarioRules.ValidarLotes(2,
             [new("LT1", 1, 3, true), new("lt1", 1, 3, true)], false);
         Assert.Contains("repetirse", error);
+    }
+
+    [Fact]
+    public void EntradaLoteYSerie_Completa_HabilitaRegistro()
+    {
+        var ajuste = CrearEntradaLoteYSerieValida();
+
+        var razones = AjusteInventarioRules
+            .ObtenerRazonesEntradaLoteYSerieNoValida(ajuste);
+
+        Assert.Empty(razones);
+    }
+
+    [Fact]
+    public void EntradaLoteYSerie_ConUnaSerieFaltante_NoHabilitaRegistro()
+    {
+        var baseValida = CrearEntradaLoteYSerieValida();
+        var ajuste = baseValida with
+        {
+            Series = baseValida.Series.Take(1).ToList()
+        };
+
+        var razones = AjusteInventarioRules
+            .ObtenerRazonesEntradaLoteYSerieNoValida(ajuste);
+
+        Assert.NotEmpty(razones);
+    }
+
+    [Fact]
+    public void EntradaLoteYSerie_SinCantidadDeLote_NoHabilitaRegistro()
+    {
+        var baseValida = CrearEntradaLoteYSerieValida();
+        var ajuste = baseValida with
+        {
+            Lotes = baseValida.Lotes.Select(x =>
+                x with { CantidadBase = 0 }).ToList()
+        };
+
+        var razones = AjusteInventarioRules
+            .ObtenerRazonesEntradaLoteYSerieNoValida(ajuste);
+
+        Assert.Contains(razones, x => x.Contains("cantidad mayor que cero"));
+    }
+
+    [Fact]
+    public void EntradaLoteYSerie_ConSerieSinLote_NoHabilitaRegistro()
+    {
+        var baseValida = CrearEntradaLoteYSerieValida();
+        var ajuste = baseValida with
+        {
+            Series = baseValida.Series.Select((x, index) => index == 0
+                ? x with { LoteFilaId = null }
+                : x).ToList()
+        };
+
+        var razones = AjusteInventarioRules
+            .ObtenerRazonesEntradaLoteYSerieNoValida(ajuste);
+
+        Assert.Contains(razones, x => x.Contains("Asocie cada serie"));
+    }
+
+    [Fact]
+    public void EntradaLoteYSerie_ConDistribucionIncorrecta_NoHabilitaRegistro()
+    {
+        var loteAId = Guid.NewGuid();
+        var loteBId = Guid.NewGuid();
+        var ajuste = CrearEntradaLoteYSerieValida() with
+        {
+            Lotes = new List<LoteEntradaAjusteSnapshot>
+            {
+                new(loteAId, 10, "PJB-2608-A", 1),
+                new(loteBId, 11, "PJB-2608-B", 1)
+            },
+            Series = new List<SerieEntradaAjusteSnapshot>
+            {
+                new("SA-001", loteAId),
+                new("SA-002", loteAId)
+            }
+        };
+
+        var razones = AjusteInventarioRules
+            .ObtenerRazonesEntradaLoteYSerieNoValida(ajuste);
+
+        Assert.Contains(razones, x => x.Contains("deben coincidir con su cantidad"));
+    }
+
+    [Fact]
+    public void EntradaLoteYSerie_ObservacionVacia_SigueHabilitandoRegistro()
+    {
+        // La observación no forma parte del estado validable: continúa opcional.
+        var razones = AjusteInventarioRules
+            .ObtenerRazonesEntradaLoteYSerieNoValida(
+                CrearEntradaLoteYSerieValida());
+
+        Assert.Empty(razones);
+    }
+
+    [Fact]
+    public void EntradaLoteYSerie_ConCantidadCero_NoHabilitaRegistro()
+    {
+        var ajuste = CrearEntradaLoteYSerieValida() with
+        {
+            CantidadPresentacion = 0
+        };
+
+        var razones = AjusteInventarioRules
+            .ObtenerRazonesEntradaLoteYSerieNoValida(ajuste);
+
+        Assert.Contains(razones, x => x.Contains("cantidad debe ser mayor"));
+    }
+
+    [Fact]
+    public void EntradaLoteYSerie_ConMotivoVacio_NoHabilitaRegistro()
+    {
+        var ajuste = CrearEntradaLoteYSerieValida() with { Motivo = "   " };
+
+        var razones = AjusteInventarioRules
+            .ObtenerRazonesEntradaLoteYSerieNoValida(ajuste);
+
+        Assert.Contains(razones, x => x.Contains("motivo"));
+    }
+
+    [Fact]
+    public void EntradaLoteYSerie_SeVuelveValidaTrasUltimaAsociacion()
+    {
+        var loteId = Guid.NewGuid();
+        var lotes = new List<LoteEntradaAjusteSnapshot>();
+        var series = new List<SerieEntradaAjusteSnapshot>();
+        var ajuste = CrearEntradaLoteYSerieValida() with
+        {
+            Lotes = lotes,
+            Series = series
+        };
+        Assert.NotEmpty(AjusteInventarioRules
+            .ObtenerRazonesEntradaLoteYSerieNoValida(ajuste));
+
+        lotes.Add(new(loteId, 77, "PJB-2608-A", 2));
+        series.Add(new("SA-001", loteId));
+        series.Add(new("SA-002", null));
+        Assert.NotEmpty(AjusteInventarioRules
+            .ObtenerRazonesEntradaLoteYSerieNoValida(ajuste));
+
+        series[1] = series[1] with { LoteFilaId = loteId };
+
+        Assert.Empty(AjusteInventarioRules
+            .ObtenerRazonesEntradaLoteYSerieNoValida(ajuste));
+    }
+
+    private static EntradaLoteYSerieAjusteSnapshot
+        CrearEntradaLoteYSerieValida()
+    {
+        var loteId = Guid.NewGuid();
+        return new EntradaLoteYSerieAjusteSnapshot(
+            false,
+            1,
+            2,
+            2,
+            1,
+            330m,
+            "AJUSTE DE PRUEBA",
+            false,
+            new List<LoteEntradaAjusteSnapshot>
+            {
+                new(loteId, 77, "PJB-2608-A", 2)
+            },
+            new List<SerieEntradaAjusteSnapshot>
+            {
+                new("SA-001", loteId),
+                new("SA-002", loteId)
+            },
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase));
     }
 }

@@ -29,7 +29,8 @@ public sealed class InventoryService(
         {
             ProductoId = producto.Id,
             TipoControl = ObtenerTipoControl(
-                producto.ManejaLotes, producto.ManejaSeries)
+                producto.ManejaLotes, producto.ManejaSeries),
+            ManejaFechaCaducidad = producto.ManejaFechaCaducidad
         };
         var bodegas = await context.ProductosExistencias.AsNoTracking()
             .Where(x => x.ProductoId == productoId)
@@ -84,6 +85,10 @@ public sealed class InventoryService(
                     ,Ubicacion = x.Ubicacion
                 }
             }).ToListAsync(cancellationToken);
+        resultado.SeriesProducto = await context.ProductosSeries.AsNoTracking()
+            .Where(x => x.ProductoId == productoId)
+            .Select(x => x.NumeroSerie)
+            .ToListAsync(cancellationToken);
         foreach (var bodega in bodegas)
         {
             bodega.Lotes = lotesDatos.Where(x => x.BodegaId == bodega.BodegaId)

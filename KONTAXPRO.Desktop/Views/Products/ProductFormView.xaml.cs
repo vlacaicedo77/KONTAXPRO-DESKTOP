@@ -335,6 +335,122 @@ public partial class ProductFormView : UserControl
         }
     }
 
+    private void AjusteLoteEntradaInput_LostKeyboardFocus(
+        object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (sender is not TextBox
+            {
+                DataContext: global::KONTAXPRO.Desktop.ViewModels.Products
+                    .AjusteLoteEditorViewModel lote
+            })
+            return;
+
+        Dispatcher.BeginInvoke(
+            System.Windows.Threading.DispatcherPriority.ContextIdle,
+            () => lote.MostrarSugerencias = false);
+    }
+
+    private void AjusteLoteSugerencia_SelectionChanged(
+        object sender, SelectionChangedEventArgs e)
+    {
+        if (e.AddedItems.Count == 0 ||
+            sender is not ListBox
+            {
+                DataContext: global::KONTAXPRO.Desktop.ViewModels.Products
+                    .AjusteLoteEditorViewModel lote
+            })
+            return;
+
+        Dispatcher.BeginInvoke(
+            System.Windows.Threading.DispatcherPriority.ApplicationIdle,
+            () =>
+            {
+                lote.MostrarSugerencias = false;
+                AjusteLotesGrid.SelectedItem = lote;
+                AjusteLotesGrid.ScrollIntoView(lote, AjusteLoteCantidadColumn);
+                AjusteLotesGrid.UpdateLayout();
+
+                var content = AjusteLoteCantidadColumn.GetCellContent(lote);
+                var input = content as TextBox ??
+                    (content is null
+                        ? null
+                        : FindVisualChildren<TextBox>(content).FirstOrDefault(x =>
+                            x.Name == "AjusteLoteCantidadInput"));
+                if (input is null)
+                    return;
+
+                input.BringIntoView();
+                input.Focusable = true;
+                input.Focus();
+                Keyboard.Focus(input);
+                input.SelectAll();
+            });
+    }
+
+    private void AgregarLoteAjusteButton_Click(
+        object sender, RoutedEventArgs e)
+    {
+        Dispatcher.BeginInvoke(
+            System.Windows.Threading.DispatcherPriority.ContextIdle,
+            () =>
+            {
+                var item = AjusteLotesGrid.Items.Cast<object>().LastOrDefault();
+                if (item is null)
+                    return;
+
+                AjusteLotesGrid.SelectedItem = item;
+                AjusteLotesGrid.ScrollIntoView(item, AjusteLoteNumeroColumn);
+                AjusteLotesGrid.UpdateLayout();
+
+                var content = AjusteLoteNumeroColumn.GetCellContent(item);
+                var input = content as TextBox ??
+                    (content is null
+                        ? null
+                        : FindVisualChildren<TextBox>(content).FirstOrDefault(x =>
+                            x.Name == "AjusteLoteEntradaInput"));
+                if (input is null)
+                    return;
+
+                input.BringIntoView();
+                input.Focus();
+                Keyboard.Focus(input);
+                input.CaretIndex = input.Text.Length;
+            });
+    }
+
+    private void AgregarSerieAjusteButton_Click(
+        object sender, RoutedEventArgs e)
+    {
+        Dispatcher.BeginInvoke(
+            System.Windows.Threading.DispatcherPriority.ContextIdle,
+            () =>
+            {
+                var item = AjusteSeriesNuevasGrid.Items
+                    .Cast<object>()
+                    .LastOrDefault();
+                if (item is null)
+                    return;
+
+                AjusteSeriesNuevasGrid.SelectedItem = item;
+                AjusteSeriesNuevasGrid.ScrollIntoView(
+                    item, AjusteSerieNumeroColumn);
+                AjusteSeriesNuevasGrid.UpdateLayout();
+
+                var content = AjusteSerieNumeroColumn.GetCellContent(item);
+                var input = content as TextBox ??
+                    (content is null
+                        ? null
+                        : FindVisualChildren<TextBox>(content).FirstOrDefault());
+                if (input is null)
+                    return;
+
+                input.BringIntoView();
+                input.Focus();
+                Keyboard.Focus(input);
+                input.CaretIndex = input.Text.Length;
+            });
+    }
+
     private void NumeroSerieInicial_Loaded(
         object sender,
         RoutedEventArgs e)
@@ -449,7 +565,11 @@ public partial class ProductFormView : UserControl
         if (e.PropertyName is nameof(
                 global::KONTAXPRO.Desktop.ViewModels.Products.ProductFormViewModel.TipoControlInventario)
             or nameof(
-                global::KONTAXPRO.Desktop.ViewModels.Products.ProductFormViewModel.AlertaCaducidad))
+                global::KONTAXPRO.Desktop.ViewModels.Products.ProductFormViewModel.AlertaCaducidad)
+            or nameof(
+                global::KONTAXPRO.Desktop.ViewModels.Products.ProductFormViewModel.AjusteManejaFechaCaducidad)
+            or nameof(
+                global::KONTAXPRO.Desktop.ViewModels.Products.ProductFormViewModel.AjusteTipo))
             ActualizarColumnasInventario();
 
         if (e.PropertyName is nameof(
@@ -487,6 +607,11 @@ public partial class ProductFormView : UserControl
         object sender,
         MouseWheelEventArgs e)
     {
+        if (sender is not ScrollViewer outerScrollViewer)
+        {
+            return;
+        }
+
         if (e.OriginalSource is not DependencyObject source)
         {
             return;
@@ -516,11 +641,11 @@ public partial class ProductFormView : UserControl
         }
 
         e.Handled = true;
-        FormScrollViewer.ScrollToVerticalOffset(
+        outerScrollViewer.ScrollToVerticalOffset(
             Math.Clamp(
-                FormScrollViewer.VerticalOffset - e.Delta,
+                outerScrollViewer.VerticalOffset - e.Delta,
                 0,
-                FormScrollViewer.ScrollableHeight));
+                outerScrollViewer.ScrollableHeight));
     }
 
     private void ScrollableDataGrid_PreviewMouseWheel(
@@ -661,8 +786,15 @@ public partial class ProductFormView : UserControl
             viewModel.MostrarLoteAsociadoSeries
                 ? System.Windows.Visibility.Visible
                 : System.Windows.Visibility.Collapsed;
-        AjusteLoteElaboracionColumn.Visibility = visibilidadCaducidad;
-        AjusteLoteCaducidadColumn.Visibility = visibilidadCaducidad;
+        var visibilidadCaducidadAjuste =
+            viewModel.AjusteManejaFechaCaducidad
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        AjusteLoteElaboracionColumn.Visibility = visibilidadCaducidadAjuste;
+        AjusteLoteCaducidadColumn.Visibility = visibilidadCaducidadAjuste;
+        AjusteLoteAccionesColumn.Visibility = viewModel.AjusteEsEntrada
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         LotesInventarioAgregadoColumn.Visibility =
             viewModel.TipoControlInventario is "LOTE" or "LOTE_Y_SERIE"
                 ? System.Windows.Visibility.Visible

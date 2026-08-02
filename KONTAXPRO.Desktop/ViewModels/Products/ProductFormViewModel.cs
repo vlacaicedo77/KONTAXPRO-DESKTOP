@@ -85,6 +85,8 @@ public partial class ProductFormViewModel : ObservableObject
     public ObservableCollection<AjusteLoteEditorViewModel> AjusteLotes { get; } = new();
     public ObservableCollection<AjusteSerieNuevaEditorViewModel> AjusteSeriesNuevas { get; } = new();
     private EstadoControlInventarioDto? _estadoControlAjuste;
+    private readonly HashSet<string> _seriesExistentesAjuste =
+        new(StringComparer.OrdinalIgnoreCase);
     private bool _restaurandoContextoAjuste;
 
     public ObservableCollection<string> TiposProducto { get; }
@@ -136,6 +138,7 @@ public partial class ProductFormViewModel : ObservableObject
     [ObservableProperty] private string? ajusteObservacion;
     [ObservableProperty] private string? ajusteNumeroLote;
     [ObservableProperty] private string? ajusteSeriesTexto;
+    [ObservableProperty] private bool ajusteManejaFechaCaducidad;
     [ObservableProperty] private bool isConversionOpen;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ConversionDestinoLotes))]
@@ -460,8 +463,9 @@ public partial class ProductFormViewModel : ObservableObject
     public bool AjusteEsEntrada => AjusteTipo == "ENTRADA";
     public bool AjusteEsSalida => AjusteTipo == "SALIDA";
     public string AjusteEtiquetaCosto => AjusteEsEntrada
-        ? "Costo presentación *"
+        ? "Costo presentación"
         : "Costo aplicado";
+    public string AjusteAsteriscoCosto => AjusteEsEntrada ? " *" : string.Empty;
     public string AjusteAyudaCosto =>
         "Referencia basada en el último costo del lote; si no existe, se usa el costo actual del producto.";
     public bool MostrarAjusteLotes =>
@@ -488,6 +492,21 @@ public partial class ProductFormViewModel : ObservableObject
             .Select(x => $"{x.Key} → {x.Count()}"));
     public string AjusteOrigenCosto { get; private set; } =
         "Referencia: costo promedio actual del producto.";
+    public bool PuedeAgregarLoteAjuste =>
+        AjusteEsEntrada && AjusteCantidadBase > 0;
+    public bool PuedeAgregarSerieNuevaAjuste => AjusteCantidadBase > 0 &&
+        AjusteCantidadBase == decimal.Truncate(AjusteCantidadBase) &&
+        AjusteSeriesNuevasRegistradas < AjusteCantidadBase &&
+        (TipoControlInventario != "LOTE_Y_SERIE" ||
+         AjusteLotes.Count > 0 && AjusteLotesPendiente == 0);
+    public bool PuedeRegistrarAjuste =>
+        AjusteEsEntrada && TipoControlInventario == "LOTE_Y_SERIE"
+            ? ObtenerRazonesEntradaLoteYSerieNoValida().Count == 0
+            : !IsLoading && AjusteBodegaId.HasValue &&
+              AjustePresentacionId.HasValue && AjusteCantidad > 0 &&
+              !string.IsNullOrWhiteSpace(AjusteMotivo) &&
+              (AjusteEsSalida || AjusteCostoPresentacion >= 0) &&
+              ValidarControlAjuste(AjusteCantidadBase) is null;
     public bool MostrarColumnaCaducidad =>
         MostrarConfiguracionCaducidad && AlertaCaducidad;
 
@@ -2105,6 +2124,13 @@ public partial class ProductFormViewModel : ObservableObject
             ? await _inventoryService.ObtenerEstadoControlAsync(
                 ObtenerEmpresaId(), _productoId.Value)
             : null;
+        AjusteManejaFechaCaducidad =
+            _estadoControlAjuste?.ManejaFechaCaducidad == true;
+        _seriesExistentesAjuste.Clear();
+        if (_estadoControlAjuste is not null)
+            foreach (var serie in _estadoControlAjuste.SeriesProducto)
+                _seriesExistentesAjuste.Add(
+                    serie.Trim().ToUpperInvariant());
         ActualizarOpcionesAjuste();
         IsAjusteOpen = true;
     }
@@ -2112,9 +2138,15 @@ public partial class ProductFormViewModel : ObservableObject
     [RelayCommand]
     private void CerrarAjuste() => IsAjusteOpen = false;
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(PuedeRegistrarAjuste))]
     private async Task RegistrarAjusteAsync()
     {
+        if (AjusteEsEntrada && !PuedeRegistrarAjuste)
+        {
+            MensajeError = ValidarControlAjuste(AjusteCantidadBase) ??
+                "Complete bodega, presentación, cantidad, costo y motivo antes de registrar el ajuste.";
+            return;
+        }
         if (!_productoId.HasValue || !AjusteBodegaId.HasValue ||
             !AjustePresentacionId.HasValue || AjusteCantidad <= 0 ||
             string.IsNullOrWhiteSpace(AjusteMotivo) ||
@@ -2202,9 +2234,11 @@ public partial class ProductFormViewModel : ObservableObject
         OnPropertyChanged(nameof(AjusteEsEntrada));
         OnPropertyChanged(nameof(AjusteEsSalida));
         OnPropertyChanged(nameof(AjusteEtiquetaCosto));
+        OnPropertyChanged(nameof(AjusteAsteriscoCosto));
         OnPropertyChanged(nameof(MostrarAjusteLotes));
         OnPropertyChanged(nameof(MostrarAjusteSeriesNuevas));
         OnPropertyChanged(nameof(MostrarAjusteSeriesDisponibles));
+        NotificarEstadoBotonesAjuste();
     }
 
     partial void OnAjusteBodegaIdChanged(long? oldValue, long? newValue)
@@ -2220,6 +2254,7 @@ public partial class ProductFormViewModel : ObservableObject
         AjusteNumeroLote = null;
         LimpiarEditoresAjuste();
         ActualizarOpcionesAjuste();
+        NotificarEstadoBotonesAjuste();
     }
 
     partial void OnAjustePresentacionIdChanged(long? oldValue, long? newValue)
@@ -2240,6 +2275,15 @@ public partial class ProductFormViewModel : ObservableObject
 
     partial void OnAjusteCantidadChanged(decimal value) =>
         NotificarResumenAjuste();
+
+    partial void OnAjusteCostoPresentacionChanged(decimal value) =>
+        NotificarEstadoBotonesAjuste();
+
+    partial void OnAjusteMotivoChanged(string value) =>
+        NotificarEstadoBotonesAjuste();
+
+    partial void OnAjusteManejaFechaCaducidadChanged(bool value) =>
+        NotificarEstadoBotonesAjuste();
 
     partial void OnAjusteNumeroLoteChanged(string? value)
     {
@@ -2282,8 +2326,28 @@ public partial class ProductFormViewModel : ObservableObject
             foreach (var lote in bodega.Lotes.Where(x => x.Disponible > 0)
                          .OrderBy(x => x.NumeroLote))
                 AjusteLotesDisponibles.Add(lote);
+        CargarLotesSalidaDisponibles();
         FiltrarSeriesAjuste();
         ActualizarCostoReferenciaAjuste();
+    }
+
+    private void CargarLotesSalidaDisponibles()
+    {
+        if (!AjusteEsSalida || TipoControlInventario != "LOTE")
+            return;
+
+        foreach (var lote in AjusteLotes)
+            lote.PropertyChanged -= AjusteLotePropertyChanged;
+        AjusteLotes.Clear();
+        foreach (var disponible in AjusteLotesDisponibles)
+        {
+            var lote = new AjusteLoteEditorViewModel();
+            AplicarLoteExistente(lote, disponible);
+            lote.CantidadBase = 0;
+            lote.PropertyChanged += AjusteLotePropertyChanged;
+            AjusteLotes.Add(lote);
+        }
+        NotificarResumenAjuste();
     }
 
     private void FiltrarSeriesAjuste()
@@ -2334,6 +2398,7 @@ public partial class ProductFormViewModel : ObservableObject
     [RelayCommand]
     private void AgregarLoteAjuste()
     {
+        if (!PuedeAgregarLoteAjuste) return;
         var lote = new AjusteLoteEditorViewModel();
         foreach (var sugerencia in AjusteLotesDisponibles)
             lote.Sugerencias.Add(sugerencia);
@@ -2372,6 +2437,7 @@ public partial class ProductFormViewModel : ObservableObject
     [RelayCommand]
     private void AgregarSerieNuevaAjuste()
     {
+        if (!PuedeAgregarSerieNuevaAjuste) return;
         var serie = new AjusteSerieNuevaEditorViewModel();
         serie.PropertyChanged += AjusteSerieNuevaPropertyChanged;
         AjusteSeriesNuevas.Add(serie);
@@ -2390,7 +2456,16 @@ public partial class ProductFormViewModel : ObservableObject
     private void AjusteLotePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (sender is not AjusteLoteEditorViewModel lote) return;
-        if (e.PropertyName == nameof(AjusteLoteEditorViewModel.NumeroLote))
+        if (e.PropertyName == nameof(
+                AjusteLoteEditorViewModel.LoteSugeridoSeleccionado) &&
+            lote.LoteSugeridoSeleccionado is { } loteSeleccionado)
+        {
+            AplicarLoteExistente(lote, loteSeleccionado);
+            lote.MostrarSugerencias = false;
+            lote.LoteSugeridoSeleccionado = null;
+            ActualizarCostoReferenciaAjuste();
+        }
+        else if (e.PropertyName == nameof(AjusteLoteEditorViewModel.NumeroLote))
         {
             ResolverLoteEscrito(lote);
             ActualizarCostoReferenciaAjuste();
@@ -2423,13 +2498,27 @@ public partial class ProductFormViewModel : ObservableObject
             lote.LoteSimilar = null;
             return;
         }
+        var repetido = AjusteLotes.FirstOrDefault(x =>
+            !ReferenceEquals(x, lote) &&
+            AjusteInventarioRules.NormalizarLoteExacto(x.NumeroLote) ==
+            AjusteInventarioRules.NormalizarLoteExacto(numero));
+        if (repetido is not null)
+        {
+            lote.LoteId = null;
+            lote.LoteSimilar = null;
+            MensajeError =
+                $"El lote {numero.ToUpperInvariant()} ya está incluido en este ajuste. Modifique la cantidad de la fila existente.";
+            return;
+        }
+        if (MensajeError?.Contains("ya está incluido en este ajuste",
+                StringComparison.Ordinal) == true)
+            MensajeError = null;
         var exacto = AjusteLotesDisponibles.FirstOrDefault(x =>
             string.Equals(x.NumeroLote.Trim(), numero,
                 StringComparison.OrdinalIgnoreCase));
         if (exacto is not null)
         {
             AplicarLoteExistente(lote, exacto);
-            lote.MostrarSugerencias = false;
             return;
         }
         lote.LoteId = null;
@@ -2485,12 +2574,11 @@ public partial class ProductFormViewModel : ObservableObject
 
     private void SincronizarLotesSeriesNuevas()
     {
-        var numeros = AjusteLotes.Select(x => x.NumeroLote.Trim())
-            .Where(x => x.Length > 0).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var filas = AjusteLotes.Select(x => x.FilaId).ToHashSet();
         foreach (var serie in AjusteSeriesNuevas.Where(x =>
-                     !string.IsNullOrWhiteSpace(x.NumeroLote) &&
-                     !numeros.Contains(x.NumeroLote!)))
-            serie.NumeroLote = null;
+                     x.LoteFilaId.HasValue &&
+                     !filas.Contains(x.LoteFilaId.Value)))
+            serie.LoteFilaId = null;
         OnPropertyChanged(nameof(AjusteLotes));
     }
 
@@ -2503,6 +2591,15 @@ public partial class ProductFormViewModel : ObservableObject
         OnPropertyChanged(nameof(AjusteSeriesNuevasRegistradas));
         OnPropertyChanged(nameof(AjusteSeriesPendientes));
         OnPropertyChanged(nameof(AjusteResumenDistribucionSeries));
+        NotificarEstadoBotonesAjuste();
+    }
+
+    private void NotificarEstadoBotonesAjuste()
+    {
+        OnPropertyChanged(nameof(PuedeAgregarLoteAjuste));
+        OnPropertyChanged(nameof(PuedeAgregarSerieNuevaAjuste));
+        OnPropertyChanged(nameof(PuedeRegistrarAjuste));
+        RegistrarAjusteCommand.NotifyCanExecuteChanged();
     }
 
     private bool ConfirmarPerdidaDatosAjuste(string cambio)
@@ -2518,6 +2615,9 @@ public partial class ProductFormViewModel : ObservableObject
 
     private string? ValidarControlAjuste(decimal cantidadBase)
     {
+        if (AjusteEsEntrada && TipoControlInventario == "LOTE_Y_SERIE")
+            return ObtenerRazonesEntradaLoteYSerieNoValida().FirstOrDefault();
+
         if (MostrarAjusteLotes)
         {
             var errorLotes = AjusteInventarioRules.ValidarLotes(
@@ -2531,7 +2631,7 @@ public partial class ProductFormViewModel : ObservableObject
                                      !x.PermitirCrearLoteSimilar))
                 return "Resuelva la advertencia de lote posiblemente equivalente antes de continuar.";
             if (AjusteEsEntrada && AjusteLotes.Any(x => !x.LoteId.HasValue &&
-                    AlertaCaducidad && !x.FechaCaducidad.HasValue))
+                    AjusteManejaFechaCaducidad && !x.FechaCaducidad.HasValue))
                 return "Ingrese la caducidad de cada lote nuevo.";
             if (AjusteLotes.Any(x => !x.LoteId.HasValue &&
                     x.FechaElaboracion.HasValue && x.FechaCaducidad.HasValue &&
@@ -2543,12 +2643,15 @@ public partial class ProductFormViewModel : ObservableObject
         {
             var seriesRegla = AjusteEsEntrada
                 ? AjusteSeriesNuevas.Select(x => new SerieAjusteSnapshot(
-                    x.NumeroSerie, x.NumeroLote)).ToList()
+                    x.NumeroSerie, ObtenerNumeroLoteSerieAjuste(x))).ToList()
                 : AjusteSeriesDisponibles.Where(x => x.IsSelected)
                     .Select(x => new SerieAjusteSnapshot(
                         x.NumeroSerie, x.NumeroLote)).ToList();
-            var errorSeries = AjusteInventarioRules.ValidarSeries(
-                cantidadBase, seriesRegla);
+            var errorSeries = AjusteEsEntrada
+                ? AjusteInventarioRules.ValidarSeriesNuevas(
+                    cantidadBase, seriesRegla, _seriesExistentesAjuste)
+                : AjusteInventarioRules.ValidarSeries(
+                    cantidadBase, seriesRegla);
             if (errorSeries is not null) return errorSeries;
             if (AjusteEsEntrada)
             {
@@ -2556,11 +2659,12 @@ public partial class ProductFormViewModel : ObservableObject
                     !string.IsNullOrWhiteSpace(x.NumeroSerie)).ToList();
                 if (TipoControlInventario == "LOTE_Y_SERIE")
                 {
-                    if (validas.Any(x => string.IsNullOrWhiteSpace(x.NumeroLote)))
+                    if (validas.Any(x => !x.LoteFilaId.HasValue ||
+                                         AjusteLotes.All(lote =>
+                                             lote.FilaId != x.LoteFilaId.Value)))
                         return "Asocie cada serie nueva a uno de los lotes del ajuste.";
                     foreach (var lote in AjusteLotes)
-                        if (validas.Count(x => string.Equals(x.NumeroLote,
-                                lote.NumeroLote, StringComparison.OrdinalIgnoreCase)) !=
+                        if (validas.Count(x => x.LoteFilaId == lote.FilaId) !=
                             lote.CantidadBase)
                             return $"Las series asociadas al lote '{lote.NumeroLote}' deben coincidir con su cantidad.";
                 }
@@ -2581,7 +2685,10 @@ public partial class ProductFormViewModel : ObservableObject
                     CantidadBase = x.Count()
                 }).ToList();
         if (!MostrarAjusteLotes) return [];
-        return AjusteLotes.Select(x => new IngresoInventarioLoteRequest
+        var lotes = AjusteEsSalida
+            ? AjusteLotes.Where(x => x.CantidadBase > 0)
+            : AjusteLotes;
+        return lotes.Select(x => new IngresoInventarioLoteRequest
         {
             NumeroLote = x.NumeroLote.Trim(),
             CantidadBase = x.CantidadBase,
@@ -2599,7 +2706,7 @@ public partial class ProductFormViewModel : ObservableObject
                 .Select(x => new IngresoInventarioSerieRequest
                 {
                     NumeroSerie = x.NumeroSerie.Trim(),
-                    NumeroLote = x.NumeroLote?.Trim()
+                    NumeroLote = ObtenerNumeroLoteSerieAjuste(x)?.Trim()
                 }).ToList()
             : AjusteSeriesDisponibles.Where(x => x.IsSelected)
                 .Select(x => new IngresoInventarioSerieRequest
@@ -2607,6 +2714,42 @@ public partial class ProductFormViewModel : ObservableObject
                     NumeroSerie = x.NumeroSerie,
                     NumeroLote = x.NumeroLote
                 }).ToList();
+
+    private string? ObtenerNumeroLoteSerieAjuste(
+        AjusteSerieNuevaEditorViewModel serie) =>
+        serie.LoteFilaId.HasValue
+            ? AjusteLotes.FirstOrDefault(lote =>
+                lote.FilaId == serie.LoteFilaId.Value)?.NumeroLote
+            : null;
+
+    private IReadOnlyList<string> ObtenerRazonesEntradaLoteYSerieNoValida()
+    {
+        var factor = PresentacionesOperacion.FirstOrDefault(x =>
+            x.Id == AjustePresentacionId)?.FactorConversion ?? 0;
+        return AjusteInventarioRules.ObtenerRazonesEntradaLoteYSerieNoValida(
+            new EntradaLoteYSerieAjusteSnapshot(
+                IsLoading,
+                AjusteBodegaId,
+                AjustePresentacionId,
+                AjusteCantidad,
+                factor,
+                AjusteCostoPresentacion,
+                AjusteMotivo?.Trim() ?? string.Empty,
+                AjusteManejaFechaCaducidad,
+                AjusteLotes.Select(x => new LoteEntradaAjusteSnapshot(
+                    x.FilaId,
+                    x.LoteId,
+                    x.NumeroLote,
+                    x.CantidadBase,
+                    x.FechaElaboracion,
+                    x.FechaCaducidad,
+                    x.LoteSimilar is not null &&
+                    !x.PermitirCrearLoteSimilar)).ToList(),
+                AjusteSeriesNuevas.Select(x =>
+                    new SerieEntradaAjusteSnapshot(
+                        x.NumeroSerie, x.LoteFilaId)).ToList(),
+                _seriesExistentesAjuste));
+    }
 
     [RelayCommand]
     private async Task AbrirConversionAsync()
@@ -2763,8 +2906,11 @@ public partial class ProductFormViewModel : ObservableObject
     partial void OnConversionMotivoChanged(string value) =>
         NotificarEstadoConversion();
 
-    partial void OnIsLoadingChanged(bool value) =>
+    partial void OnIsLoadingChanged(bool value)
+    {
         NotificarEstadoConversion();
+        NotificarEstadoBotonesAjuste();
+    }
 
     [RelayCommand]
     private async Task ConfirmarConversionAsync()
@@ -3642,14 +3788,22 @@ public partial class AjusteSerieDisponibleViewModel : ObservableObject
 
 public partial class AjusteLoteEditorViewModel : ObservableObject
 {
+    public Guid FilaId { get; } = Guid.NewGuid();
     public ObservableCollection<EstadoControlLoteDto> Sugerencias { get; } = new();
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(EsExistente))]
     [NotifyPropertyChangedFor(nameof(EsNuevo))]
     private long? loteId;
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(EsNuevo))]
     private string numeroLote = string.Empty;
+    public string NumeroLote
+    {
+        get => numeroLote;
+        set
+        {
+            if (!SetProperty(ref numeroLote, value ?? string.Empty)) return;
+            OnPropertyChanged(nameof(EsNuevo));
+        }
+    }
     [ObservableProperty] private decimal cantidadBase;
     [ObservableProperty] private decimal stockActual;
     [ObservableProperty] private DateTime? fechaElaboracion;
@@ -3659,6 +3813,8 @@ public partial class AjusteLoteEditorViewModel : ObservableObject
     private EstadoControlLoteDto? loteSimilar;
     [ObservableProperty] private bool permitirCrearLoteSimilar;
     [ObservableProperty] private bool mostrarSugerencias;
+    [ObservableProperty]
+    private EstadoControlLoteDto? loteSugeridoSeleccionado;
     public bool EsExistente => LoteId.HasValue;
     public bool EsNuevo => !EsExistente && !string.IsNullOrWhiteSpace(NumeroLote);
     public bool TieneLoteSimilar => LoteSimilar is not null;
@@ -3667,7 +3823,7 @@ public partial class AjusteLoteEditorViewModel : ObservableObject
 public partial class AjusteSerieNuevaEditorViewModel : ObservableObject
 {
     [ObservableProperty] private string numeroSerie = string.Empty;
-    [ObservableProperty] private string? numeroLote;
+    [ObservableProperty] private Guid? loteFilaId;
 }
 
 public partial class PrecioListaEditorViewModel : ObservableObject

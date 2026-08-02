@@ -77,6 +77,8 @@ public sealed class EstadoControlInventarioDto
 {
     public long ProductoId { get; set; }
     public string TipoControl { get; set; } = "NORMAL";
+    public bool ManejaFechaCaducidad { get; set; }
+    public List<string> SeriesProducto { get; set; } = [];
     public List<EstadoControlBodegaDto> Bodegas { get; set; } = [];
 }
 
