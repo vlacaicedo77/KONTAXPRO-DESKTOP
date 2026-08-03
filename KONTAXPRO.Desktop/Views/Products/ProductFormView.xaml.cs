@@ -298,6 +298,34 @@ public partial class ProductFormView : UserControl
         }
     }
 
+    private void PrecioListaMetodo_SelectionChanged(
+        object sender, SelectionChangedEventArgs e)
+    {
+        if (sender is not ComboBox comboBox ||
+            !comboBox.IsKeyboardFocusWithin ||
+            e.RemovedItems.Count == 0 ||
+            comboBox.Parent is not DependencyObject priceEditor)
+            return;
+
+        Dispatcher.BeginInvoke(
+            System.Windows.Threading.DispatcherPriority.Input,
+            () =>
+            {
+                var input = FindVisualChildren<TextBox>(priceEditor)
+                    .FirstOrDefault(x =>
+                        x.IsVisible &&
+                        x.Name is "PrecioListaPorcentajeInput" or
+                            "PrecioListaPrecioInput");
+                if (input is null)
+                    return;
+
+                input.BringIntoView();
+                input.Focus();
+                Keyboard.Focus(input);
+                input.SelectAll();
+            });
+    }
+
     private void AjusteLoteEntradaInput_LostKeyboardFocus(
         object sender, KeyboardFocusChangedEventArgs e)
     {

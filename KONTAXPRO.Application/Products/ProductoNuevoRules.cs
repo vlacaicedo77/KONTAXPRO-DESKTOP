@@ -89,6 +89,30 @@ public static class ProductoNuevoRules
         decimal porcentajeDescuento) =>
         precioListaBase * (1 - porcentajeDescuento / 100m);
 
+    public static decimal CalcularPrecioEquivalentePresentacion(
+        decimal precioPresentacionBase,
+        decimal factorConversion)
+    {
+        if (precioPresentacionBase < 0)
+            throw new ArgumentOutOfRangeException(
+                nameof(precioPresentacionBase));
+        if (factorConversion <= 0)
+            throw new ArgumentOutOfRangeException(
+                nameof(factorConversion));
+
+        return precioPresentacionBase * factorConversion;
+    }
+
+    public static bool PrecioPresentacionSuperaEquivalente(
+        decimal precioPresentacion,
+        decimal precioPresentacionBase,
+        decimal factorConversion) =>
+        factorConversion > 1 &&
+        precioPresentacionBase > 0 &&
+        precioPresentacion > CalcularPrecioEquivalentePresentacion(
+            precioPresentacionBase,
+            factorConversion);
+
     public static string CrearCodigoBarrasInterno(
         string prefijoEstablecimiento,
         long presentacionId)

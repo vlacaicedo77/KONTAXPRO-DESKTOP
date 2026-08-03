@@ -1576,7 +1576,10 @@ public partial class ProductFormViewModel : ObservableObject
         foreach (var lista in ListasPrecio)
         {
             porLista.TryGetValue(lista.Id, out var precio);
-            var editor = new PrecioListaEditorViewModel(lista, precio);
+            var editor = new PrecioListaEditorViewModel(
+                lista,
+                precio,
+                usarPrecioFijoListaBasePorDefecto: !_productoId.HasValue);
             editor.PropertyChanged += PrecioEditorPropertyChanged;
             Precios.Add(editor);
         }
@@ -1607,8 +1610,74 @@ public partial class ProductFormViewModel : ObservableObject
         var basePrice = baseItem?.PrecioResultante ?? 0;
         foreach (var precio in Precios.Where(x => !x.EsListaBase))
             precio.ActualizarReferencias(costoEquivalente, basePrice);
+
+        var esPresentacionBase = string.Equals(
+            PresentacionPrecioCodigo,
+            "BASE",
+            StringComparison.OrdinalIgnoreCase);
+        var referenciasBase =
+            ObtenerPreciosResultantesPresentacionBase(costoBase);
+        foreach (var precio in Precios)
+        {
+            referenciasBase.TryGetValue(
+                precio.ListaPrecioId,
+                out var precioReferencia);
+            precio.ActualizarReferenciaPresentacionBase(
+                precioReferencia,
+                factor,
+                esPresentacionBase);
+        }
         OnPropertyChanged(nameof(CostoPresentacionPrecio));
     }
+
+    private Dictionary<long, decimal>
+        ObtenerPreciosResultantesPresentacionBase(decimal costoBase)
+    {
+        if (!_preciosPorPresentacion.TryGetValue("BASE", out var preciosBase))
+            return [];
+
+        var resultados = new Dictionary<long, decimal>();
+        var listaBase = ListasPrecio.FirstOrDefault(x => x.EsListaBase);
+        var configuracionBase = listaBase is null
+            ? null
+            : preciosBase.FirstOrDefault(x => x.ListaPrecioId == listaBase.Id);
+        var precioListaA = configuracionBase is null
+            ? 0
+            : CalcularPrecioResultante(configuracionBase, costoBase, 0);
+        if (listaBase is not null && configuracionBase is not null)
+            resultados[listaBase.Id] = precioListaA;
+
+        foreach (var lista in ListasPrecio.Where(x => !x.EsListaBase))
+        {
+            var configuracion = preciosBase.FirstOrDefault(x =>
+                x.ListaPrecioId == lista.Id);
+            if (configuracion is not null)
+            {
+                resultados[lista.Id] = CalcularPrecioResultante(
+                    configuracion,
+                    costoBase,
+                    precioListaA);
+            }
+        }
+
+        return resultados;
+    }
+
+    private static decimal CalcularPrecioResultante(
+        ProductoPrecioDto precio,
+        decimal costoEquivalente,
+        decimal precioListaBase) => precio.MetodoCalculo switch
+        {
+            "PORCENTAJE_COSTO" =>
+                ProductoNuevoRules.CalcularPrecioPorcentajeCosto(
+                    costoEquivalente,
+                    precio.Porcentaje ?? 0),
+            "DESCUENTO_PORCENTAJE" =>
+                ProductoNuevoRules.CalcularPrecioConDescuento(
+                    precioListaBase,
+                    precio.Porcentaje ?? 0),
+            _ => precio.Precio ?? 0
+        };
 
     private void CombinarExistencias(IEnumerable<ProductoExistenciaDto> existentes)
     {
@@ -1848,7 +1917,13 @@ public partial class ProductFormViewModel : ObservableObject
         _preciosPorPresentacion[PresentacionPrecioCodigo] =
             Precios.Select(x => x.ToDto()).ToList();
         ConfigurarPreciosAhora = true;
-        ActualizarResumenPrecioPresentacion(PresentacionPrecioCodigo);
+        if (string.Equals(
+                PresentacionPrecioCodigo,
+                "BASE",
+                StringComparison.OrdinalIgnoreCase))
+            ReconstruirResumenesPrecios();
+        else
+            ActualizarResumenPrecioPresentacion(PresentacionPrecioCodigo);
         MensajeError = tienePrecioSinUtilidad
             ? "Advertencia: una o más listas tienen utilidad igual o menor que cero."
             : null;
@@ -1945,6 +2020,12 @@ public partial class ProductFormViewModel : ObservableObject
             costoBase * presentacion.FactorConversion;
         var precioListaBase = 0m;
         var detalles = new List<PrecioListaResumenViewModel>();
+        var esPresentacionBase = string.Equals(
+            codigo,
+            "BASE",
+            StringComparison.OrdinalIgnoreCase);
+        var referenciasBase =
+            ObtenerPreciosResultantesPresentacionBase(costoBase);
 
         foreach (var lista in ListasPrecio)
         {
@@ -1953,22 +2034,24 @@ public partial class ProductFormViewModel : ObservableObject
             if (precio is null)
                 continue;
 
-            var precioResultante = precio.MetodoCalculo switch
-            {
-                "PORCENTAJE_COSTO" =>
-                    ProductoNuevoRules.CalcularPrecioPorcentajeCosto(
-                        costoEquivalente,
-                        precio.Porcentaje ?? 0),
-                "DESCUENTO_PORCENTAJE" =>
-                    ProductoNuevoRules.CalcularPrecioConDescuento(
-                        precioListaBase,
-                        precio.Porcentaje ?? 0),
-                _ => precio.Precio ?? 0
-            };
+            var precioResultante = CalcularPrecioResultante(
+                precio,
+                costoEquivalente,
+                precioListaBase);
             if (lista.EsListaBase)
                 precioListaBase = precioResultante;
 
             var utilidad = precioResultante - costoEquivalente;
+            referenciasBase.TryGetValue(
+                lista.Id,
+                out var precioReferenciaBase);
+            var precioSugerido = !esPresentacionBase &&
+                                 presentacion.FactorConversion > 1 &&
+                                 precioReferenciaBase > 0
+                ? ProductoNuevoRules.CalcularPrecioEquivalentePresentacion(
+                    precioReferenciaBase,
+                    presentacion.FactorConversion)
+                : (decimal?)null;
             detalles.Add(
                 new PrecioListaResumenViewModel
                 {
@@ -1977,7 +2060,16 @@ public partial class ProductFormViewModel : ObservableObject
                     Utilidad = utilidad,
                     Margen = costoEquivalente == 0
                         ? 0
-                        : utilidad / costoEquivalente * 100m
+                        : utilidad / costoEquivalente * 100m,
+                    PrecioSugeridoMaximo = precioSugerido,
+                    PrecioUnitarioEquivalente =
+                        precioResultante / presentacion.FactorConversion,
+                    PrecioPresentacionBase = precioReferenciaBase,
+                    TieneAdvertencia = precioSugerido.HasValue &&
+                        ProductoNuevoRules.PrecioPresentacionSuperaEquivalente(
+                            precioResultante,
+                            precioReferenciaBase,
+                            presentacion.FactorConversion)
                 });
         }
 
@@ -4005,6 +4097,9 @@ public partial class PrecioListaEditorViewModel : ObservableObject
 
     private decimal costoEquivalente;
     private decimal precioA;
+    private decimal precioPresentacionBase;
+    private decimal factorPresentacion = 1;
+    private bool esPresentacionBase;
 
     public decimal CostoEquivalente => costoEquivalente;
     public decimal PrecioListaA => precioA;
@@ -4026,10 +4121,33 @@ public partial class PrecioListaEditorViewModel : ObservableObject
         : Utilidad / costoEquivalente * 100m;
 
     public bool UsaPorcentaje => MetodoCalculo != "PRECIO_FIJO";
+    public decimal? PrecioSugeridoMaximo =>
+        !esPresentacionBase &&
+        factorPresentacion > 1 &&
+        precioPresentacionBase > 0
+            ? ProductoNuevoRules.CalcularPrecioEquivalentePresentacion(
+                precioPresentacionBase,
+                factorPresentacion)
+            : null;
+    public bool TieneAdvertenciaPrecio =>
+        PrecioSugeridoMaximo.HasValue &&
+        ProductoNuevoRules.PrecioPresentacionSuperaEquivalente(
+            PrecioResultante,
+            precioPresentacionBase,
+            factorPresentacion);
+    public string TextoAdvertenciaPrecio => PrecioSugeridoMaximo.HasValue
+        ? $"Precio equivalente por unidad: " +
+          $"{PrecioResultante / factorPresentacion:0.00}" +
+          Environment.NewLine +
+          $"Precio de la presentación base: {precioPresentacionBase:0.00}" +
+          Environment.NewLine +
+          $"Precio máximo sugerido: {PrecioSugeridoMaximo.Value:0.00}"
+        : string.Empty;
 
     public PrecioListaEditorViewModel(
         ListaPrecioEditorDto lista,
-        ProductoPrecioDto? existente)
+        ProductoPrecioDto? existente,
+        bool usarPrecioFijoListaBasePorDefecto = false)
     {
         ListaPrecioId = lista.Id;
         ListaCodigo = lista.Codigo;
@@ -4041,7 +4159,11 @@ public partial class PrecioListaEditorViewModel : ObservableObject
             ? ["Margen sobre costo", "Precio fijo"]
             : ["Descuento sobre Lista A", "Precio fijo"];
         metodoCalculo = existente?.MetodoCalculo ??
-            (lista.EsListaBase ? "PORCENTAJE_COSTO" : "DESCUENTO_PORCENTAJE");
+            (lista.EsListaBase && usarPrecioFijoListaBasePorDefecto
+                ? "PRECIO_FIJO"
+                : lista.EsListaBase
+                    ? "PORCENTAJE_COSTO"
+                    : "DESCUENTO_PORCENTAJE");
         Porcentaje = existente?.Porcentaje ??
             (lista.EsListaBase ? 0m : lista.PorcentajeDescuentoPredeterminado);
         Precio = existente?.Precio;
@@ -4073,6 +4195,17 @@ public partial class PrecioListaEditorViewModel : ObservableObject
         NotificarCalculos();
     }
 
+    public void ActualizarReferenciaPresentacionBase(
+        decimal precioBase,
+        decimal factor,
+        bool esBase)
+    {
+        precioPresentacionBase = precioBase;
+        factorPresentacion = factor;
+        esPresentacionBase = esBase;
+        NotificarCalculos();
+    }
+
     private void NotificarCalculos()
     {
         OnPropertyChanged(nameof(CostoEquivalente));
@@ -4080,6 +4213,9 @@ public partial class PrecioListaEditorViewModel : ObservableObject
         OnPropertyChanged(nameof(PrecioResultante));
         OnPropertyChanged(nameof(Utilidad));
         OnPropertyChanged(nameof(MargenSobreCosto));
+        OnPropertyChanged(nameof(PrecioSugeridoMaximo));
+        OnPropertyChanged(nameof(TieneAdvertenciaPrecio));
+        OnPropertyChanged(nameof(TextoAdvertenciaPrecio));
     }
 
     public ProductoPrecioDto ToDto() => new()
@@ -4106,6 +4242,18 @@ public sealed class PrecioListaResumenViewModel
     public decimal Precio { get; init; }
     public decimal Utilidad { get; init; }
     public decimal Margen { get; init; }
+    public decimal? PrecioSugeridoMaximo { get; init; }
+    public decimal PrecioUnitarioEquivalente { get; init; }
+    public decimal PrecioPresentacionBase { get; init; }
+    public bool TieneAdvertencia { get; init; }
+    public string TextoAdvertencia => !TieneAdvertencia ||
+                                      !PrecioSugeridoMaximo.HasValue
+        ? string.Empty
+        : $"Precio equivalente por unidad: {PrecioUnitarioEquivalente:0.00}" +
+          Environment.NewLine +
+          $"Precio de la presentación base: {PrecioPresentacionBase:0.00}" +
+          Environment.NewLine +
+          $"Precio máximo sugerido: {PrecioSugeridoMaximo.Value:0.00}";
 }
 
 public partial class LoteInventarioInicialEditorViewModel : ObservableObject

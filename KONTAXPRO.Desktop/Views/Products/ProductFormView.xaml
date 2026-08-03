@@ -1300,7 +1300,7 @@
 
                                 <!-- AYUDA -->
 
-                                <Border Margin="0,14,0,0"
+                                             <Border Margin="0,14,0,0"
                                         Padding="12"
                                         CornerRadius="9"
                                         Background="{DynamicResource InfoSoftBrush}">
@@ -1571,10 +1571,11 @@
 
                                             <TextBlock Text="Método de cálculo"
                                                        Style="{StaticResource FieldLabelStyle}" />
-                                            <ComboBox ItemsSource="{Binding Metodos}"
-                                                      SelectedItem="{Binding MetodoSeleccionado}"
-                                                      Style="{StaticResource ModernComboBoxStyle}"
-                                                      Margin="0,0,0,12" />
+                                             <ComboBox ItemsSource="{Binding Metodos}"
+                                                       SelectedItem="{Binding MetodoSeleccionado}"
+                                                       Style="{StaticResource ModernComboBoxStyle}"
+                                                       SelectionChanged="PrecioListaMetodo_SelectionChanged"
+                                                       Margin="0,0,0,12" />
 
                                             <Grid>
                                                 <StackPanel Visibility="{Binding UsaPorcentaje,
@@ -1582,9 +1583,10 @@
                                                     <TextBlock Text="{Binding EtiquetaPorcentaje}"
                                                                Style="{StaticResource FieldLabelStyle}" />
                                                     <Border Style="{StaticResource FormFieldBorderStyle}">
-                                                        <TextBox Text="{Binding Porcentaje,
-                                                            UpdateSourceTrigger=LostFocus,
-                                                            StringFormat={}{0:0.######}}"
+                                                        <TextBox x:Name="PrecioListaPorcentajeInput"
+                                                                 Text="{Binding Porcentaje,
+                                                             UpdateSourceTrigger=LostFocus,
+                                                             StringFormat={}{0:0.######}}"
                                                                  Language="en-US"
                                                                  behaviors:DecimalInputBehavior.IsEnabled="True"
                                                                  behaviors:DecimalInputBehavior.DecimalPlaces="6"
@@ -1599,9 +1601,10 @@
                                                     <TextBlock Text="Precio de venta"
                                                                Style="{StaticResource FieldLabelStyle}" />
                                                     <Border Style="{StaticResource FormFieldBorderStyle}">
-                                                        <TextBox Text="{Binding Precio,
-                                                            UpdateSourceTrigger=LostFocus,
-                                                            StringFormat={}{0:0.######}}"
+                                                        <TextBox x:Name="PrecioListaPrecioInput"
+                                                                 Text="{Binding Precio,
+                                                             UpdateSourceTrigger=LostFocus,
+                                                             StringFormat={}{0:0.######}}"
                                                                  Language="en-US"
                                                                  behaviors:DecimalInputBehavior.IsEnabled="True"
                                                                  behaviors:DecimalInputBehavior.DecimalPlaces="6"
@@ -1641,14 +1644,45 @@
                                                     <StackPanel Grid.Column="2">
                                                         <TextBlock Text="Margen"
                                                                    Style="{StaticResource FieldHelpStyle}" />
-                                                        <TextBlock Text="{Binding MargenSobreCosto,
-                                                            StringFormat={}{0:N2} %}"
-                                                                   FontWeight="SemiBold"
-                                                                   Foreground="{DynamicResource PrimaryTextBrush}" />
-                                                    </StackPanel>
-                                                </Grid>
-                                            </Border>
-                                        </StackPanel>
+                                                         <TextBlock Text="{Binding MargenSobreCosto,
+                                                             StringFormat={}{0:N2} %}"
+                                                                    FontWeight="SemiBold"
+                                                                    Foreground="{DynamicResource PrimaryTextBrush}" />
+                                                     </StackPanel>
+                                                 </Grid>
+                                             </Border>
+                                             <Border Margin="0,10,0,0"
+                                                     Padding="10,8"
+                                                     CornerRadius="8"
+                                                     Background="{DynamicResource WarningSoftBrush}"
+                                                     BorderBrush="#F59E0B"
+                                                     BorderThickness="1"
+                                                     Visibility="{Binding TieneAdvertenciaPrecio,
+                                                         Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                 <Grid>
+                                                     <Grid.ColumnDefinitions>
+                                                         <ColumnDefinition Width="Auto" />
+                                                         <ColumnDefinition Width="*" />
+                                                     </Grid.ColumnDefinitions>
+                                                     <materialDesign:PackIcon Kind="AlertOutline"
+                                                                              Width="18"
+                                                                              Height="18"
+                                                                              Margin="0,1,8,0"
+                                                                              VerticalAlignment="Top"
+                                                                              Foreground="#D97706" />
+                                                     <StackPanel Grid.Column="1">
+                                                         <TextBlock Text="Precio superior al equivalente"
+                                                                    Margin="0,0,0,4"
+                                                                    FontWeight="SemiBold"
+                                                                    Foreground="{DynamicResource PrimaryTextBrush}" />
+                                                         <TextBlock Text="{Binding TextoAdvertenciaPrecio}"
+                                                                    TextWrapping="Wrap"
+                                                                    LineHeight="18"
+                                                                    Foreground="{DynamicResource PrimaryTextBrush}" />
+                                                     </StackPanel>
+                                                 </Grid>
+                                             </Border>
+                                         </StackPanel>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
@@ -1728,12 +1762,31 @@
                                                                     <StackPanel Grid.Column="2">
                                                                         <TextBlock Text="Margen"
                                                                                    Style="{StaticResource FieldHelpStyle}" />
-                                                                        <TextBlock Text="{Binding Margen,
-                                                                            StringFormat={}{0:0.##} %}" />
-                                                                    </StackPanel>
-                     </Grid>
-                 </StackPanel>
-                                                        </Border>
+                                                                         <TextBlock Text="{Binding Margen,
+                                                                             StringFormat={}{0:0.##} %}" />
+                                                                     </StackPanel>
+                                                                 </Grid>
+                                                                 <Border Margin="0,7,0,0"
+                                                                         Padding="7,5"
+                                                                         CornerRadius="6"
+                                                                         Background="{DynamicResource WarningSoftBrush}"
+                                                                         Visibility="{Binding TieneAdvertencia,
+                                                                             Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                                     <StackPanel>
+                                                                         <TextBlock Text="Precio superior al equivalente"
+                                                                                    Margin="0,0,0,3"
+                                                                                    FontSize="11"
+                                                                                    FontWeight="SemiBold"
+                                                                                    Foreground="{DynamicResource PrimaryTextBrush}" />
+                                                                         <TextBlock Text="{Binding TextoAdvertencia}"
+                                                                                    TextWrapping="Wrap"
+                                                                                    LineHeight="16"
+                                                                                    FontSize="11"
+                                                                                    Foreground="{DynamicResource PrimaryTextBrush}" />
+                                                                     </StackPanel>
+                                                                 </Border>
+                                                             </StackPanel>
+                                                         </Border>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>

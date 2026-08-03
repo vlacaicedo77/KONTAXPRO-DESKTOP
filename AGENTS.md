@@ -1329,3 +1329,16 @@ No declarar terminado un bloque si el build falla.
 - Preparado para Ecuador.
 - Preparado para red local.
 - Preparado para crecer sin sobrearquitectura en v1.
+
+---
+
+# 31. Documentación de referencia obligatoria
+
+- `docs/README.md` es el índice de documentación.
+- Antes de modificar PRODUCTOS, leer `docs/PRODUCTOS_V1.md`.
+- Antes de crear o rediseñar UI, leer `docs/UI_UX_KONTAXPRO.md`.
+- Antes de crear un módulo, leer `docs/PATRONES_DESARROLLO_KONTAXPRO.md`.
+- El código actual es la fuente de verdad si una documentación queda desactualizada.
+- Si una tarea modifica una regla documentada, actualizar el `.md` correspondiente en la misma tarea.
+
+PRODUCTOS V1 está considerado funcionalmente cerrado y es el módulo de referencia inicial para listados, formularios, MVVM, servicios, transacciones y UI/UX. No realizar refactors, rediseños ni cambios de comportamiento en Productos salvo requerimiento explícito, error confirmado o integración necesaria con otro módulo. Reutilizar sus patrones con criterio; no copiar ciegamente sus campos, dimensiones ni reglas de inventario.

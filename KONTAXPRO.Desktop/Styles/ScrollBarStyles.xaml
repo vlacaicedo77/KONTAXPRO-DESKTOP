@@ -70,6 +70,12 @@
         </Setter>
     </Style>
 
+    <Style x:Key="KontaxCompactVerticalScrollThumbStyle"
+           TargetType="Thumb"
+           BasedOn="{StaticResource KontaxVerticalScrollThumbStyle}">
+        <Setter Property="Width" Value="5" />
+    </Style>
+
     <!--
         Los botones de paginación ocupan el espacio libre del Track y deben
         seguir recibiendo clics, pero no heredar los estados visuales de los
@@ -155,6 +161,37 @@
         </Grid>
     </ControlTemplate>
 
+    <ControlTemplate x:Key="KontaxCompactVerticalScrollBarTemplate"
+                     TargetType="ScrollBar">
+        <Grid Background="Transparent">
+            <Border Width="3"
+                    Margin="0,2"
+                    HorizontalAlignment="Center"
+                    Background="{DynamicResource TableGridBrush}"
+                    CornerRadius="2" />
+            <Track x:Name="PART_Track"
+                   Margin="0,2"
+                   IsDirectionReversed="True"
+                   Focusable="False"
+                   Minimum="{TemplateBinding Minimum}"
+                   Maximum="{TemplateBinding Maximum}"
+                   Value="{TemplateBinding Value}"
+                   ViewportSize="{TemplateBinding ViewportSize}">
+                <Track.DecreaseRepeatButton>
+                    <RepeatButton Command="ScrollBar.PageUpCommand"
+                                  Style="{StaticResource KontaxScrollTrackRepeatButtonStyle}" />
+                </Track.DecreaseRepeatButton>
+                <Track.Thumb>
+                    <Thumb Style="{StaticResource KontaxCompactVerticalScrollThumbStyle}" />
+                </Track.Thumb>
+                <Track.IncreaseRepeatButton>
+                    <RepeatButton Command="ScrollBar.PageDownCommand"
+                                  Style="{StaticResource KontaxScrollTrackRepeatButtonStyle}" />
+                </Track.IncreaseRepeatButton>
+            </Track>
+        </Grid>
+    </ControlTemplate>
+
     <Style TargetType="ScrollBar">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
@@ -173,5 +210,14 @@
                         Value="{StaticResource KontaxHorizontalScrollBarTemplate}" />
             </Trigger>
         </Style.Triggers>
+    </Style>
+
+    <Style x:Key="KontaxCompactVerticalScrollBarStyle"
+           TargetType="ScrollBar"
+           BasedOn="{StaticResource {x:Type ScrollBar}}">
+        <Setter Property="Width" Value="8" />
+        <Setter Property="MinWidth" Value="8" />
+        <Setter Property="Template"
+                Value="{StaticResource KontaxCompactVerticalScrollBarTemplate}" />
     </Style>
 </ResourceDictionary>

@@ -4,13 +4,6 @@ namespace KONTAXPRO.Application.Interfaces;
 
 public interface IProductService
 {
-    Task<List<ProductoListadoDto>> ObtenerProductosAsync(
-        long empresaId,
-        string? busqueda = null,
-        long? categoriaId = null,
-        short? estado = 1,
-        CancellationToken cancellationToken = default);
-
     Task<ProductoDetalleDto?> ObtenerProductoAsync(
         long productoId,
         long empresaId,
@@ -29,6 +22,10 @@ public interface IProductService
     Task<ProductoCodigoBarrasDto?> BuscarPorCodigoBarrasAsync(
         long empresaId,
         string codigoBarras,
+        CancellationToken cancellationToken = default);
+
+    Task<ProductoCatalogoResultadoDto> ObtenerCatalogoProductosAsync(
+        ProductoCatalogoQuery query,
         CancellationToken cancellationToken = default);
 
     Task<List<ProductoSugerenciaDto>> BuscarSimilaresAsync(

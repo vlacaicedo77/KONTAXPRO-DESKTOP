@@ -13,76 +13,318 @@ namespace KONTAXPRO.Infrastructure.Products;
 public sealed class ProductService(
     IDbContextFactory<KontaxDbContext> dbContextFactory) : IProductService
 {
-    public async Task<List<ProductoListadoDto>> ObtenerProductosAsync(
-        long empresaId,
-        string? busqueda = null,
-        long? categoriaId = null,
-        short? estado = 1,
-        CancellationToken cancellationToken = default)
+    public async Task<ProductoCatalogoResultadoDto>
+        ObtenerCatalogoProductosAsync(
+            ProductoCatalogoQuery request,
+            CancellationToken cancellationToken = default)
     {
+        if (request.EmpresaId <= 0)
+            return new ProductoCatalogoResultadoDto();
+
+        var tamanoPagina = request.TamanoPagina is 25 or 50 or 100
+            ? request.TamanoPagina
+            : 25;
+        var hoy = DateOnly.FromDateTime(DateTime.Today);
+
         await using var context =
             await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-        var query = context.Productos.AsNoTracking()
-            .Where(x => x.EmpresaId == empresaId);
+        var productos = context.Productos.AsNoTracking()
+            .Where(x => x.EmpresaId == request.EmpresaId);
 
-        if (!string.IsNullOrWhiteSpace(busqueda))
+        productos = request.Estado switch
         {
-            var text = busqueda.Trim().ToLower();
-            query = query.Where(x =>
-                x.Codigo.ToLower().Contains(text) ||
-                x.Nombre.ToLower().Contains(text) ||
-                (x.Modelo != null && x.Modelo.ToLower().Contains(text)) ||
-                x.Presentaciones.Any(p =>
-                    p.CodigoBarras != null &&
-                    p.CodigoBarras.ToLower().Contains(text)));
+            ProductoCatalogoEstado.Activos =>
+                productos.Where(x => x.Estado == 1),
+            ProductoCatalogoEstado.Inactivos =>
+                productos.Where(x => x.Estado == 0),
+            _ => productos
+        };
+
+        var texto = string.IsNullOrWhiteSpace(request.Busqueda)
+            ? null
+            : request.Busqueda.Trim();
+        if (texto is not null)
+        {
+            var patron = $"%{texto}%";
+            productos = productos.Where(x =>
+                EF.Functions.ILike(x.Codigo, patron) ||
+                EF.Functions.ILike(x.Nombre, patron) ||
+                (x.Modelo != null && EF.Functions.ILike(x.Modelo, patron)) ||
+                (x.Descripcion != null &&
+                 EF.Functions.ILike(x.Descripcion, patron)) ||
+                (x.CategoriaProducto != null &&
+                 EF.Functions.ILike(x.CategoriaProducto.Nombre, patron)) ||
+                (x.Marca != null &&
+                 EF.Functions.ILike(x.Marca.Nombre, patron)) ||
+                (x.UnidadMedidaBase != null &&
+                 (EF.Functions.ILike(x.UnidadMedidaBase.Nombre, patron) ||
+                  EF.Functions.ILike(
+                      x.UnidadMedidaBase.Abreviatura, patron))) ||
+                x.Presentaciones.Any(p => p.Estado == 1 &&
+                    p.PermiteVenta &&
+                    (EF.Functions.ILike(p.Nombre, patron) ||
+                     EF.Functions.ILike(p.Codigo, patron) ||
+                     (p.CodigoBarras != null &&
+                      EF.Functions.ILike(p.CodigoBarras, patron)))));
         }
 
-        if (categoriaId.HasValue)
-            query = query.Where(x => x.CategoriaProductoId == categoriaId);
-
-        if (estado.HasValue)
-            query = query.Where(x => x.Estado == estado);
-
-        return await query
-            .OrderBy(x => x.Nombre)
-            .Select(x => new ProductoListadoDto
+        var proyeccion = productos.Select(x =>
+            new ProductoCatalogoProjection
             {
                 Id = x.Id,
                 Codigo = x.Codigo,
                 Nombre = x.Nombre,
+                Modelo = x.Modelo,
                 Categoria = x.CategoriaProducto == null
                     ? null
                     : x.CategoriaProducto.Nombre,
                 Marca = x.Marca == null ? null : x.Marca.Nombre,
                 UnidadBase = x.UnidadMedidaBase!.Abreviatura,
                 TarifaImpuesto = x.Impuestos
-                    .Where(i => i.Estado == 1)
+                    .Where(i => i.Estado == 1 &&
+                                i.TarifaImpuesto!.Estado == 1)
+                    .OrderBy(i => i.TarifaImpuestoId)
                     .Select(i => i.TarifaImpuesto!.Nombre)
                     .FirstOrDefault() ?? string.Empty,
-                StockActual = x.Existencias.Sum(e => e.StockActual),
-                StockMinimo = x.Existencias.Sum(e => e.StockMinimo),
+                StockDisponible = x.Existencias
+                    .Where(e => e.Bodega!.Estado == 1 &&
+                                e.Bodega.Establecimiento!.Estado == 1 &&
+                                e.Bodega.Establecimiento.EmpresaId ==
+                                    request.EmpresaId)
+                    .Sum(e => e.StockActual - e.StockReservado),
+                StockMinimo = x.Existencias
+                    .Where(e => e.Bodega!.Estado == 1 &&
+                                e.Bodega.Establecimiento!.Estado == 1 &&
+                                e.Bodega.Establecimiento.EmpresaId ==
+                                    request.EmpresaId)
+                    .Sum(e => e.StockMinimo),
+                TieneStockBajo = x.Existencias.Any(e =>
+                    e.Bodega!.Estado == 1 &&
+                    e.Bodega.Establecimiento!.Estado == 1 &&
+                    e.Bodega.Establecimiento.EmpresaId == request.EmpresaId &&
+                    e.StockMinimo > 0 &&
+                    e.StockActual - e.StockReservado > 0 &&
+                    e.StockActual - e.StockReservado <= e.StockMinimo),
+                SinStock = x.Existencias
+                    .Where(e => e.Bodega!.Estado == 1 &&
+                                e.Bodega.Establecimiento!.Estado == 1 &&
+                                e.Bodega.Establecimiento.EmpresaId ==
+                                    request.EmpresaId)
+                    .Sum(e => e.StockActual - e.StockReservado) <= 0,
                 CostoPromedio = x.Costo == null ? 0 : x.Costo.CostoPromedio,
-                PrecioPrincipal = x.Presentaciones
-                    .Where(p => p.EsPresentacionBase)
+                PrecioBase = x.Presentaciones
+                    .Where(p => p.EsPresentacionBase && p.Estado == 1)
                     .SelectMany(p => p.Precios)
-                    .Where(p => p.ListaPrecio!.EsListaBase &&
-                                p.MetodoCalculo == "PRECIO_FIJO")
-                    .Select(p => p.Precio ?? 0)
+                    .Where(p => p.Estado == 1 &&
+                                p.ListaPrecio!.Estado == 1 &&
+                                p.ListaPrecio.EsListaBase)
+                    .Select(p => p.MetodoCalculo == "PRECIO_FIJO"
+                        ? p.Precio
+                        : p.MetodoCalculo == "PORCENTAJE_COSTO"
+                            ? (decimal?)(
+                                (x.Costo == null ? 0 : x.Costo.CostoPromedio) *
+                                p.ProductoPresentacion!.FactorConversion *
+                                (1 + (p.Porcentaje ?? 0) / 100m))
+                            : null)
                     .FirstOrDefault(),
-                DiasAlertaCaducidad = x.DiasAlertaCaducidad ?? 0,
+                ListaPrecioBaseCodigo = x.Presentaciones
+                    .Where(p => p.EsPresentacionBase && p.Estado == 1)
+                    .SelectMany(p => p.Precios)
+                    .Where(p => p.Estado == 1 &&
+                                p.ListaPrecio!.Estado == 1 &&
+                                p.ListaPrecio.EsListaBase)
+                    .Select(p => p.ListaPrecio!.Codigo)
+                    .FirstOrDefault() ?? string.Empty,
+                CantidadPorCaducar = x.ManejaFechaCaducidad &&
+                    x.AlertaCaducidad && x.DiasAlertaCaducidad > 0
+                        ? x.Lotes
+                            .Where(l => l.Estado == 1 &&
+                                l.FechaCaducidad.HasValue &&
+                                l.FechaCaducidad.Value >= hoy &&
+                                l.FechaCaducidad.Value <= hoy.AddDays(
+                                    x.DiasAlertaCaducidad ?? 0))
+                            .SelectMany(l => l.Existencias)
+                            .Where(e => e.StockActual > 0 &&
+                                e.Bodega!.Estado == 1 &&
+                                e.Bodega.Establecimiento!.Estado == 1 &&
+                                e.Bodega.Establecimiento.EmpresaId ==
+                                    request.EmpresaId)
+                            .Sum(e => e.StockActual)
+                        : 0,
+                PorCaducar = x.ManejaFechaCaducidad &&
+                    x.AlertaCaducidad && x.DiasAlertaCaducidad > 0 &&
+                    x.Lotes.Any(l => l.Estado == 1 &&
+                        l.FechaCaducidad.HasValue &&
+                        l.FechaCaducidad.Value >= hoy &&
+                        l.FechaCaducidad.Value <= hoy.AddDays(
+                            x.DiasAlertaCaducidad ?? 0) &&
+                        l.Existencias.Any(e => e.StockActual > 0 &&
+                            e.Bodega!.Estado == 1 &&
+                            e.Bodega.Establecimiento!.Estado == 1 &&
+                            e.Bodega.Establecimiento.EmpresaId ==
+                                request.EmpresaId)),
                 ProximaCaducidad = x.Lotes
-                    .Where(l => l.FechaCaducidad != null &&
-                                l.Estado == 1 &&
+                    .Where(l => l.Estado == 1 &&
+                                l.FechaCaducidad.HasValue &&
                                 l.Existencias.Any(e => e.StockActual > 0))
                     .Min(l => l.FechaCaducidad),
-                PorCaducar = x.AlertaCaducidad &&
-                    x.Lotes.Any(l => l.FechaCaducidad != null &&
-                                     l.Existencias.Any(e =>
-                                         e.StockActual > 0)),
-                Estado = (short)x.Estado
+                Estado = (short)x.Estado,
+                CoincidenciaExactaCodigoBarras = texto != null &&
+                    x.Presentaciones.Any(p => p.Estado == 1 &&
+                        p.PermiteVenta &&
+                        p.CodigoBarras == texto)
+            });
+
+        var kpis = await proyeccion.GroupBy(_ => 1)
+            .Select(grupo => new ProductoCatalogoKpisDto
+            {
+                Productos = grupo.Count(),
+                StockBajo = grupo.Count(x => x.TieneStockBajo),
+                SinStock = grupo.Count(x => x.SinStock),
+                PorCaducar = grupo.Count(x => x.PorCaducar)
             })
+            .FirstOrDefaultAsync(cancellationToken)
+            ?? new ProductoCatalogoKpisDto();
+
+        proyeccion = request.Kpi switch
+        {
+            ProductoCatalogoKpi.StockBajo =>
+                proyeccion.Where(x => x.TieneStockBajo),
+            ProductoCatalogoKpi.SinStock =>
+                proyeccion.Where(x => x.SinStock),
+            ProductoCatalogoKpi.PorCaducar =>
+                proyeccion.Where(x => x.PorCaducar),
+            _ => proyeccion
+        };
+
+        var totalItems = await proyeccion.CountAsync(cancellationToken);
+        var totalPaginas = ProductoCatalogoRules.CalcularTotalPaginas(
+            totalItems, tamanoPagina);
+        var pagina = ProductoCatalogoRules.NormalizarPagina(
+            request.Pagina, totalPaginas);
+
+        var ordenados = proyeccion
+            .OrderByDescending(x => x.CoincidenciaExactaCodigoBarras);
+        ordenados = AplicarOrden(
+            ordenados,
+            request.Orden,
+            request.OrdenDescendente);
+
+        var items = await ordenados
+            .ThenBy(x => x.Id)
+            .Skip((pagina - 1) * tamanoPagina)
+            .Take(tamanoPagina)
             .ToListAsync(cancellationToken);
+
+        var productosPagina = items.Select(MapearListado).ToList();
+        if (productosPagina.Count > 0)
+        {
+            var productosIds = productosPagina.Select(x => x.Id).ToList();
+            var presentaciones = await context.ProductosPresentaciones
+                .AsNoTracking()
+                .Where(x => x.EmpresaId == request.EmpresaId &&
+                            productosIds.Contains(x.ProductoId) &&
+                            x.Estado == 1 && x.PermiteVenta)
+                .OrderBy(x => x.ProductoId)
+                .ThenByDescending(x => x.EsPresentacionBase)
+                .ThenBy(x => x.Nombre)
+                .Select(x => new PresentacionComercialCatalogoProjection
+                {
+                    ProductoId = x.ProductoId,
+                    Nombre = x.Nombre
+                })
+                .ToListAsync(cancellationToken);
+            var nombresPorProducto = presentaciones
+                .GroupBy(x => x.ProductoId)
+                .ToDictionary(
+                    x => x.Key,
+                    x => (IReadOnlyList<string>)x.Select(p => p.Nombre)
+                        .ToList());
+
+            foreach (var producto in productosPagina)
+            {
+                producto.PresentacionesComerciales =
+                    nombresPorProducto.GetValueOrDefault(producto.Id) ?? [];
+                producto.CantidadPresentaciones =
+                    producto.PresentacionesComerciales.Count;
+            }
+
+            var configuracionesPrecio = await (
+                from presentacion in context.ProductosPresentaciones
+                    .AsNoTracking()
+                where presentacion.EmpresaId == request.EmpresaId &&
+                      productosIds.Contains(presentacion.ProductoId) &&
+                      presentacion.Estado == 1 &&
+                      presentacion.EsPresentacionBase
+                from lista in context.ListasPrecio.AsNoTracking()
+                    .Where(x => x.EmpresaId == request.EmpresaId &&
+                                x.Estado == 1)
+                join precio in context.ProductosPresentacionesPrecios
+                        .AsNoTracking()
+                        .Where(x => x.Estado == 1)
+                    on new
+                    {
+                        ProductoPresentacionId = presentacion.Id,
+                        ListaPrecioId = lista.Id
+                    }
+                    equals new
+                    {
+                        precio.ProductoPresentacionId,
+                        precio.ListaPrecioId
+                    }
+                    into preciosConfigurados
+                from precio in preciosConfigurados.DefaultIfEmpty()
+                select new PrecioBaseListaCatalogoProjection
+                {
+                    ProductoId = presentacion.ProductoId,
+                    ListaCodigo = lista.Codigo,
+                    Orden = lista.Orden,
+                    EsListaBase = lista.EsListaBase,
+                    FactorConversion = presentacion.FactorConversion,
+                    CostoPromedio = presentacion.Producto!.Costo == null
+                        ? 0
+                        : presentacion.Producto.Costo.CostoPromedio,
+                    MetodoCalculo = precio == null
+                        ? null
+                        : precio.MetodoCalculo,
+                    Porcentaje = precio == null ? null : precio.Porcentaje,
+                    Precio = precio == null ? null : precio.Precio
+                })
+                .ToListAsync(cancellationToken);
+
+            foreach (var grupo in configuracionesPrecio
+                         .GroupBy(x => x.ProductoId))
+            {
+                var configuracionBase = grupo.FirstOrDefault(x =>
+                    x.EsListaBase);
+                var precioBase = configuracionBase is null
+                    ? null
+                    : CalcularPrecioBaseLista(configuracionBase, null);
+                var precios = grupo
+                    .OrderBy(x => x.Orden)
+                    .ThenBy(x => x.ListaCodigo)
+                    .Select(x => new ProductoPrecioBaseListaDto
+                    {
+                        ListaCodigo = x.ListaCodigo,
+                        Orden = x.Orden,
+                        Precio = CalcularPrecioBaseLista(x, precioBase)
+                    })
+                    .ToList();
+                var producto = productosPagina.First(x => x.Id == grupo.Key);
+                producto.PreciosBasePorLista = precios;
+            }
+        }
+
+        return new ProductoCatalogoResultadoDto
+        {
+            Items = productosPagina,
+            TotalItems = totalItems,
+            Pagina = pagina,
+            TamanoPagina = tamanoPagina,
+            TotalPaginas = totalPaginas,
+            Kpis = kpis
+        };
     }
 
     public async Task<ProductoDetalleDto?> ObtenerProductoAsync(
@@ -918,6 +1160,141 @@ public sealed class ProductService(
                     .ToList()
             })
             .ToListAsync(cancellationToken);
+    }
+
+    private static IOrderedQueryable<ProductoCatalogoProjection> AplicarOrden(
+        IOrderedQueryable<ProductoCatalogoProjection> query,
+        ProductoCatalogoOrden orden,
+        bool descendente) =>
+        (orden, descendente) switch
+        {
+            (ProductoCatalogoOrden.Codigo, false) =>
+                query.ThenBy(x => x.Codigo),
+            (ProductoCatalogoOrden.Codigo, true) =>
+                query.ThenByDescending(x => x.Codigo),
+            (ProductoCatalogoOrden.Categoria, false) =>
+                query.ThenBy(x => x.Categoria).ThenBy(x => x.Nombre),
+            (ProductoCatalogoOrden.Categoria, true) =>
+                query.ThenByDescending(x => x.Categoria)
+                    .ThenByDescending(x => x.Nombre),
+            (ProductoCatalogoOrden.Unidad, false) =>
+                query.ThenBy(x => x.UnidadBase).ThenBy(x => x.Nombre),
+            (ProductoCatalogoOrden.Unidad, true) =>
+                query.ThenByDescending(x => x.UnidadBase)
+                    .ThenByDescending(x => x.Nombre),
+            (ProductoCatalogoOrden.Stock, false) =>
+                query.ThenBy(x => x.StockDisponible)
+                    .ThenBy(x => x.Nombre),
+            (ProductoCatalogoOrden.Stock, true) =>
+                query.ThenByDescending(x => x.StockDisponible)
+                    .ThenByDescending(x => x.Nombre),
+            (ProductoCatalogoOrden.CostoPromedio, false) =>
+                query.ThenBy(x => x.CostoPromedio)
+                    .ThenBy(x => x.Nombre),
+            (ProductoCatalogoOrden.CostoPromedio, true) =>
+                query.ThenByDescending(x => x.CostoPromedio)
+                    .ThenByDescending(x => x.Nombre),
+            (ProductoCatalogoOrden.PrecioBase, false) =>
+                query.ThenBy(x => x.PrecioBase).ThenBy(x => x.Nombre),
+            (ProductoCatalogoOrden.PrecioBase, true) =>
+                query.ThenByDescending(x => x.PrecioBase)
+                    .ThenByDescending(x => x.Nombre),
+            (ProductoCatalogoOrden.Estado, false) =>
+                query.ThenBy(x => x.Estado).ThenBy(x => x.Nombre),
+            (ProductoCatalogoOrden.Estado, true) =>
+                query.ThenByDescending(x => x.Estado)
+                    .ThenByDescending(x => x.Nombre),
+            (ProductoCatalogoOrden.Producto, true) =>
+                query.ThenByDescending(x => x.Nombre),
+            _ => query.ThenBy(x => x.Nombre)
+        };
+
+    private static ProductoListadoDto MapearListado(
+        ProductoCatalogoProjection x) =>
+        new()
+        {
+            Id = x.Id,
+            Codigo = x.Codigo,
+            Nombre = x.Nombre,
+            Modelo = x.Modelo,
+            Categoria = x.Categoria,
+            Marca = x.Marca,
+            UnidadBase = x.UnidadBase,
+            TarifaImpuesto = x.TarifaImpuesto,
+            StockDisponible = x.StockDisponible,
+            StockMinimo = x.StockMinimo,
+            TieneStockBajo = x.TieneStockBajo,
+            SinStock = x.SinStock,
+            CostoPromedio = x.CostoPromedio,
+            PrecioBase = x.PrecioBase,
+            ListaPrecioBaseCodigo = x.ListaPrecioBaseCodigo,
+            CantidadPorCaducar = x.CantidadPorCaducar,
+            PorCaducar = x.PorCaducar,
+            ProximaCaducidad = x.ProximaCaducidad,
+            Estado = x.Estado
+        };
+
+    private static decimal? CalcularPrecioBaseLista(
+        PrecioBaseListaCatalogoProjection configuracion,
+        decimal? precioListaBase) =>
+        configuracion.MetodoCalculo switch
+        {
+            "PRECIO_FIJO" => configuracion.Precio,
+            "PORCENTAJE_COSTO" when configuracion.Porcentaje.HasValue =>
+                ProductoNuevoRules.CalcularPrecioPorcentajeCosto(
+                    configuracion.CostoPromedio *
+                    configuracion.FactorConversion,
+                    configuracion.Porcentaje.Value),
+            "DESCUENTO_PORCENTAJE" when
+                configuracion.Porcentaje.HasValue &&
+                precioListaBase.HasValue =>
+                ProductoNuevoRules.CalcularPrecioConDescuento(
+                    precioListaBase.Value,
+                    configuracion.Porcentaje.Value),
+            _ => null
+        };
+
+    private sealed class ProductoCatalogoProjection
+    {
+        public long Id { get; init; }
+        public string Codigo { get; init; } = string.Empty;
+        public string Nombre { get; init; } = string.Empty;
+        public string? Modelo { get; init; }
+        public string? Categoria { get; init; }
+        public string? Marca { get; init; }
+        public string UnidadBase { get; init; } = string.Empty;
+        public string TarifaImpuesto { get; init; } = string.Empty;
+        public decimal StockDisponible { get; init; }
+        public decimal StockMinimo { get; init; }
+        public bool TieneStockBajo { get; init; }
+        public bool SinStock { get; init; }
+        public decimal CostoPromedio { get; init; }
+        public decimal? PrecioBase { get; init; }
+        public string ListaPrecioBaseCodigo { get; init; } = string.Empty;
+        public decimal CantidadPorCaducar { get; init; }
+        public bool PorCaducar { get; init; }
+        public DateOnly? ProximaCaducidad { get; init; }
+        public short Estado { get; init; }
+        public bool CoincidenciaExactaCodigoBarras { get; init; }
+    }
+
+    private sealed class PresentacionComercialCatalogoProjection
+    {
+        public long ProductoId { get; init; }
+        public string Nombre { get; init; } = string.Empty;
+    }
+
+    private sealed class PrecioBaseListaCatalogoProjection
+    {
+        public long ProductoId { get; init; }
+        public string ListaCodigo { get; init; } = string.Empty;
+        public int Orden { get; init; }
+        public bool EsListaBase { get; init; }
+        public decimal FactorConversion { get; init; }
+        public decimal CostoPromedio { get; init; }
+        public string? MetodoCalculo { get; init; }
+        public decimal? Porcentaje { get; init; }
+        public decimal? Precio { get; init; }
     }
 
     private static string? Validate(ProductoGuardarRequest request)

@@ -1,926 +1,2393 @@
-PROMPT — Crear sistema global y reutilizable de mensajes, confirmaciones y notificaciones para KONTAXPRO
+PROMPT — Cierre formal de PRODUCTOS V1, documentación permanente del módulo y definición de patrones base para futuros módulos
 
-Lee AGENTS.md completo antes de modificar código.
+Lee AGENTS.md completo antes de realizar cualquier acción.
 
 CONTEXTO
 
-KONTAXPRO Desktop ya posee un look & feel moderno, consistente, Light/Dark y basado en los estilos visuales propios del sistema.
+La primera versión funcional completa del módulo PRODUCTOS de KONTAXPRO Desktop ha sido terminada.
 
-Actualmente todavía existen mensajes mostrados mediante MessageBox nativo de Windows.
+Este módulo ha servido para definir y consolidar gran parte de:
 
-Ejemplo actual:
+- arquitectura;
+- reglas funcionales;
+- interacción MVVM;
+- servicios;
+- transacciones;
+- Inventario;
+- presentaciones;
+- precios;
+- costos;
+- lotes;
+- series;
+- Kardex;
+- operaciones auxiliares;
+- mensajes;
+- tablas;
+- formularios;
+- Light/Dark;
+- look & feel;
+- búsqueda;
+- filtros;
+- KPIs;
+- paginación;
+- estilos reutilizables.
 
-Título:
-Cancelar nuevo producto
-
-Mensaje:
-Hay información ingresada que todavía no se ha guardado.
-¿Desea cancelar el registro?
-
-Botones:
-Sí / No
-
-Ese MessageBox rompe completamente el diseño visual de KONTAXPRO.
-
-La finalidad de esta tarea es crear una infraestructura GLOBAL y REUTILIZABLE para:
-
-- ERROR
-- WARNING
-- INFO
-- SUCCESS
-- CONFIRMATION
-
-y reemplazar progresivamente los MessageBox nativos sin modificar las reglas de negocio existentes.
+A partir de ahora PRODUCTOS V1 será una REFERENCIA FUNCIONAL, VISUAL Y TÉCNICA para construir otros módulos de KONTAXPRO.
 
 IMPORTANTE:
 
-- NO rediseñar los formularios existentes.
-- NO modificar reglas de negocio.
-- NO cambiar validaciones.
-- NO alterar comandos ni flujos salvo lo necesario para sustituir MessageBox.
-- NO generar migraciones.
-- NO modificar base de datos.
-- NO hacer commit ni push.
+Esta tarea es fundamentalmente de:
+
+AUDITORÍA
++
+DOCUMENTACIÓN
++
+MEMORIA DEL PROYECTO
+
+NO es una tarea de rediseño.
+
+NO modifiques comportamiento funcional de Productos.
+NO cambies XAML.
+NO cambies ViewModels.
+NO cambies servicios.
+NO cambies entidades.
+NO cambies base de datos.
+NO regeneres migraciones.
+NO ejecutes reset de Development.
+NO hagas refactors generales.
+NO elimines código.
+NO hagas commit ni push.
+
+Solo pueden modificarse:
+
+- archivos .md nuevos;
+- AGENTS.md.
+
+Si durante la auditoría encuentras un problema real de código:
+
+NO lo corrijas en esta tarea.
+
+Documéntalo en el informe final como pendiente.
 
 ============================================================
-1. OBJETIVO GENERAL
+1. FUENTE DE VERDAD
 ============================================================
 
-Crear un sistema global para que cualquier ViewModel pueda solicitar:
+La fuente de verdad para esta documentación es:
 
-- mensaje de error;
-- advertencia;
-- información;
-- éxito;
-- confirmación;
+EL CÓDIGO ACTUAL DEL REPOSITORIO.
 
-sin conocer detalles de WPF ni crear ventanas directamente.
+No documentes simplemente lo que indiquen prompts anteriores.
 
-La solución debe respetar MVVM y DI.
+Antes de escribir documentación, inspecciona la implementación real.
 
-Ejemplo conceptual esperado desde ViewModel:
+Revisar como mínimo:
 
-await _messageService.ShowErrorAsync(
-    "No se pudo guardar",
-    "Ocurrió un problema al registrar el producto.");
+- KONTAXPRO.Desktop
+- KONTAXPRO.Application
+- KONTAXPRO.Domain
+- KONTAXPRO.Infrastructure
 
-await _messageService.ShowSuccessAsync(
-    "Producto registrado",
-    "El producto se creó correctamente.");
+y específicamente todo lo relacionado con Productos e Inventario utilizado por Productos.
 
-bool confirmar = await _messageService.ConfirmAsync(
-    "Cancelar nuevo producto",
-    "Hay información ingresada que todavía no se ha guardado. ¿Desea cancelar el registro?");
+Identificar nombres REALES de:
 
-El ViewModel NO debe crear:
+- Views;
+- ViewModels;
+- Services;
+- Interfaces;
+- DTOs;
+- Requests;
+- Entities;
+- EF configurations;
+- converters;
+- controls;
+- styles;
+- dialogs;
+- message services;
+- tests;
+- seeders;
+- migrations.
 
-new Window()
-MessageBox.Show()
-
-============================================================
-2. NO USAR MÁS MESSAGEBOX NATIVO
-============================================================
-
-Crear la infraestructura para eliminar progresivamente:
-
-System.Windows.MessageBox
-MessageBox.Show(...)
-
-No dejar nuevos MessageBox nativos.
-
-Auditar inicialmente el proyecto Desktop para identificar dónde se utilizan.
-
-No reemplazar ciegamente cada llamada antes de entender su intención.
-
-Clasificar cada mensaje como:
-
-ERROR
-WARNING
-INFO
-SUCCESS
-CONFIRMATION
+NO inventar nombres de clases o rutas.
 
 ============================================================
-3. SERVICIO GLOBAL
+2. OBJETIVO DE LA DOCUMENTACIÓN
 ============================================================
 
-Crear una abstracción apropiada, por ejemplo:
+La documentación debe permitir que una futura sesión de Codex pueda leer:
 
-IMessageDialogService
+AGENTS.md
++
+docs/
 
-o un nombre acorde a las convenciones actuales del proyecto.
+y comprender:
 
-Debe pertenecer a la capa adecuada.
-
-La implementación concreta debe estar en Desktop porque depende de WPF.
-
-Registrar mediante DI en App.xaml.cs/composition root.
-
-No usar Service Locator.
-
-============================================================
-4. API SENCILLA PARA VIEWMODELS
-============================================================
-
-Proporcionar métodos claros.
-
-Como mínimo:
-
-ShowErrorAsync(...)
-ShowWarningAsync(...)
-ShowInfoAsync(...)
-ShowSuccessAsync(...)
-ConfirmAsync(...)
-
-Evitar que cada ViewModel tenga que construir objetos visuales complejos.
-
-Si internamente se utiliza un request/model común, está bien.
+1. Cómo funciona PRODUCTOS V1.
+2. Qué reglas ya están aprobadas.
+3. Qué no debe romperse.
+4. Qué patrones de UI deben reutilizarse.
+5. Qué patrones técnicos deben reutilizarse.
+6. Qué elementos son específicos de Productos y NO deben copiarse ciegamente.
+7. Cómo construir nuevos módulos manteniendo coherencia.
+8. Qué decisiones arquitectónicas ya están cerradas.
 
 ============================================================
-5. TIPOS DE MENSAJE
+3. CREAR CARPETA docs SI NO EXISTE
 ============================================================
 
-Crear un enum/modelo equivalente:
+Si:
 
-Error
-Warning
-Info
-Success
-Confirmation
+docs/
 
-No utilizar strings mágicos para determinar el tipo.
+no existe:
+
+crearla.
+
+No mover documentación existente arbitrariamente.
+
+Si ya existe documentación:
+
+conservarla.
 
 ============================================================
-6. DIÁLOGO GLOBAL KONTAXPRO
+4. CREAR docs/README.md
 ============================================================
 
-Crear un diálogo personalizado reutilizable.
+Crear:
 
-Debe seguir el look & feel actual.
+docs/README.md
 
-Características:
+Debe ser un índice corto de la documentación del proyecto.
 
-- fondo según tema Light/Dark;
-- borde redondeado;
-- sombra suave;
-- encabezado limpio;
-- icono representativo;
-- título;
+Incluir como mínimo:
+
+# Documentación KONTAXPRO Desktop
+
+## Documentos principales
+
+- PRODUCTOS_V1.md
+- UI_UX_KONTAXPRO.md
+- PATRONES_DESARROLLO_KONTAXPRO.md
+
+Explicar en una o dos líneas para qué sirve cada uno.
+
+Agregar una regla:
+
+Antes de modificar un módulo existente, consultar primero su documentación específica.
+
+Antes de construir UI nueva, consultar UI_UX_KONTAXPRO.md.
+
+Antes de crear arquitectura nueva de módulos, consultar PATRONES_DESARROLLO_KONTAXPRO.md.
+
+No convertir README en documentación duplicada.
+
+============================================================
+5. CREAR docs/PRODUCTOS_V1.md
+============================================================
+
+Este documento debe ser la memoria funcional y técnica completa de PRODUCTOS V1.
+
+Título:
+
+# PRODUCTOS V1 — KONTAXPRO Desktop
+
+Debe indicar claramente:
+
+ESTADO:
+FINALIZADO COMO PRIMERA VERSIÓN FUNCIONAL
+
+y:
+
+PRODUCTOS V1 queda congelado como referencia.
+Los cambios posteriores deben responder a requerimientos concretos o integración con otros módulos, no a rediseños arbitrarios.
+
+============================================================
+6. PRODUCTOS_V1 — RESUMEN DEL MÓDULO
+============================================================
+
+Documentar:
+
+- propósito;
+- alcance;
+- responsabilidades;
+- qué problemas resuelve;
+- relación Producto/Inventario;
+- límites del módulo.
+
+Explicar especialmente:
+
+Producto define información comercial y comportamiento.
+
+Inventario registra hechos físicos.
+
+No confundir ambas responsabilidades.
+
+============================================================
+7. PRODUCTOS_V1 — ARQUITECTURA REAL
+============================================================
+
+Documentar proyectos/capas reales utilizadas.
+
+Ejemplo conceptual:
+
+Desktop
+Application
+Domain
+Infrastructure
+
+Pero utilizar nombres reales.
+
+Crear una tabla:
+
+Componente | Archivo/Ruta | Responsabilidad
+
+Incluir:
+
+Views
+ViewModels
+Interfaces
+Services
+DTOs
+Entities
+Configurations
+Tests
+
+No listar archivos irrelevantes.
+
+============================================================
+8. PRODUCTOS_V1 — MODELO PRODUCTO
+============================================================
+
+Documentar la entidad Producto ACTUAL.
+
+Explicar campos funcionales como:
+
+- empresa;
+- categoría;
+- marca;
+- unidad base;
+- código;
+- nombre;
 - descripción;
-- botones uniformes;
-- tipografía y tamaños actuales;
-- no usar chrome visual antiguo de Windows.
+- modelo/especificación;
+- tipo de producto;
+- manejo de inventario;
+- lotes;
+- series;
+- caducidad;
+- observación;
+- estado;
+- UUID si existe;
+- timestamps.
 
-Debe sentirse parte natural de KONTAXPRO.
+Usar nombres reales de propiedades/columnas.
 
-============================================================
-7. ICONOS Y COLORES
-============================================================
+Explicar qué información NO debe estar directamente en Producto:
 
-ERROR
+- stock;
+- costo;
+- precio;
+- código de barras;
+- datos físicos de lotes/series;
 
-Icono MaterialDesign apropiado:
-AlertCircle / CloseCircle o equivalente.
-
-Color visual:
-rojo KONTAXPRO.
-
-------------------------------------------------------------
-
-WARNING
-
-Icono:
-Alert / AlertOutline o equivalente.
-
-Color:
-ámbar/naranja.
-
-------------------------------------------------------------
-
-INFO
-
-Icono:
-Information / InformationOutline.
-
-Color:
-azul.
-
-------------------------------------------------------------
-
-SUCCESS
-
-Icono:
-CheckCircle / CheckCircleOutline.
-
-Color:
-verde KONTAXPRO.
-
-------------------------------------------------------------
-
-CONFIRMATION
-
-Icono:
-HelpCircle / MessageQuestion / equivalente disponible.
-
-Usar un color coherente con la paleta KONTAXPRO.
-
-No inventar iconos externos.
-
-Usar MaterialDesign PackIcon.
+si eso corresponde al modelo real actual.
 
 ============================================================
-8. ESTRUCTURA VISUAL
+9. PRODUCTOS_V1 — PRESENTACIONES
 ============================================================
 
-Diseño conceptual:
+Documentar completamente:
 
-┌─────────────────────────────────────────────┐
-│  [ICONO]  TÍTULO                        [X] │
-│                                             │
-│           Mensaje principal                 │
-│           texto adicional si existe         │
-│                                             │
-│                    [Cancelar] [Confirmar]    │
-└─────────────────────────────────────────────┘
+- presentación BASE;
+- presentaciones adicionales;
+- factor de conversión;
+- unidad base;
+- código;
+- UUID;
+- código de barras;
+- presentación activa;
+- reglas de compra/venta si continúan existiendo;
+- restricciones.
 
-El diseño debe ser elegante y compacto.
+Explicar:
 
-No crear un diálogo gigantesco para mensajes pequeños.
+stock siempre se normaliza a unidad base.
 
-============================================================
-9. BOTÓN X SUPERIOR
-============================================================
-
-Usar el mismo lenguaje visual aprobado:
-
-- botón rojo;
-- icono Close blanco;
-- esquina superior derecha;
-- borde redondeado;
-- hover coherente.
-
-Su comportamiento depende del tipo.
-
-Mensaje informativo:
-equivale a cerrar.
-
-Confirmación:
-equivale a Cancelar/No.
-
-Nunca debe interpretarse como Confirmar.
+No existe stock independiente por presentación.
 
 ============================================================
-10. BOTONES
+10. PRODUCTOS_V1 — CÓDIGOS DE BARRAS
 ============================================================
 
-Botones con:
+Documentar:
 
-- mismo alto;
-- ancho uniforme cuando haya dos;
-- iconos;
-- bordes redondeados;
-- estilos globales.
+- códigos del fabricante;
+- productos sin código del fabricante;
+- generación automática KONTAXPRO;
+- formato real implementado;
+- relación con establecimiento/prefijo si aplica;
+- secuencial;
+- unicidad;
+- momento en que se genera;
+- comportamiento de presentación BASE/adicional.
+
+No inventar formato: verificar código actual.
+
+============================================================
+11. PRODUCTOS_V1 — IMPUESTOS
+============================================================
+
+Documentar cómo Producto se relaciona actualmente con:
+
+productos_impuestos
+impuestos
+tarifas_impuesto
+
+o entidades equivalentes reales.
+
+No indicar tarifa directa en Producto si ya no existe.
+
+Documentar selección desde ProductForm.
+
+============================================================
+12. PRODUCTOS_V1 — PRECIOS
+============================================================
+
+Documentar estructura real.
+
+Incluir:
+
+Lista A
+Lista B
+Lista C
+
+y nombres actuales seed.
+
+Explicar reglas aprobadas:
+
+LISTA A:
+- PORCENTAJE_COSTO / margen sobre costo;
+- o PRECIO_FIJO.
+
+LISTAS B/C:
+- DESCUENTO_PORCENTAJE sobre Lista A;
+- o PRECIO_FIJO.
+
+Explicar:
+
+- precios por presentación;
+- no por producto genérico;
+- cálculo;
+- almacenamiento;
+- snapshots donde corresponda;
+- costo usado como referencia;
+- forma en que ProductForm configura precios.
+
+Usar enums/códigos reales.
+
+============================================================
+13. PRODUCTOS_V1 — COSTOS
+============================================================
+
+Documentar:
+
+- último precio de compra;
+- último costo efectivo;
+- costo promedio;
+- precisión;
+- dónde se almacenan;
+- cómo se actualizan;
+- cómo se presentan en UI.
+
+Explicar claramente:
+
+el costo contable se mantiene normalizado a unidad base.
+
+El costo de una presentación se deriva mediante factor cuando corresponda.
+
+No existe costo permanente independiente por presentación salvo que la implementación real indique otra cosa.
+
+============================================================
+14. PRODUCTOS_V1 — EXISTENCIAS
+============================================================
+
+Documentar:
+
+- producto;
+- bodega;
+- stock actual;
+- reservado;
+- disponible;
+- stock mínimo;
+- ubicación;
+- reglas de modificación.
+
+Regla fundamental:
+
+STOCK ACTUAL NO SE EDITA DIRECTAMENTE.
+
+Las cantidades cambian mediante operaciones trazables.
+
+============================================================
+15. PRODUCTOS_V1 — BODEGAS
+============================================================
+
+Documentar únicamente lo relevante para Productos:
+
+- selección de bodega;
+- facturable/no facturable;
+- existencias;
+- stock mínimo;
+- ubicación;
+- impacto en operaciones.
+
+No documentar todo el futuro módulo Bodegas si no existe.
+
+============================================================
+16. PRODUCTOS_V1 — TIPOS DE CONTROL
+============================================================
+
+Documentar los tipos realmente existentes:
+
+NORMAL
+LOTE
+SERIE
+LOTE_Y_SERIE
+
+Explicar comportamiento de cada uno.
+
+Incluir manejo de:
+
+maneja_lotes
+maneja_series
+maneja_fecha_caducidad
+
+o propiedades equivalentes.
+
+============================================================
+17. PRODUCTOS_V1 — LOTES
+============================================================
+
+Documentar:
+
+productos_lotes
+productos_lotes_existencias
+
+o nombres reales.
+
+Incluir:
+
+- número de lote;
+- elaboración;
+- caducidad;
+- fechas opcionales/obligatorias;
+- stock por bodega;
+- reutilización de lote existente;
+- lote nuevo;
+- prevención de duplicados;
+- búsqueda flexible;
+- correcciones controladas.
+
+Regla actual:
+
+Elaboración es opcional.
+
+Caducidad solo se exige cuando el producto controla fecha de caducidad.
+
+============================================================
+18. PRODUCTOS_V1 — SERIES
+============================================================
+
+Documentar:
+
+- producto;
+- lote opcional;
+- bodega;
+- número serie;
+- estado;
+- ubicación;
+- reglas de unicidad;
+- entradas;
+- salidas;
+- relación LOTE_Y_SERIE.
+
+Explicar:
+
+una serie representa una unidad física identificable.
+
+============================================================
+19. PRODUCTOS_V1 — NUEVO PRODUCTO
+============================================================
+
+Documentar paso a paso el flujo NUEVO actual.
+
+Debe cubrir:
+
+- búsqueda previa;
+- posibles duplicados;
+- información general;
+- clasificación;
+- impuesto;
+- presentación base;
+- presentaciones adicionales;
+- configuración de inventario;
+- control de caducidad;
+- registrar inventario inicial opcional;
+- lotes;
+- series;
+- precios;
+- observaciones;
+- validación;
+- transacción;
+- guardar;
+- mensajes.
+
+No cambiar comportamiento.
+
+============================================================
+20. PRODUCTOS_V1 — INVENTARIO INICIAL
+============================================================
+
+Documentar:
+
+qué significa.
+
+Explicar:
+
+NO es editar stock directamente.
+
+Es una entrada real trazable.
+
+Documentar:
+
+- bodega;
+- presentación;
+- cantidad;
+- factor;
+- cantidad base;
+- costo presentación;
+- costo base;
+- stock mínimo;
+- ubicación;
+- lotes;
+- series;
+- Kardex;
+- costo promedio.
+
+============================================================
+21. PRODUCTOS_V1 — EDITAR PRODUCTO
+============================================================
+
+Documentar claramente qué puede modificarse.
+
+Incluir:
+
+- información general;
+- clasificación;
+- presentaciones;
+- precios;
+- configuración de control;
+- stock mínimo;
+- ubicación;
+
+según implementación real.
+
+Explicar qué NO se modifica directamente:
+
+- movimientos históricos;
+- stock actual;
+- cantidades confirmadas.
+
+============================================================
+22. PRODUCTOS_V1 — OPERACIONES DE INVENTARIO DEL EDITOR
+============================================================
+
+Documentar las operaciones auxiliares finales existentes.
+
+Como mínimo, verificar e incluir:
+
+- Agregar entrada inicial / completar inventario inicial;
+- Registrar ajuste;
+- Ver Kardex;
+- Convertir tipo de control;
+- Corregir lotes / series;
+
+y cualquier otra operación real presente.
+
+Usar nombres exactos actuales.
+
+============================================================
+23. PRODUCTOS_V1 — AJUSTES
+============================================================
+
+Documentar:
+
+AJUSTE_ENTRADA
+AJUSTE_SALIDA
+
+y comportamiento para:
+
+NORMAL
+LOTE
+SERIE
+LOTE_Y_SERIE.
+
+Incluir reglas finales:
+
+ENTRADA LOTE:
+- puede utilizar lote existente o nuevo;
+- puede usar múltiples lotes.
+
+SALIDA LOTE:
+- lotes existentes con stock.
+
+ENTRADA SERIE:
+- series nuevas.
+
+SALIDA SERIE:
+- series disponibles.
+
+ENTRADA LOTE_Y_SERIE:
+- lotes primero;
+- series asociadas a lotes.
+
+SALIDA LOTE_Y_SERIE:
+- selección de series;
+- lote derivado automáticamente desde la serie.
+
+Verificar que esto corresponda al código real.
+
+============================================================
+24. PRODUCTOS_V1 — CATÁLOGO DE MOTIVOS
+============================================================
+
+Documentar la implementación final de:
+
+motivos_operacion_inventario
+
+o nombre real.
+
+Incluir:
+
+- motivos globales;
+- motivos por empresa;
+- filtro por operación;
+- botón +;
+- permiso;
+- snapshot histórico;
+- ausencia intencional de opción OTRO.
+
+Explicar decisión:
+
+No existe OTRO para evitar dispersión y preservar calidad de reportes.
+
+============================================================
+25. PRODUCTOS_V1 — CONVERSIÓN DE CONTROL
+============================================================
+
+Documentar transiciones permitidas actualmente.
+
+Incluir:
+
+- motivo;
+- stock existente;
+- clasificación de stock;
+- lotes;
+- series;
+- regularización si sigue existiendo;
+- validaciones;
+- auditoría;
+- qué transiciones están bloqueadas.
+
+No inventar mapa.
+Extraerlo de código/tests actuales.
+
+============================================================
+26. PRODUCTOS_V1 — CORRECCIÓN CONTROLADA
+============================================================
+
+Documentar:
+
+- qué datos pueden corregirse;
+- lote;
+- elaboración;
+- caducidad;
+- serie;
+- motivo;
+- permisos;
+- auditoría;
+- qué cantidades/estados históricos NO pueden modificarse.
+
+============================================================
+27. PRODUCTOS_V1 — KARDEX
+============================================================
+
+Documentar:
+
+- propósito;
+- campos principales;
+- costo;
+- stock anterior;
+- stock nuevo;
+- promedio anterior;
+- promedio nuevo;
+- usuario;
+- observación;
+- origen/movimiento;
+- consulta histórica.
+
+Regla:
+
+Kardex es histórico y no modifica existencias.
+
+============================================================
+28. PRODUCTOS_V1 — MOVIMIENTOS
+============================================================
+
+Documentar estructura real de:
+
+movimientos_inventario
+movimientos_inventario_detalles
+detalles_lotes
+detalles_series
+
+Explicar principio:
+
+La operación explica POR QUÉ.
+El movimiento/Kardex explica CÓMO cambió el stock.
+
+============================================================
+29. PRODUCTOS_V1 — TRANSACCIONES
+============================================================
+
+Documentar operaciones que requieren transacción atómica.
+
+Explicar patrón:
+
+BEGIN
+operación
+movimiento
+detalles
+lotes/series
+existencias
+costos
+COMMIT
+
+Error:
+ROLLBACK
+
+Usar implementación real.
+
+============================================================
+30. PRODUCTOS_V1 — PRODUCTS VIEW
+============================================================
+
+Documentar el listado final actual.
+
+Incluir:
+
+- encabezado;
+- Nuevo producto;
+- KPIs;
+- búsqueda;
+- filtro estado;
+- refrescar;
+- tabla;
+- paginación;
+- sort;
+- acciones.
+
+============================================================
+31. PRODUCTOS_V1 — KPIs
+============================================================
+
+Documentar definiciones reales actuales:
+
+PRODUCTOS
+STOCK BAJO
+SIN STOCK
+POR CADUCAR
+
+Explicar:
+
+- cálculo;
+- interacción clicable;
+- filtro;
+- nivel producto/bodega;
+- lotes por caducar con stock;
+- no doble conteo si corresponde.
+
+Usar código actual.
+
+============================================================
+32. PRODUCTOS_V1 — BÚSQUEDA
+============================================================
+
+Documentar comportamiento definitivo:
+
+usuario escribe
+→ tabla se filtra.
+
+NO autocomplete visual tipo Google.
+
+Incluir campos reales buscables:
+
+- código;
+- nombre;
+- modelo;
+- marca;
+- categoría;
+- presentación;
+- barcode;
+
+según implementación.
+
+Incluir debounce/paginación si existen.
+
+============================================================
+33. PRODUCTOS_V1 — PAGINACIÓN
+============================================================
+
+Documentar:
+
+- server-side o implementación real;
+- PageSize;
+- opciones 25/50/100;
+- total;
+- páginas;
+- interacción con filtros;
+- sort.
+
+============================================================
+34. PRODUCTOS_V1 — COLUMNA PRODUCTO
+============================================================
+
+Documentar patrón visual definitivo:
+
+Primera línea:
+
+NOMBRE COMERCIAL · MARCA
+
+Ejemplo:
+
+IVERMÍN 100 ML · FARBIOVET
+
+Segunda:
+
+MODELO / ESPECIFICACIÓN
+
+Tercera:
+
+PRESENTACIONES COMERCIALES
+
+Ejemplo:
+
+FRASCO 100 ML · CAJA X12 · CAJA X6
+
+Si más de 3:
+documentar comportamiento real +N MÁS si fue implementado.
+
+============================================================
+35. PRODUCTOS_V1 — ESTADOS Y ACCIONES
+============================================================
+
+Documentar:
+
+ACTIVO:
+badge verde sólido.
+
+INACTIVO:
+badge sólido según estilo final.
+
+Editar:
+azul sólido.
+
+Inactivar:
+rojo sólido.
+
+Activar:
+verde sólido.
+
+Iconos blancos.
+
+Tooltips.
+
+Confirmaciones mediante sistema global de mensajes.
+
+============================================================
+36. PRODUCTOS_V1 — REGLAS QUE NO DEBEN ROMPERSE
+============================================================
+
+Crear una sección destacada:
+
+## Reglas invariantes de PRODUCTOS V1
+
+Incluir únicamente reglas confirmadas en código/diseño.
 
 Ejemplos:
 
-ERROR:
-[ ✓ Entendido ]
+- multiempresa siempre filtrada;
+- stock no se edita directamente;
+- presentación BASE única;
+- factor BASE = 1;
+- barcode único según regla real;
+- costos normalizados;
+- precios por presentación;
+- lotes/series trazables;
+- operaciones históricas no se reescriben;
+- correcciones se registran;
+- movimientos transaccionales;
+- UI no accede directamente a DbContext;
+- ViewModels no usan MessageBox nativo;
+- etc.
 
-INFO:
-[ ✓ Entendido ]
+============================================================
+37. PRODUCTOS_V1 — TABLAS INVOLUCRADAS
+============================================================
 
-WARNING informativa:
-[ ✓ Entendido ]
+Crear tabla de referencia:
 
-CONFIRMATION:
-[ X Cancelar ] [ ✓ Confirmar ]
+Tabla | Propósito | Escritura desde qué operación
 
-Cuando semánticamente corresponda:
+Incluir únicamente tablas reales relevantes.
 
-[ No ] [ Sí ]
+Ejemplos posibles:
 
-pero preferir textos que indiquen claramente la acción.
+productos
+productos_presentaciones
+productos_impuestos
+productos_presentaciones_precios
+productos_costos
+productos_existencias
+productos_lotes
+productos_lotes_existencias
+productos_series
+movimientos_inventario
+movimientos_inventario_detalles
+...
+
+Usar nombres reales.
+
+============================================================
+38. PRODUCTOS_V1 — SERVICIOS
+============================================================
+
+Documentar interfaces/servicios reales.
+
+Para cada uno:
+
+- responsabilidad;
+- proyecto;
+- dependencias;
+- patrón IDbContextFactory;
+- transacciones si aplica.
+
+No documentar APIs inexistentes.
+
+============================================================
+39. PRODUCTOS_V1 — PRUEBAS
+============================================================
+
+Documentar suite real de tests relacionada.
+
+No copiar cada test completo.
+
+Crear tabla:
+
+Área | Casos cubiertos
 
 Ejemplo:
 
-[ Seguir editando ] [ Cancelar registro ]
-
-es mejor que:
-
-[ No ] [ Sí ]
-
-cuando el contexto lo permita.
-
-No cambiar arbitrariamente textos actuales durante esta tarea.
-Mantener intención original.
-
-============================================================
-11. CONFIRMACIONES
-============================================================
-
-ConfirmAsync debe devolver:
-
-Task<bool>
-
-o equivalente.
-
-Debe poder utilizarse así:
-
-if (!await _messageService.ConfirmAsync(...))
-    return;
-
-No bloquear utilizando hacks de UI.
+Presentaciones
+Lotes
+Series
+Ajustes
+Conversión
+Kardex
+Búsqueda
+Paginación
+etc.
 
 ============================================================
-12. OWNER Y CENTRADO
+40. PRODUCTOS_V1 — PENDIENTES FUERA DE V1
 ============================================================
 
-El diálogo debe:
+Crear:
 
-- mostrarse centrado respecto de la ventana/modal que lo invoca;
-- permanecer encima de su Owner;
-- no aparecer detrás de otras ventanas;
-- bloquear correctamente la ventana origen mientras sea modal.
+## Fuera de alcance de PRODUCTOS V1
 
-No centrar exclusivamente respecto del monitor si existe Owner válido.
+Solo incluir funcionalidades conscientemente postergadas.
 
-============================================================
-13. OVERLAY
-============================================================
+No inventar backlog.
 
-Cuando se muestre un diálogo modal:
+Ejemplo si corresponde:
 
-- aplicar overlay tenue sobre el contenido de fondo si es coherente con la arquitectura actual;
-- mantener visible el contexto;
-- no permitir interacción accidental con el formulario detrás.
+- mejoras futuras relacionadas con recetas/prescripciones;
+- funcionalidades no necesarias para primera venta;
+- optimizaciones futuras.
 
-El overlay debe adaptarse a Light/Dark.
+Separar claramente:
 
-No usar efectos excesivos.
+FINALIZADO
+vs.
+FUTURO
 
 ============================================================
-14. LIGHT / DARK
+41. CREAR docs/UI_UX_KONTAXPRO.md
 ============================================================
 
-El diálogo debe reaccionar al ThemeService existente.
-
-En Dark:
-
-- fondo oscuro;
-- texto claro;
-- bordes sutiles.
-
-En Light:
-
-- fondo claro;
-- texto oscuro.
-
-Los colores semánticos:
-
-rojo
-verde
-azul
-ámbar
-
-deben conservar suficiente contraste en ambos temas.
-
-No hardcodear fondos que destruyan el tema.
-
-Preferir DynamicResource cuando corresponda.
-
-============================================================
-15. MENSAJES DE ÉXITO
-============================================================
-
-No todos los SUCCESS necesitan un modal que obligue al usuario a pulsar Aceptar.
-
-Crear también una notificación no bloqueante reutilizable:
-
-Snackbar / Toast KONTAXPRO.
-
-Ejemplo:
-
-✓ Producto registrado correctamente.
-
-Debe:
-
-- aparecer brevemente;
-- no bloquear;
-- desaparecer automáticamente;
-- mantener look & feel;
-- poder cerrarse manualmente cuando corresponda.
-
-Utilizar SUCCESS preferentemente mediante notificación breve cuando no se requiere decisión.
-
-============================================================
-16. INFORMACIÓN NO CRÍTICA
-============================================================
-
-INFO también debe poder mostrarse como Snackbar/Toast cuando no requiere interacción.
-
-Ejemplo:
-
-“La lista de productos fue actualizada.”
-
-No abrir un modal por cada información trivial.
-
-============================================================
-17. ERRORES
-============================================================
-
-Los errores que impiden continuar deben utilizar diálogo modal.
-
-Ejemplo:
-
-NO:
-
-“Error: DbUpdateException FK_Producto...”
-
-Sí:
-
-“No se pudo registrar el producto.”
-
-y mensaje comprensible.
-
-Mantener detalles técnicos únicamente en logging/debug.
-
-No mostrar:
-
-- stack traces;
-- nombres de tablas;
-- SQL;
-- excepciones EF;
-- connection strings;
-- paths internos;
-
-al usuario final.
-
-============================================================
-18. ADVERTENCIAS
-============================================================
-
-WARNING debe servir para condiciones importantes pero no necesariamente errores.
-
-Ejemplo:
-
-“El precio de venta está por debajo del costo actual.”
-
-Puede ser:
-
-- modal si requiere decisión;
-- notificación si únicamente informa.
-
-La infraestructura debe permitir ambos usos sin duplicar componentes.
-
-============================================================
-19. VALIDACIONES DE FORMULARIO
-============================================================
-
-NO reemplazar automáticamente todas las validaciones inline por diálogos.
-
-Errores como:
-
-“Nombre obligatorio”
-
-“Cantidad requerida”
-
-“Caducidad inválida”
-
-deben seguir apareciendo junto al campo cuando esa sea la UX actual.
-
-El sistema global se usa para:
-
-- errores de operación;
-- confirmaciones;
-- advertencias generales;
-- éxito;
-- información global.
-
-No convertir cada validación de campo en popup.
-
-============================================================
-20. MENSAJE ACTUAL DE CANCELAR PRODUCTO
-============================================================
-
-Reemplazar específicamente el MessageBox mostrado actualmente al cerrar/cancelar Nuevo Producto.
-
-Actual:
+Este documento será la referencia visual global para TODOS los nuevos módulos.
 
 Título:
-Cancelar nuevo producto
 
-Mensaje:
-Hay información ingresada que todavía no se ha guardado. ¿Desea cancelar el registro?
+# UI/UX KONTAXPRO Desktop — Estándar visual
 
-Debe utilizar el nuevo diálogo KONTAXPRO.
+Indicar:
 
-Mantener exactamente la lógica actual:
+ProductsView/ProductForm fueron el primer módulo donde estos patrones quedaron consolidados.
 
-Confirmar cancelación
-→ cerrar/cancelar.
-
-Cancelar la confirmación
-→ permanecer en el formulario.
-
-No modificar el comportamiento del formulario Nuevo.
+Nuevos módulos deben seguir estos patrones, adaptándolos al contexto y NO copiando ciegamente XAML.
 
 ============================================================
-21. TEXTOS Y MAYÚSCULAS
+42. UI_UX — PRINCIPIOS
 ============================================================
 
-Los mensajes de UI NO deben forzarse completamente a MAYÚSCULAS.
+Documentar:
 
-Mantener escritura natural:
+- moderno;
+- futurista sin exceso;
+- limpio;
+- amigable;
+- fácil;
+- intuitivo;
+- consistente;
+- robustez interna/simplicidad externa.
 
-“Producto registrado correctamente.”
+No escribir marketing.
 
-No:
-
-“PRODUCTO REGISTRADO CORRECTAMENTE.”
-
-Los datos comerciales siguen las reglas de mayúsculas ya existentes.
-
-============================================================
-22. ACCESIBILIDAD
-============================================================
-
-El diálogo debe admitir:
-
-- Enter para acción principal cuando sea seguro;
-- Escape para Cancelar/Cerrar;
-- navegación mediante Tab;
-- foco inicial apropiado;
-- contraste legible;
-- texto multilínea;
-- TextWrapping.
-
-En una confirmación destructiva:
-
-NO hacer que Enter confirme accidentalmente una operación peligrosa si la UX actual no lo hace.
-
-Preferir foco inicial en la opción segura.
-
-Ejemplo:
-
-Cancelar registro:
-
-foco inicial:
-Seguir editando
-
-no:
-Cancelar registro.
+Traducir estos principios a reglas concretas de interfaz.
 
 ============================================================
-23. EVITAR DOBLE DIÁLOGO
+43. UI_UX — LIGHT/DARK
 ============================================================
 
-La infraestructura debe evitar abrir accidentalmente múltiples instancias del mismo diálogo por doble click.
+Documentar:
 
-Deshabilitar o proteger comandos mientras una confirmación esté abierta si es necesario.
+- ThemeService;
+- DynamicResource;
+- colores semánticos;
+- contraste;
+- no hardcodear fondos si existe recurso;
+- controles deben funcionar en ambos temas.
 
-No crear una solución global excesivamente compleja.
-
-============================================================
-24. MENSAJES LARGOS
-============================================================
-
-Soportar:
-
-- títulos cortos;
-- mensajes de varias líneas;
-- detalle secundario opcional.
-
-Aplicar:
-
-TextWrapping
-MaxWidth razonable
-Scroll solo para textos excepcionalmente largos.
-
-No hacer crecer indefinidamente el diálogo.
+Referenciar archivos reales de themes/styles.
 
 ============================================================
-25. RESULTADOS MÁS FLEXIBLES
+44. UI_UX — PALETA
 ============================================================
 
-Aunque inicialmente ConfirmAsync necesite bool, diseñar internamente de manera que pueda soportarse eventualmente:
+Extraer del código actual los colores reales.
+
+Documentar semántica:
+
+- verde primario;
+- azul;
+- morado;
+- warning;
+- danger;
+- fondos;
+- textos;
+- bordes.
+
+NO inventar hex si el código actual usa otros.
+
+============================================================
+45. UI_UX — FORMULARIOS
+============================================================
+
+Documentar patrón actual:
+
+Header
+Contenido scrollable
+Footer fijo
+
+y:
+
+- icono;
+- título;
+- subtítulo;
+- botón X;
+- cards;
+- campos;
+- labels;
+- ayudas;
+- validación;
+- footer.
+
+============================================================
+46. UI_UX — BOTÓN X
+============================================================
+
+Documentar:
+
+- rojo;
+- icono Close blanco;
+- esquina superior derecha;
+- acción segura;
+- comparte lógica con Cancelar/Cerrar;
+- confirmación si hay cambios.
+
+============================================================
+47. UI_UX — BOTONES
+============================================================
+
+Documentar estilos reales:
 
 Primary
 Secondary
-Cancel
+Danger
+Add
+Edit
+Activate
+Close/Cancel
 
-sin reescribir toda la infraestructura.
+Incluir:
 
-No sobrediseñar una API enorme ahora.
+- colores;
+- iconos;
+- hover;
+- alto;
+- ancho uniforme cuando son pareja;
+- ToolTips.
 
-============================================================
-26. SERVICIO DE NOTIFICACIONES
-============================================================
-
-Si arquitectónicamente queda más limpio, separar:
-
-IMessageDialogService
-INotificationService
-
-donde:
-
-MessageDialogService:
-- Error
-- Warning
-- Confirmation
-- Info modal
-
-NotificationService:
-- Success
-- Info no bloqueante
-- Warning no bloqueante
-
-Si eso añade duplicación innecesaria, puede existir una fachada común.
-
-Priorizar claridad.
+No copiar números si no son globalmente estables; referenciar recursos reales cuando sea mejor.
 
 ============================================================
-27. NO ACOPLAR VIEWMODEL A WPF
+48. UI_UX — CAMPOS
 ============================================================
 
-Los ViewModels no deben conocer:
+Documentar:
 
-Window
-MessageBox
-PackIcon
-Brush
-DialogHost
-Snackbar
+- TextBox;
+- ComboBox;
+- TextArea;
+- PasswordBox;
+- focus verde;
+- bordes;
+- radios;
+- placeholder;
+- texto de ayuda;
+- obligatorio "*".
 
-Solo deben solicitar una intención semántica.
+============================================================
+49. UI_UX — MAYÚSCULAS
+============================================================
+
+Documentar regla global:
+
+Datos comerciales capturados por usuario deben normalizarse a MAYÚSCULAS cuando corresponda.
+
+Ejemplos:
+
+- nombres;
+- marcas;
+- modelos;
+- descripciones breves;
+- códigos;
+- lotes;
+- ubicaciones;
+- motivos.
+
+NO transformar datos sensibles a mayúsculas/minúsculas:
+
+- correo;
+- contraseña;
+- URL;
+- token;
+- hash;
+- claves técnicas;
+- etc.
+
+Distinguir:
+
+datos
+vs.
+textos normales de UI.
+
+Mensajes de UI no se fuerzan a mayúsculas.
+
+============================================================
+50. UI_UX — TABLAS
+============================================================
+
+Documentar estándar global de DataGrid/ListView:
+
+- header MAYÚSCULA;
+- negrita;
+- vertical center;
+- fondos por tema;
+- hover;
+- selección verde;
+- texto Light/Dark;
+- scrollbars;
+- alturas;
+- acciones;
+- iconos blancos sobre fondos sólidos;
+- evitar apariencia WPF predeterminada.
+
+Referenciar estilo global real.
+
+============================================================
+51. UI_UX — SORT
+============================================================
+
+Documentar:
+
+- encabezado KONTAXPRO;
+- hover personalizado;
+- no usar celeste estándar Windows;
+- ASC/DESC;
+- iconografía;
+- server-side cuando el volumen lo requiera.
+
+============================================================
+52. UI_UX — KPIs
+============================================================
+
+Documentar patrón:
+
+- cards;
+- icono;
+- número;
+- texto;
+- color semántico;
+- clic como filtro cuando aplica;
+- estado activo visible;
+- cursor Hand.
+
+No convertir todos los cards futuros automáticamente en filtros; aplicar cuando tenga sentido.
+
+============================================================
+53. UI_UX — BÚSQUEDA
+============================================================
+
+Documentar dos patrones distintos.
+
+A. LISTADOS
+
+Como ProductsView:
+
+escribir
+→ filtrar tabla
+
+con debounce.
+
+No desplegable Google por defecto.
+
+B. CAMPOS DE REFERENCIA/RELACIÓN
+
+Ejemplo lote existente/nuevo:
+
+TextBox + autocomplete/sugerencias.
+
+No confundir ambos patrones.
+
+Esta distinción es importante.
+
+============================================================
+54. UI_UX — PAGINACIÓN
+============================================================
+
+Documentar patrón:
+
+- server-side en listados grandes;
+- 25 default;
+- 25/50/100;
+- total;
+- página;
+- anterior/siguiente;
+- página activa verde;
+- filtros vuelven a página 1.
+
+============================================================
+55. UI_UX — BADGES
+============================================================
+
+Documentar:
+
+- colores sólidos;
+- texto blanco;
+- mayúsculas para estados;
+- ACTIVO verde;
+- INACTIVO color final;
+- warning;
+- danger;
+- tamaño compacto.
+
+============================================================
+56. UI_UX — MENSAJES
+============================================================
+
+Documentar sistema global final de:
+
+ERROR
+WARNING
+INFO
+SUCCESS
+CONFIRMATION
+
+Incluir:
+
+- dialogs;
+- toast/snackbar;
+- iconos;
+- colores;
+- cuándo usar modal;
+- cuándo usar notificación;
+- prohibición de MessageBox nativo;
+- ViewModels llaman servicio semántico.
+
+Usar nombres reales de servicios/clases.
+
+============================================================
+57. UI_UX — DIÁLOGOS AUXILIARES
+============================================================
+
+Documentar el shell común aplicado a:
+
+- Ajuste;
+- Kardex;
+- Conversión;
+- Corrección;
+
+o equivalentes.
+
+Incluir:
+
+- dimensiones;
+- resize;
+- header;
+- X;
+- scroll;
+- footer;
+- botones.
+
+No asumir que todos los futuros diálogos tendrán exactamente igual tamaño; documentar el principio y recurso común.
+
+============================================================
+58. UI_UX — ICONOGRAFÍA
+============================================================
+
+Documentar:
+
+MaterialDesign PackIcon.
+
+Reglas:
+
+- icono acorde a acción;
+- blanco sobre botón sólido;
+- Plus para agregar;
+- Close;
+- Edit;
+- Refresh;
+- etc.
+
+No utilizar emojis o caracteres Unicode como sustituto si existe PackIcon apropiado.
+
+============================================================
+59. UI_UX — RESPONSIVE EN WPF
+============================================================
+
+Documentar:
+
+- Grid;
+- Width="*";
+- MinWidth;
+- MinHeight;
+- ScrollViewer;
+- columnas;
+- evitar Width rígidos innecesarios;
+- footer/header fijos;
+- contenido adaptable.
+
+============================================================
+60. UI_UX — NORMALIZACIÓN VISUAL DE NÚMEROS
+============================================================
+
+Documentar:
+
+- costos/precios visuales;
+- mínimo/máximo de decimales donde corresponda;
+- stock;
+- moneda;
+- no mostrar 6 ceros inútiles;
+- precisión interna no se pierde.
+
+Usar implementación/converters reales.
+
+============================================================
+61. CREAR docs/PATRONES_DESARROLLO_KONTAXPRO.md
+============================================================
+
+Este documento contiene patrones TÉCNICOS para construir nuevos módulos.
+
+NO debe duplicar UI_UX.
+
+Título:
+
+# Patrones de desarrollo KONTAXPRO Desktop
+
+============================================================
+62. PATRONES — ARQUITECTURA
+============================================================
+
+Documentar proyectos/capas actuales y dependencias permitidas.
+
+Explicar responsabilidades reales de:
+
+Domain
+Application
+Infrastructure
+Desktop
+
+No inventar Clean Architecture teórica si el repo difiere.
+
+============================================================
+63. PATRONES — MVVM
+============================================================
+
+Documentar:
+
+View
+ViewModel
+commands
+ObservableProperty
+CommunityToolkit.Mvvm
+
+Reglas:
+
+- ViewModel sin acceso directo a Window;
+- ViewModel sin MessageBox;
+- lógica de negocio en servicios;
+- UI logic mínima.
+
+============================================================
+64. PATRONES — DI
+============================================================
+
+Documentar:
+
+- App.xaml.cs como composition root;
+- registrar interfaces;
+- resolver ViewModels;
+- no `new Service()` dentro de VMs;
+- lifetimes reales.
+
+============================================================
+65. PATRONES — EF CORE
+============================================================
+
+Documentar patrón consolidado:
+
+IDbContextFactory<KontaxDbContext>
+
+contexto por operación.
+
+Para operaciones complejas:
+
+una única instancia de contexto
++
+una transacción.
+
+No DbContext largo por ViewModel.
+
+============================================================
+66. PATRONES — MULTIEMPRESA
+============================================================
+
+Regla crítica:
+
+Toda información empresarial se filtra por:
+
+CurrentSession.EmpresaId
+
+o mecanismo real equivalente.
+
+Nunca confiar solo en filtro visual.
+
+Validar en servicio.
+
+============================================================
+67. PATRONES — CURRENTSESSION
+============================================================
+
+Documentar propiedades actuales relevantes:
+
+Usuario
+Empresa
+Establecimiento
+Punto emisión
+Bodega
+Caja si ya existe
+Roles
+Permisos
+
+Usar nombres reales.
+
+Explicar:
+
+preferencias != autorización.
+
+============================================================
+68. PATRONES — SERVICIOS
+============================================================
+
+Documentar:
+
+ViewModel
+→ Application interface
+→ Infrastructure service
+→ EF Core
+
+Los nuevos módulos deben evitar consultas directas desde View.
+
+============================================================
+69. PATRONES — DTOs
+============================================================
+
+Documentar separación:
+
+DTO de listado
+DTO detalle
+Request guardar
+Results
+
+No reutilizar un DTO gigante para todas las pantallas si objetivos difieren.
+
+ProductsView debe usarse como ejemplo real.
+
+============================================================
+70. PATRONES — LISTADOS
+============================================================
+
+Documentar patrón consolidado:
+
+- DTO ligero;
+- query server-side;
+- búsqueda;
+- filtros;
+- sort;
+- paginación;
+- KPIs;
+- async;
+- evitar N+1.
+
+Usar ProductsView como referencia.
+
+============================================================
+71. PATRONES — FORMULARIOS NUEVO/EDITAR
+============================================================
+
+Documentar:
+
+- mismo UserControl/ViewModel puede soportar modos si arquitectura actual lo hace;
+- distinguir claramente IsNew/IsEdit o mecanismo real;
+- no mezclar stock histórico con edición de maestro;
+- confirmación cambios sin guardar;
+- validación.
+
+============================================================
+72. PATRONES — MODALES
+============================================================
+
+Documentar:
+
+- no Window arbitraria si existe shell;
+- header;
+- footer;
+- owner;
+- message service;
+- resize;
+- scroll.
+
+============================================================
+73. PATRONES — OPERACIONES HISTÓRICAS
+============================================================
+
+Regla general aprendida en Inventario:
+
+No editar un hecho histórico para corregir el presente.
+
+Registrar:
+
+- movimiento;
+- reverso;
+- ajuste;
+- corrección auditada;
+
+según dominio.
+
+Esta regla debe utilizarse en futuros módulos cuando aplique.
+
+============================================================
+74. PATRONES — SNAPSHOTS
+============================================================
+
+Documentar concepto:
+
+Si un valor es necesario para preservar historia:
+
+guardar snapshot en la operación.
+
+Ejemplos actuales:
+
+- factor;
+- precio;
+- impuestos;
+- costo;
+- motivo;
+
+según código real.
+
+No depender exclusivamente de maestros mutables.
+
+============================================================
+75. PATRONES — SECUENCIALES
+============================================================
+
+Documentar reglas existentes:
+
+- no MAX+1;
+- row lock/sequence;
+- secuenciales fiscales;
+- internos;
+- establecimiento/empresa según tipo.
+
+No copiar reglas específicas de Factura a documentos que no correspondan.
+
+============================================================
+76. PATRONES — TRANSACCIONES
+============================================================
+
+Documentar:
+
+una operación funcional debe ser atómica cuando produce:
+
+cabecera
+detalles
+movimientos
+stock
+costos
+CxC/CxP
+etc.
+
+No SaveChanges parciales que dejen estado inconsistente.
+
+============================================================
+77. PATRONES — AUDITORÍA
+============================================================
+
+Documentar diferencia entre:
+
+Historia operacional
+vs.
+Auditoría de seguridad/administrativa.
+
+No utilizar `auditoria` como sustituto de tablas operativas.
+
+============================================================
+78. PATRONES — PERMISOS
+============================================================
+
+Documentar:
+
+- ocultar/deshabilitar UI;
+- pero validar también en servicio;
+- permisos granulares;
+- no confiar únicamente en botón invisible.
+
+============================================================
+79. PATRONES — CÓDIGO MUERTO
+============================================================
+
+Regla:
+
+No dejar implementaciones fallidas ocultas.
 
 Ejemplo:
 
-_messageService.ShowErrorAsync(...)
+autocomplete descartado de ProductsView.
 
-La implementación Desktop decide cómo renderizar.
+Antes de agregar una alternativa, eliminar código muerto confirmado.
 
-============================================================
-28. REGISTRO EN DI
-============================================================
-
-Registrar servicios siguiendo la estrategia actual de App.xaml.cs.
-
-Usar los lifetimes apropiados.
-
-No crear singletons con referencias permanentes a ventanas si eso puede provocar fugas.
+No eliminar código únicamente porque parezca sin uso sin verificar referencias.
 
 ============================================================
-29. ESTILOS GLOBALES
+80. PATRONES — PERFORMANCE
 ============================================================
 
-Crear recursos reutilizables para:
+Documentar:
 
-- contenedor del diálogo;
-- iconos;
-- header;
+- async;
+- paginación;
+- debounce;
+- CancellationToken si existe;
+- evitar N+1;
+- proyecciones;
+- no cargar entidades completas innecesariamente.
+
+============================================================
+81. PATRONES — ERRORES
+============================================================
+
+Documentar:
+
+- mensajes amigables;
+- detalles técnicos al log;
+- no stack traces al usuario;
+- sistema global de mensajes;
+- errores de campo inline.
+
+============================================================
+82. PATRONES — ARCHIVOS Y RUTAS
+============================================================
+
+Documentar brevemente convención real de creación:
+
+cuando se cree un archivo nuevo:
+
+- nombre;
+- proyecto;
+- carpeta;
+- tipo;
+- responsabilidad.
+
+Esto ayuda a futuras tareas Codex.
+
+============================================================
+83. PATRONES — QUÉ REUTILIZAR DE PRODUCTOS
+============================================================
+
+Crear sección:
+
+## Productos como módulo de referencia
+
+Listar patrones reutilizables:
+
+- layout de listado;
+- KPIs;
+- búsqueda;
+- paginación;
+- DataGrid;
+- formulario;
+- cards;
+- mensajes;
+- diálogos;
+- servicios;
+- DTOs;
+- transacciones;
+- validaciones;
+- permisos.
+
+============================================================
+84. PATRONES — QUÉ NO COPIAR CIEGAMENTE
+============================================================
+
+Muy importante.
+
+Productos es REFERENCIA, no plantilla rígida.
+
+No copiar ciegamente:
+
+- campos;
+- columnas;
+- número de KPIs;
+- tamaños específicos;
+- lógica de stock;
+- operaciones de inventario;
+- estructura exacta del formulario.
+
+Cada módulo debe adaptar el patrón a su dominio.
+
+============================================================
+85. ACTUALIZAR AGENTS.md
+============================================================
+
+Después de crear los documentos:
+
+actualizar AGENTS.md.
+
+NO copiar todo el contenido de los nuevos documentos dentro de AGENTS.md.
+
+Mantenerlo compacto.
+
+Agregar una sección apropiada, por ejemplo:
+
+## Documentación de referencia obligatoria
+
+Con reglas como:
+
+- Antes de modificar PRODUCTOS leer docs/PRODUCTOS_V1.md.
+- Antes de crear o rediseñar UI leer docs/UI_UX_KONTAXPRO.md.
+- Antes de crear un nuevo módulo leer docs/PATRONES_DESARROLLO_KONTAXPRO.md.
+- docs/README.md es el índice de documentación.
+- El código actual es siempre la fuente de verdad si la documentación queda desactualizada.
+- Si una tarea modifica una regla documentada, actualizar el .md correspondiente en la misma tarea.
+
+============================================================
+86. AGENTS — PRODUCTOS V1 CONGELADO
+============================================================
+
+Agregar una regla breve:
+
+PRODUCTOS V1 está considerado módulo funcionalmente cerrado.
+
+No realizar refactors, rediseños o cambios de comportamiento en Productos salvo:
+
+- requerimiento explícito;
+- bug confirmado;
+- integración necesaria con otro módulo.
+
+Esto evita que futuros agentes “mejoren” arbitrariamente lo ya aprobado.
+
+============================================================
+87. AGENTS — PRODUCTOS COMO REFERENCIA
+============================================================
+
+Agregar:
+
+ProductsView/ProductForm y sus componentes asociados son la primera referencia madura de UX y arquitectura del proyecto.
+
+Los nuevos módulos deben reutilizar:
+
+- estilos;
+- controles;
+- servicios;
+- patrones;
+
+cuando corresponda.
+
+No duplicar recursos ya existentes.
+
+No copiar XAML ciegamente.
+
+============================================================
+88. AGENTS — UI
+============================================================
+
+Agregar referencia corta:
+
+Toda nueva UI debe cumplir:
+
+docs/UI_UX_KONTAXPRO.md
+
+Especialmente:
+
+- Light/Dark;
+- estilos globales;
+- DataGrid;
+- combos;
+- mensajes;
 - botones;
-- overlay;
-- Snackbar/Toast.
-
-No duplicar colores y estilos en cada ventana.
-
-Integrar con:
-
-Colors.xaml
-LightTheme.xaml
-DarkTheme.xaml
-ButtonStyles.xaml
-
-o recursos equivalentes reales.
-
-No mover recursos arbitrariamente si la estructura actual es distinta.
+- mayúsculas;
+- tablas;
+- diálogos.
 
 ============================================================
-30. PRIMERA FASE DE MIGRACIÓN DE MENSAJES
+89. AGENTS — DOCUMENTACIÓN VIVA
 ============================================================
 
-Después de construir la infraestructura:
+Agregar regla:
 
-buscar usos actuales de:
+La documentación es viva.
 
-MessageBox.Show
-System.Windows.MessageBox
+Cuando una tarea cambie de forma aprobada:
 
-Clasificarlos.
+- reglas funcionales;
+- arquitectura;
+- UI global;
+- patrón técnico;
 
-Reemplazar prioritariamente los que pertenezcan a:
+Codex debe actualizar el .md correspondiente antes de terminar la tarea.
 
-- Login
-- Selección empresa
-- ProductsView
-- ProductForm
-- Inventario
-- formularios ya construidos y probados.
-
-No modificar lógica durante la sustitución.
+No actualizar documentos por cambios triviales que no afecten comportamiento/patrones.
 
 ============================================================
-31. NO CAMBIAR TEXTOS SIN NECESIDAD
+90. AGENTS — NO INVENTAR DESDE DOCUMENTACIÓN OBSOLETA
 ============================================================
 
-En esta primera migración:
+Agregar:
 
-mantener los textos actuales siempre que sean comprensibles.
+Si existe contradicción entre:
 
-Si detectas un mensaje:
+documentación
+y
+código actual
 
-- técnico;
-- confuso;
-- contradictorio;
+NO modificar automáticamente el código para ajustarlo al .md.
 
-informarlo, pero no reescribir masivamente contenido sin necesidad.
+Primero considerar el código fuente como estado real.
 
-============================================================
-32. API DE EJEMPLO
-============================================================
+Informar la discrepancia.
 
-La API final debería permitir algo conceptualmente similar:
-
-await _messageService.ErrorAsync(
-    "No se pudo guardar",
-    "Revise los datos e intente nuevamente.");
-
-await _messageService.WarningAsync(
-    "Stock insuficiente",
-    "No existe suficiente existencia para completar la operación.");
-
-await _notificationService.SuccessAsync(
-    "Producto registrado correctamente.");
-
-await _notificationService.InfoAsync(
-    "Información actualizada.");
-
-var confirmado = await _messageService.ConfirmAsync(
-    "Cancelar nuevo producto",
-    "Hay información ingresada que todavía no se ha guardado. ¿Desea cancelar el registro?");
-
-Los nombres exactos deben seguir las convenciones del proyecto.
+Actualizar documentación únicamente si el código representa la decisión aprobada actual.
 
 ============================================================
-33. EJEMPLOS VISUALES A VERIFICAR
+91. AUDITORÍA FINAL DE PRODUCTOS — SOLO LECTURA
 ============================================================
 
-ERROR
+Después de generar documentación realizar una auditoría final SIN CAMBIAR CÓDIGO.
 
-Icono rojo
-Título:
-No se pudo registrar
+Revisar:
 
-Texto:
-Ocurrió un problema al guardar la información.
-
-Botón:
-Entendido
-
-------------------------------------------------------------
-
-WARNING
-
-Icono ámbar
-Título:
-Advertencia
-
-Texto:
-El precio configurado está por debajo del costo actual.
-
-Botones si requiere decisión:
-Cancelar
-Continuar
-
-------------------------------------------------------------
-
-INFO
-
-Icono azul
-Título:
-Información
-
-Texto:
-No existen movimientos para el período seleccionado.
-
-------------------------------------------------------------
-
-SUCCESS
-
-Notificación verde:
-
-✓ Producto registrado correctamente.
-
-------------------------------------------------------------
-
-CONFIRMATION
-
-Título:
-Cancelar nuevo producto
-
-Texto:
-Hay información ingresada que todavía no se ha guardado.
-¿Desea cancelar el registro?
-
-Botones:
-
-Seguir editando
-Cancelar registro
-
-La opción segura debe quedar visualmente clara.
+BUILD
+TESTS
+EF
+MULTIEMPRESA
+INVENTARIO
+COSTOS
+LOTES
+SERIES
+PRESENTACIONES
+PRECIOS
+TRANSACCIONES
+PERMISOS
+UI
+MESSAGEBOX
+N+1
+CÓDIGO MUERTO
+SEEDERS
 
 ============================================================
-34. PRUEBAS
-============================================================
-
-Probar:
-
-1. Error modal.
-2. Warning modal.
-3. Info modal.
-4. Success Snackbar.
-5. Info Snackbar.
-6. Confirmation = aceptar.
-7. Confirmation = cancelar.
-8. Cerrar confirmation con X.
-9. Escape.
-10. Enter.
-11. Light.
-12. Dark.
-13. Mensaje largo.
-14. Owner correcto.
-15. Abrir desde ProductForm.
-16. Abrir desde ventana auxiliar de Inventario.
-17. Cambiar tema y volver a abrir.
-18. Confirmación Cancelar nuevo producto.
-
-============================================================
-35. BUSCAR MESSAGEBOX RESIDUALES
-============================================================
-
-Al finalizar ejecutar búsqueda global por:
-
-MessageBox.Show
-System.Windows.MessageBox
-MessageBoxResult
-MessageBoxButton
-
-Informar cuáles fueron reemplazados y cuáles permanecen.
-
-Si alguno permanece:
-
-explicar por qué.
-
-El objetivo final es no depender de MessageBox nativo para interacción normal de KONTAXPRO.
-
-============================================================
-36. VALIDACIÓN TÉCNICA
+92. BUILD
 ============================================================
 
 Ejecutar:
 
 dotnet restore
 dotnet build KONTAXPRO.slnx
-dotnet test
-git diff --check
-
-Verificar:
-
-- 0 errores;
-- 0 advertencias si es posible;
-- no cambios EF;
-- no migraciones;
-- no cambios en base.
-
-============================================================
-37. INFORME FINAL
-============================================================
 
 Informar:
 
-1. Arquitectura elegida.
-2. Interfaces creadas.
-3. Implementaciones creadas.
-4. Archivos XAML/recursos creados.
-5. Tipos de mensajes soportados.
-6. Cómo funciona Confirmation.
-7. Cómo funcionan Toast/Snackbar.
-8. Cómo se resuelve Light/Dark.
-9. Cómo se determina Owner.
-10. Qué MessageBox fueron sustituidos.
-11. Confirmar específicamente que “Cancelar nuevo producto” usa el nuevo diálogo.
-12. MessageBox residuales.
-13. Pruebas realizadas.
-14. Build.
-15. Tests.
-16. Pendientes, si existen.
+errores
+warnings.
+
+NO corregirlos en esta tarea.
+
+============================================================
+93. TESTS
+============================================================
+
+Ejecutar:
+
+dotnet test
+
+Informar:
+
+total
+aprobados
+fallidos
+omitidos.
+
+Si existe un fallo:
+
+NO modificar código.
+
+Documentarlo.
+
+============================================================
+94. EF CORE
+============================================================
+
+Verificar:
+
+- InitialCreate actual;
+- modelo;
+- migraciones;
+- cambios pendientes.
+
+No generar migración.
+
+Informar si EF detecta diferencias.
+
+============================================================
+95. MULTIEMPRESA
+============================================================
+
+Auditar consultas de Productos.
+
+Buscar posibles accesos sin:
+
+EmpresaId
+
+cuando deberían estar aislados.
+
+No corregir.
+
+Reportar archivo/método si existe riesgo.
+
+============================================================
+96. INVENTARIO
+============================================================
+
+Auditar que no exista una ruta normal de aplicación que haga:
+
+productoExistencia.StockActual = ...
+
+como edición arbitraria fuera de operación trazable.
+
+Distinguir actualización interna dentro de InventoryService de edición directa incorrecta.
+
+============================================================
+97. LOTES
+============================================================
+
+Revisar coherencia conceptual:
+
+stock producto/bodega
+vs.
+stock lotes/bodega
+
+para operaciones aplicables.
+
+Si existen tests de reconciliación:
+
+ejecutarlos.
+
+Si no existen:
+
+informar como recomendación futura.
+
+NO agregar tests nuevos en esta tarea porque solo se autorizan .md/AGENTS.
+
+============================================================
+98. SERIES
+============================================================
+
+Revisar reglas:
+
+- unicidad;
+- estado;
+- bodega;
+- lote;
+- cantidad.
+
+Informar inconsistencias potenciales.
+
+============================================================
+99. PRESENTACIÓN BASE
+============================================================
+
+Auditar:
+
+- una BASE por producto;
+- factor = 1;
+- no eliminación indebida;
+- relación de unidad.
+
+Informar.
+
+============================================================
+100. PRECIOS
+============================================================
+
+Auditar:
+
+- presentación/lista;
+- A/B/C;
+- métodos;
+- lista base;
+- falta de hardcodes indebidos de IDs.
+
+Informar.
+
+============================================================
+101. TRANSACCIONES
+============================================================
+
+Revisar operaciones complejas:
+
+- inventario inicial;
+- ajuste;
+- conversión;
+- corrección;
+
+y confirmar si utilizan transacciones adecuadas.
+
+No modificar.
+
+============================================================
+102. MESSAGEBOX
+============================================================
+
+Buscar:
+
+MessageBox.Show
+System.Windows.MessageBox
+
+Informar cualquier uso residual relacionado con Productos/Inventario.
+
+No modificarlo en esta tarea.
+
+============================================================
+103. N+1
+============================================================
+
+Auditar especialmente ProductsView.
+
+Verificar que listado paginado no dispare consulta individual por producto para:
+
+- presentación;
+- stock;
+- precio;
+- marca;
+- etc.
+
+No realizar refactor.
+
+Informar.
+
+============================================================
+104. SEEDERS
+============================================================
+
+Revisar:
+
+StructuralSeeder
+DemoSeeder
+
+solo respecto de dependencias necesarias para Productos.
+
+Confirmar:
+
+- idempotencia aparente;
+- catálogos requeridos;
+- demo.
+
+No ejecutar cambios estructurales.
+
+============================================================
+105. DOCUMENTAR RESULTADO DE AUDITORÍA
+============================================================
+
+Al final de:
+
+docs/PRODUCTOS_V1.md
+
+crear:
+
+## Estado de auditoría de cierre
+
+Con:
+
+Fecha
+Build
+Tests
+EF
+Observaciones
+
+NO incluir secretos ni connection strings.
+
+Si existe algún pendiente real:
+
+listarlo como:
+
+PENDIENTE DE CORRECCIÓN
+
+No declarar FINAL VALIDADO si existen errores críticos.
+
+============================================================
+106. NO DOCUMENTAR SECRETOS
+============================================================
+
+NUNCA escribir en los .md:
+
+- contraseñas PostgreSQL;
+- contraseñas usuarios demo;
+- tokens;
+- hashes;
+- secrets;
+- connection strings con password;
+- certificados;
+- claves P12.
+
+Puede documentarse:
+
+“las credenciales se obtienen mediante configuración segura”
+
+sin valores.
+
+============================================================
+107. NO DOCUMENTAR DATOS PERSONALES INNECESARIOS
+============================================================
+
+No incluir:
+
+- cédulas reales;
+- nombres personales;
+- correos personales;
+
+como parte de ejemplos permanentes.
+
+Usar ejemplos ficticios cuando sea necesario.
+
+============================================================
+108. FORMATO DE LOS .md
+============================================================
+
+Usar Markdown limpio:
+
+# Títulos
+## Secciones
+tablas cuando aporten claridad
+listas cortas
+bloques de código solo cuando realmente ayuden.
+
+No crear documentos llenos de párrafos redundantes.
+
+Priorizar:
+
+claridad
+precisión
+navegabilidad.
+
+============================================================
+109. LINKS ENTRE DOCUMENTOS
+============================================================
+
+Agregar referencias relativas.
+
+Por ejemplo:
+
+PRODUCTOS_V1.md:
+
+Para patrones visuales globales consultar:
+[UI/UX KONTAXPRO](UI_UX_KONTAXPRO.md)
+
+Para patrones arquitectónicos:
+[Patrones de desarrollo](PATRONES_DESARROLLO_KONTAXPRO.md)
+
+Y viceversa cuando aporte.
+
+============================================================
+110. NO DUPLICAR
+============================================================
+
+Regla:
+
+PRODUCTOS_V1.md
+= QUÉ hace Productos y cómo está implementado.
+
+UI_UX_KONTAXPRO.md
+= CÓMO debe verse/comportarse la UI global.
+
+PATRONES_DESARROLLO_KONTAXPRO.md
+= CÓMO estructurar técnicamente nuevos módulos.
+
+README.md
+= índice.
+
+AGENTS.md
+= reglas ejecutivas y referencias.
+
+Evitar repetir la misma explicación completa en los cuatro documentos.
+
+============================================================
+111. VALIDACIÓN DE DOCUMENTOS
+============================================================
+
+Antes de finalizar:
+
+verificar que todas las rutas/clases/tablas mencionadas existan realmente.
+
+Buscar posibles referencias inventadas.
+
+No dejar:
+
+TODO
+TBD
+“probablemente”
+“se supone”
+
+salvo que realmente sea un pendiente identificado.
+
+============================================================
+112. git diff
+============================================================
+
+Al terminar ejecutar:
+
+git diff --check
+
+y:
+
+git status --short
+
+Confirmar que los únicos archivos modificados/creados por ESTA tarea sean:
+
+AGENTS.md
+docs/*.md
+
+Si existe otro archivo modificado previamente por el usuario/Codex:
+
+NO revertirlo.
+
+Solo informar que era un cambio preexistente.
+
+============================================================
+113. INFORME FINAL
+============================================================
+
+Al terminar informar:
+
+1. Documentos creados.
+2. Secciones principales de PRODUCTOS_V1.md.
+3. Qué patrones quedaron documentados en UI_UX_KONTAXPRO.md.
+4. Qué patrones quedaron en PATRONES_DESARROLLO_KONTAXPRO.md.
+5. Qué se agregó a AGENTS.md.
+6. Confirmar que Productos quedó marcado como V1 cerrado/referencia.
+7. Resultado build.
+8. Resultado tests.
+9. Estado EF.
+10. Resultado auditoría multiempresa.
+11. Inventario.
+12. Lotes.
+13. Series.
+14. Presentaciones.
+15. Precios.
+16. Transacciones.
+17. MessageBox residuales.
+18. Riesgo N+1.
+19. Seeders.
+20. Pendientes encontrados.
+21. `git diff --check`.
+22. Archivos modificados.
 
 Confirmar expresamente:
 
-“No se modificaron reglas de negocio.”
+“No se modificó código funcional durante esta tarea.”
 
 “No se modificó la base de datos.”
 
 “No se generaron migraciones.”
 
-No hacer commit ni push.
+“No se hicieron cambios de diseño.”
+
+“No se realizó commit ni push.”
+
+============================================================
+114. RESULTADO ESPERADO
+============================================================
+
+Al finalizar debe quedar:
+
+AGENTS.md
+
+docs/
+├── README.md
+├── PRODUCTOS_V1.md
+├── UI_UX_KONTAXPRO.md
+└── PATRONES_DESARROLLO_KONTAXPRO.md
+
+Estos archivos pasan a ser memoria permanente del repositorio y referencia obligatoria para los siguientes módulos de KONTAXPRO.

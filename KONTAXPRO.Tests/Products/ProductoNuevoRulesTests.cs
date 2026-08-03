@@ -119,6 +119,21 @@ public sealed class ProductoNuevoRulesTests
     }
 
     [Fact]
+    public void CajaX6_AdvierteSiSuperaElPrecioDeSeisUnidades()
+    {
+        var sugerido =
+            ProductoNuevoRules.CalcularPrecioEquivalentePresentacion(2m, 6m);
+
+        Assert.Equal(12m, sugerido);
+        Assert.False(
+            ProductoNuevoRules.PrecioPresentacionSuperaEquivalente(
+                12m, 2m, 6m));
+        Assert.True(
+            ProductoNuevoRules.PrecioPresentacionSuperaEquivalente(
+                12.01m, 2m, 6m));
+    }
+
+    [Fact]
     public void CodigoKpx_UsaPrefijoEIdentidadEstable()
     {
         var codigo =
