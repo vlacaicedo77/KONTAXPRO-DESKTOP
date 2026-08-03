@@ -1,689 +1,926 @@
-PROMPT — Auditar por qué “Registrar ajuste” permanece deshabilitado en ENTRADA LOTE_Y_SERIE
+PROMPT — Crear sistema global y reutilizable de mensajes, confirmaciones y notificaciones para KONTAXPRO
 
-Lee AGENTS.md antes de modificar código.
+Lee AGENTS.md completo antes de modificar código.
 
-Trabaja exclusivamente sobre la ventana:
+CONTEXTO
 
-“Registrar ajuste de inventario”
+KONTAXPRO Desktop ya posee un look & feel moderno, consistente, Light/Dark y basado en los estilos visuales propios del sistema.
 
-y específicamente sobre:
+Actualmente todavía existen mensajes mostrados mediante MessageBox nativo de Windows.
 
-Tipo de ajuste = ENTRADA
-Tipo de control = LOTE_Y_SERIE
+Ejemplo actual:
 
-NO rediseñes la ventana.
-NO modifiques SALIDA.
-NO modifiques el modo NUEVO de Producto.
-NO cambies las reglas de negocio aprobadas salvo que encuentres una inconsistencia real.
-NO generes migraciones.
-NO hagas commit ni push.
+Título:
+Cancelar nuevo producto
 
-============================================================
-1. PROBLEMA OBSERVADO
-============================================================
+Mensaje:
+Hay información ingresada que todavía no se ha guardado.
+¿Desea cancelar el registro?
 
-Existe un caso en el que aparentemente todos los requisitos están completos, pero el botón:
+Botones:
+Sí / No
 
-REGISTRAR AJUSTE
+Ese MessageBox rompe completamente el diseño visual de KONTAXPRO.
 
-permanece deshabilitado.
+La finalidad de esta tarea es crear una infraestructura GLOBAL y REUTILIZABLE para:
 
-Caso reproducido:
+- ERROR
+- WARNING
+- INFO
+- SUCCESS
+- CONFIRMATION
 
-Tipo ajuste:
-ENTRADA
-
-Bodega:
-FAC · PRODUCTOS CON FACTURA
-
-Presentación:
-UNIDAD
-
-Cantidad presentación:
-2
-
-Costo presentación:
-330,00
-
-Motivo:
-informado y no vacío
-
-Lotes:
-
-PJB-2608-A
-Cantidad = 2
-
-Resumen lotes:
-
-Asignado: 2
-Requerido: 2
-Pendiente: 0
-
-Series:
-
-SA-001 → PJB-2608-A
-SA-002 → PJB-2608-A
-
-Resumen series:
-
-Registradas: 2
-Requeridas: 2
-Pendientes: 0
-
-Observación:
-informada, aunque debe seguir siendo opcional.
-
-A pesar de esto:
-
-Registrar ajuste = deshabilitado.
-
-============================================================
-2. NO SOLUCIONARLO FORZANDO EL BOTÓN
-============================================================
-
-NO hagas simplemente:
-
-IsEnabled = true
-
-ni elimines validaciones para que funcione.
-
-Debes identificar exactamente qué condición interna provoca:
-
-CanRegistrarAjuste == false
-
-o:
-
-RegistrarAjusteCommand.CanExecute == false
-
-y corregir la causa.
-
-============================================================
-3. AUDITAR TODAS LAS CONDICIONES DEL CANEXECUTE
-============================================================
-
-Localiza:
-
-- RegistrarAjusteCommand;
-- CanRegistrarAjuste;
-- propiedades calculadas relacionadas;
-- validadores;
-- métodos EsValido/Validar;
-- flags de lotes;
-- flags de series;
-- errores de ViewModel;
-- INotifyDataErrorInfo si existe;
-- NotifyCanExecuteChangedFor;
-- NotifyPropertyChangedFor.
-
-Enumera antes de corregir TODAS las condiciones necesarias para habilitar el botón.
-
-Ejemplo conceptual:
-
-Tipo válido
-&& BodegaId != null
-&& PresentacionId != null
-&& CantidadPresentacion > 0
-&& CantidadBase > 0
-&& CostoPresentacion >= 0
-&& Motivo no vacío
-&& LotesValidos
-&& SeriesValidas
-&& !IsSaving
-
-No asumir. Revisar la implementación real.
-
-============================================================
-4. AÑADIR DIAGNÓSTICO TEMPORAL PARA IDENTIFICAR LA CAUSA
-============================================================
-
-Durante la investigación, crea una forma temporal de saber qué condición falla.
-
-Puede ser:
-
-- Debug.WriteLine;
-- logging;
-- propiedad interna para pruebas;
-- método que devuelva las razones de invalidez.
-
-Ejemplo conceptual:
-
-ObtenerRazonesAjusteNoValido()
-
-Resultado esperado:
-
-[
-    "Bodega no seleccionada",
-    "Serie SA-001 sin lote"
-]
-
-No mostrar mensajes técnicos permanentes al usuario.
-
-Eliminar o dejar únicamente logging apropiado después de solucionar el problema.
-
-============================================================
-5. VALIDAR BODEGA
-============================================================
-
-Confirmar que:
-
-FAC · PRODUCTOS CON FACTURA
-
-tenga realmente:
-
-BodegaId válido
-
-y que el formulario no esté validando accidentalmente:
-
-SelectedBodega != null
-
-cuando únicamente se actualizó BodegaId, o viceversa.
-
-============================================================
-6. VALIDAR PRESENTACIÓN
-============================================================
-
-Confirmar que:
-
-UNIDAD
-
-tenga:
-
-ProductoPresentacionId válido
-FactorConversion = 1
-
-y que:
-
-CantidadBase = 2 × 1 = 2
-
-No debe existir discrepancia entre:
-
-PresentacionSeleccionada
-ProductoPresentacionId
-FactorConversion
-
-============================================================
-7. VALIDAR MOTIVO
-============================================================
-
-Motivo debe ser obligatorio.
-
-La validación correcta debe ser:
-
-!string.IsNullOrWhiteSpace(Motivo)
-
-Aplicar Trim.
-
-No exigir Observación.
-
-Observación continúa siendo opcional.
-
-============================================================
-8. VALIDAR COSTO
-============================================================
-
-Para ENTRADA:
-
-CostoPresentacion debe ser válido según las reglas existentes.
-
-En el caso reproducido:
-
-330,00
-
-es válido.
-
-Verificar que el problema no sea una conversión de cultura:
-
-330.00
-vs
-330,00
-
-y que el binding no esté dejando internamente:
-
-CostoPresentacion = 0
-
-o un estado de validación incorrecto aunque visualmente muestre 330.00.
-
-Usar decimal.
-
-============================================================
-9. VALIDAR LOTE EXISTENTE
-============================================================
-
-El lote seleccionado/escrito es:
-
-PJB-2608-A
-
-y ya existe.
-
-La pantalla además está usando este lote como referencia para el costo, por lo que aparentemente el autocomplete ya lo reconoce.
-
-Auditar que la fila tenga internamente:
-
-ProductoLoteId válido
-NumeroLote = "PJB-2608-A"
-EsLoteExistente = true
-
-o las propiedades equivalentes reales.
-
-Posible error a investigar:
-
-El autocomplete muestra PJB-2608-A,
-pero la validación todavía considera el lote como no seleccionado porque:
-
-ProductoLoteId == null
-
-o porque el texto cambió después de seleccionar la sugerencia.
-
-Si ocurre eso, corregir la sincronización.
-
-============================================================
-10. VALIDAR LOTES
-============================================================
-
-Para este caso:
-
-CantidadBase requerida = 2
-
-Lote PJB-2608-A:
-Cantidad = 2
-
-Por tanto:
-
-Asignado = 2
-Requerido = 2
-Pendiente = 0
-
-LotesValidos debe ser TRUE.
-
-Además:
-
-- no lote vacío;
-- no cantidad <= 0;
-- no cantidad excedida;
-- no duplicado;
-- no fechas requeridas porque este producto NO controla caducidad.
+y reemplazar progresivamente los MessageBox nativos sin modificar las reglas de negocio existentes.
 
 IMPORTANTE:
 
-Si:
-
-maneja_fecha_caducidad = false
-
-NO exigir:
-
-- fecha elaboración;
-- fecha caducidad.
-
-============================================================
-11. VALIDAR SERIES
-============================================================
-
-Series:
-
-SA-001
-SA-002
-
-Cantidad requerida = 2.
-
-Por tanto:
-
-Registradas = 2
-Requeridas = 2
-Pendientes = 0
-
-SeriesValidas debe ser TRUE.
-
-Validar además:
-
-- serie no vacía;
-- no duplicada;
-- no existente previamente en BD;
-- cada serie tiene lote asociado.
+- NO rediseñar los formularios existentes.
+- NO modificar reglas de negocio.
+- NO cambiar validaciones.
+- NO alterar comandos ni flujos salvo lo necesario para sustituir MessageBox.
+- NO generar migraciones.
+- NO modificar base de datos.
+- NO hacer commit ni push.
 
 ============================================================
-12. VALIDAR ASOCIACIÓN SERIE → LOTE
+1. OBJETIVO GENERAL
 ============================================================
 
-Ambas series están visualmente asociadas:
+Crear un sistema global para que cualquier ViewModel pueda solicitar:
 
-SA-001 → PJB-2608-A
-SA-002 → PJB-2608-A
+- mensaje de error;
+- advertencia;
+- información;
+- éxito;
+- confirmación;
 
-Y el lote requiere cantidad 2.
+sin conocer detalles de WPF ni crear ventanas directamente.
 
-Por tanto:
+La solución debe respetar MVVM y DI.
 
-SeriesAsignadasAlLote(PJB-2608-A) = 2
-CantidadLote(PJB-2608-A) = 2
+Ejemplo conceptual esperado desde ViewModel:
 
-La validación por lote debe ser TRUE.
+await _messageService.ShowErrorAsync(
+    "No se pudo guardar",
+    "Ocurrió un problema al registrar el producto.");
 
-Investigar especialmente si el ComboBox de:
+await _messageService.ShowSuccessAsync(
+    "Producto registrado",
+    "El producto se creó correctamente.");
 
-LOTE ASOCIADO
+bool confirmar = await _messageService.ConfirmAsync(
+    "Cancelar nuevo producto",
+    "Hay información ingresada que todavía no se ha guardado. ¿Desea cancelar el registro?");
 
-muestra correctamente PJB-2608-A pero internamente está almacenando:
+El ViewModel NO debe crear:
 
-- texto;
-- objeto temporal diferente;
-- Id incorrecto;
-- referencia distinta;
-
-y por eso la comparación del ViewModel falla.
-
-La comparación debe basarse en un identificador estable de la fila/lote, no en referencia de objeto accidental.
-
-============================================================
-13. REVISAR MODELOS TEMPORALES
-============================================================
-
-Este punto es especialmente importante para lotes nuevos y existentes.
-
-Si las filas de lotes del ajuste usan un modelo temporal, cada lote debería tener un identificador estable en memoria, por ejemplo:
-
-TemporaryId / Guid
-
-además de:
-
-ProductoLoteId nullable
-
-Esto permite asociar series correctamente incluso cuando el lote es NUEVO y todavía no tiene Id en PostgreSQL.
-
-Revisar si actualmente LOTE ASOCIADO depende exclusivamente de:
-
-ProductoLoteId
-
-porque en lotes nuevos ese valor será null hasta guardar.
-
-Si es así, corregir el modelo temporal para que:
-
-- lote existente → ProductoLoteId + identificador temporal;
-- lote nuevo → ProductoLoteId null + identificador temporal;
-- serie → referencia al identificador temporal de lote.
-
-No crear registros anticipadamente en PostgreSQL.
+new Window()
+MessageBox.Show()
 
 ============================================================
-14. REVISAR NOTIFICACIONES DEL COMMAND
+2. NO USAR MÁS MESSAGEBOX NATIVO
 ============================================================
 
-Es muy probable que el estado sea correcto pero:
+Crear la infraestructura para eliminar progresivamente:
 
-RegistrarAjusteCommand
+System.Windows.MessageBox
+MessageBox.Show(...)
 
-no esté reevaluando CanExecute después de modificar:
+No dejar nuevos MessageBox nativos.
 
-- Cantidad;
-- Motivo;
-- lotes;
-- cantidad de lote;
-- series;
-- lote asociado a serie.
+Auditar inicialmente el proyecto Desktop para identificar dónde se utilizan.
 
-Auditar:
+No reemplazar ciegamente cada llamada antes de entender su intención.
 
-NotifyCanExecuteChangedFor
+Clasificar cada mensaje como:
 
-y/o llamadas a:
-
-RegistrarAjusteCommand.NotifyCanExecuteChanged()
-
-El comando debe reevaluarse inmediatamente cuando cambie cualquier propiedad que afecte su validez.
-
-Revisar también cambios dentro de colecciones.
-
-Agregar/Quitar elementos de ObservableCollection NO necesariamente notifica cambios en propiedades internas de cada elemento.
-
-Si CanRegistrarAjuste depende de:
-
-Lotes.All(...)
-Series.All(...)
-
-entonces suscribirse apropiadamente a PropertyChanged de los elementos o usar la estrategia existente del proyecto.
+ERROR
+WARNING
+INFO
+SUCCESS
+CONFIRMATION
 
 ============================================================
-15. PROPIEDADES CALCULADAS
+3. SERVICIO GLOBAL
 ============================================================
 
-Auditar que cambios en:
+Crear una abstracción apropiada, por ejemplo:
 
-Lote.Cantidad
-Serie.Numero
-Serie.LoteAsociado
+IMessageDialogService
 
-notifiquen también correctamente:
+o un nombre acorde a las convenciones actuales del proyecto.
 
-CantidadLotesAsignada
-LotesPendientes
-CantidadSeriesRegistradas
-SeriesPendientes
-LotesValidos
-SeriesValidas
-CanRegistrarAjuste
+Debe pertenecer a la capa adecuada.
 
-o equivalentes reales.
+La implementación concreta debe estar en Desktop porque depende de WPF.
 
-No confiar únicamente en CollectionChanged.
+Registrar mediante DI en App.xaml.cs/composition root.
+
+No usar Service Locator.
 
 ============================================================
-16. ESTADO DE ERROR DE CONTROLES
+4. API SENCILLA PARA VIEWMODELS
 ============================================================
 
-Revisar si algún TextBox/ComboBox mantiene:
+Proporcionar métodos claros.
 
-Validation.HasError = true
+Como mínimo:
 
-aunque el valor visual ya sea correcto.
+ShowErrorAsync(...)
+ShowWarningAsync(...)
+ShowInfoAsync(...)
+ShowSuccessAsync(...)
+ConfirmAsync(...)
 
-Especial atención a:
+Evitar que cada ViewModel tenga que construir objetos visuales complejos.
 
-- CostoPresentacion;
-- CantidadPresentacion;
-- Cantidad lote;
-- Serie;
-- Lote asociado.
-
-Si existe validación vieja después de corregir el valor, limpiarla correctamente.
+Si internamente se utiliza un request/model común, está bien.
 
 ============================================================
-17. CONDICIÓN FINAL ESPERADA
+5. TIPOS DE MENSAJE
 ============================================================
 
-Para el caso reproducido:
+Crear un enum/modelo equivalente:
 
-ENTRADA
-LOTE_Y_SERIE
+Error
+Warning
+Info
+Success
+Confirmation
 
-Bodega válida
-Presentación válida
-Cantidad = 2
-CantidadBase = 2
-Costo = 330
-Motivo válido
-
-Lotes:
-PJB-2608-A = 2
-
-Series:
-SA-001 → PJB-2608-A
-SA-002 → PJB-2608-A
-
-Entonces:
-
-LotesValidos = true
-SeriesValidas = true
-DatosGeneralesValidos = true
-IsSaving = false
-
-y:
-
-CanRegistrarAjuste = true
-
-Por tanto:
-
-REGISTRAR AJUSTE
-
-debe habilitarse.
+No utilizar strings mágicos para determinar el tipo.
 
 ============================================================
-18. NO EXIGIR OBSERVACIÓN
+6. DIÁLOGO GLOBAL KONTAXPRO
 ============================================================
 
-Observación es opcional.
+Crear un diálogo personalizado reutilizable.
 
-Probar también el mismo caso con:
+Debe seguir el look & feel actual.
 
-Observacion = ""
+Características:
 
-El botón debe habilitarse igualmente.
+- fondo según tema Light/Dark;
+- borde redondeado;
+- sombra suave;
+- encabezado limpio;
+- icono representativo;
+- título;
+- descripción;
+- botones uniformes;
+- tipografía y tamaños actuales;
+- no usar chrome visual antiguo de Windows.
 
-============================================================
-19. PRUEBAS AUTOMATIZADAS
-============================================================
-
-Agregar una prueba específica para reproducir exactamente el bug.
-
-Caso:
-
-ENTRADA LOTE_Y_SERIE
-
-cantidad = 2
-
-lote existente:
-PJB-2608-A cantidad 2
-
-series:
-SA-001 → PJB-2608-A
-SA-002 → PJB-2608-A
-
-motivo válido
-costo 330
-
-Esperado:
-
-CanRegistrarAjuste == true
-
-Agregar además pruebas:
-
-A.
-Falta 1 serie
-→ false
-
-B.
-Falta cantidad de lote
-→ false
-
-C.
-Serie sin lote asociado
-→ false
-
-D.
-Lote asignado 2, series 2 pero distribución incorrecta
-→ false
-
-E.
-Observación vacía
-→ true
-
-F.
-Cantidad 0
-→ false
-
-G.
-Motivo vacío
-→ false
-
-H.
-Costo válido
-→ true
+Debe sentirse parte natural de KONTAXPRO.
 
 ============================================================
-20. PRUEBA DE REACTIVIDAD
+7. ICONOS Y COLORES
 ============================================================
 
-No comprobar solamente el valor final.
+ERROR
 
-Probar también secuencia:
+Icono MaterialDesign apropiado:
+AlertCircle / CloseCircle o equivalente.
 
-1. Crear ajuste inválido.
-2. Agregar lote.
-3. Cambiar cantidad lote a 2.
-4. Agregar SA-001.
-5. Asociar lote.
-6. Agregar SA-002.
-7. Asociar lote.
+Color visual:
+rojo KONTAXPRO.
 
-Después del último cambio:
+------------------------------------------------------------
 
-RegistrarAjusteCommand.CanExecute
+WARNING
 
-debe cambiar automáticamente de:
+Icono:
+Alert / AlertOutline o equivalente.
 
-false
+Color:
+ámbar/naranja.
 
-a:
+------------------------------------------------------------
 
-true
+INFO
 
-sin necesidad de:
+Icono:
+Information / InformationOutline.
 
-- cambiar de campo extra;
-- cerrar/reabrir;
-- modificar otra propiedad;
-- recargar pantalla.
+Color:
+azul.
+
+------------------------------------------------------------
+
+SUCCESS
+
+Icono:
+CheckCircle / CheckCircleOutline.
+
+Color:
+verde KONTAXPRO.
+
+------------------------------------------------------------
+
+CONFIRMATION
+
+Icono:
+HelpCircle / MessageQuestion / equivalente disponible.
+
+Usar un color coherente con la paleta KONTAXPRO.
+
+No inventar iconos externos.
+
+Usar MaterialDesign PackIcon.
 
 ============================================================
-21. NO CAMBIAR UI
+8. ESTRUCTURA VISUAL
 ============================================================
 
-En esta tarea NO modificar:
+Diseño conceptual:
 
-- distribución;
-- colores;
-- tamaños;
-- tablas;
-- autocomplete;
+┌─────────────────────────────────────────────┐
+│  [ICONO]  TÍTULO                        [X] │
+│                                             │
+│           Mensaje principal                 │
+│           texto adicional si existe         │
+│                                             │
+│                    [Cancelar] [Confirmar]    │
+└─────────────────────────────────────────────┘
+
+El diseño debe ser elegante y compacto.
+
+No crear un diálogo gigantesco para mensajes pequeños.
+
+============================================================
+9. BOTÓN X SUPERIOR
+============================================================
+
+Usar el mismo lenguaje visual aprobado:
+
+- botón rojo;
+- icono Close blanco;
+- esquina superior derecha;
+- borde redondeado;
+- hover coherente.
+
+Su comportamiento depende del tipo.
+
+Mensaje informativo:
+equivale a cerrar.
+
+Confirmación:
+equivale a Cancelar/No.
+
+Nunca debe interpretarse como Confirmar.
+
+============================================================
+10. BOTONES
+============================================================
+
+Botones con:
+
+- mismo alto;
+- ancho uniforme cuando haya dos;
+- iconos;
+- bordes redondeados;
+- estilos globales.
+
+Ejemplos:
+
+ERROR:
+[ ✓ Entendido ]
+
+INFO:
+[ ✓ Entendido ]
+
+WARNING informativa:
+[ ✓ Entendido ]
+
+CONFIRMATION:
+[ X Cancelar ] [ ✓ Confirmar ]
+
+Cuando semánticamente corresponda:
+
+[ No ] [ Sí ]
+
+pero preferir textos que indiquen claramente la acción.
+
+Ejemplo:
+
+[ Seguir editando ] [ Cancelar registro ]
+
+es mejor que:
+
+[ No ] [ Sí ]
+
+cuando el contexto lo permita.
+
+No cambiar arbitrariamente textos actuales durante esta tarea.
+Mantener intención original.
+
+============================================================
+11. CONFIRMACIONES
+============================================================
+
+ConfirmAsync debe devolver:
+
+Task<bool>
+
+o equivalente.
+
+Debe poder utilizarse así:
+
+if (!await _messageService.ConfirmAsync(...))
+    return;
+
+No bloquear utilizando hacks de UI.
+
+============================================================
+12. OWNER Y CENTRADO
+============================================================
+
+El diálogo debe:
+
+- mostrarse centrado respecto de la ventana/modal que lo invoca;
+- permanecer encima de su Owner;
+- no aparecer detrás de otras ventanas;
+- bloquear correctamente la ventana origen mientras sea modal.
+
+No centrar exclusivamente respecto del monitor si existe Owner válido.
+
+============================================================
+13. OVERLAY
+============================================================
+
+Cuando se muestre un diálogo modal:
+
+- aplicar overlay tenue sobre el contenido de fondo si es coherente con la arquitectura actual;
+- mantener visible el contexto;
+- no permitir interacción accidental con el formulario detrás.
+
+El overlay debe adaptarse a Light/Dark.
+
+No usar efectos excesivos.
+
+============================================================
+14. LIGHT / DARK
+============================================================
+
+El diálogo debe reaccionar al ThemeService existente.
+
+En Dark:
+
+- fondo oscuro;
+- texto claro;
+- bordes sutiles.
+
+En Light:
+
+- fondo claro;
+- texto oscuro.
+
+Los colores semánticos:
+
+rojo
+verde
+azul
+ámbar
+
+deben conservar suficiente contraste en ambos temas.
+
+No hardcodear fondos que destruyan el tema.
+
+Preferir DynamicResource cuando corresponda.
+
+============================================================
+15. MENSAJES DE ÉXITO
+============================================================
+
+No todos los SUCCESS necesitan un modal que obligue al usuario a pulsar Aceptar.
+
+Crear también una notificación no bloqueante reutilizable:
+
+Snackbar / Toast KONTAXPRO.
+
+Ejemplo:
+
+✓ Producto registrado correctamente.
+
+Debe:
+
+- aparecer brevemente;
+- no bloquear;
+- desaparecer automáticamente;
+- mantener look & feel;
+- poder cerrarse manualmente cuando corresponda.
+
+Utilizar SUCCESS preferentemente mediante notificación breve cuando no se requiere decisión.
+
+============================================================
+16. INFORMACIÓN NO CRÍTICA
+============================================================
+
+INFO también debe poder mostrarse como Snackbar/Toast cuando no requiere interacción.
+
+Ejemplo:
+
+“La lista de productos fue actualizada.”
+
+No abrir un modal por cada información trivial.
+
+============================================================
+17. ERRORES
+============================================================
+
+Los errores que impiden continuar deben utilizar diálogo modal.
+
+Ejemplo:
+
+NO:
+
+“Error: DbUpdateException FK_Producto...”
+
+Sí:
+
+“No se pudo registrar el producto.”
+
+y mensaje comprensible.
+
+Mantener detalles técnicos únicamente en logging/debug.
+
+No mostrar:
+
+- stack traces;
+- nombres de tablas;
+- SQL;
+- excepciones EF;
+- connection strings;
+- paths internos;
+
+al usuario final.
+
+============================================================
+18. ADVERTENCIAS
+============================================================
+
+WARNING debe servir para condiciones importantes pero no necesariamente errores.
+
+Ejemplo:
+
+“El precio de venta está por debajo del costo actual.”
+
+Puede ser:
+
+- modal si requiere decisión;
+- notificación si únicamente informa.
+
+La infraestructura debe permitir ambos usos sin duplicar componentes.
+
+============================================================
+19. VALIDACIONES DE FORMULARIO
+============================================================
+
+NO reemplazar automáticamente todas las validaciones inline por diálogos.
+
+Errores como:
+
+“Nombre obligatorio”
+
+“Cantidad requerida”
+
+“Caducidad inválida”
+
+deben seguir apareciendo junto al campo cuando esa sea la UX actual.
+
+El sistema global se usa para:
+
+- errores de operación;
+- confirmaciones;
+- advertencias generales;
+- éxito;
+- información global.
+
+No convertir cada validación de campo en popup.
+
+============================================================
+20. MENSAJE ACTUAL DE CANCELAR PRODUCTO
+============================================================
+
+Reemplazar específicamente el MessageBox mostrado actualmente al cerrar/cancelar Nuevo Producto.
+
+Actual:
+
+Título:
+Cancelar nuevo producto
+
+Mensaje:
+Hay información ingresada que todavía no se ha guardado. ¿Desea cancelar el registro?
+
+Debe utilizar el nuevo diálogo KONTAXPRO.
+
+Mantener exactamente la lógica actual:
+
+Confirmar cancelación
+→ cerrar/cancelar.
+
+Cancelar la confirmación
+→ permanecer en el formulario.
+
+No modificar el comportamiento del formulario Nuevo.
+
+============================================================
+21. TEXTOS Y MAYÚSCULAS
+============================================================
+
+Los mensajes de UI NO deben forzarse completamente a MAYÚSCULAS.
+
+Mantener escritura natural:
+
+“Producto registrado correctamente.”
+
+No:
+
+“PRODUCTO REGISTRADO CORRECTAMENTE.”
+
+Los datos comerciales siguen las reglas de mayúsculas ya existentes.
+
+============================================================
+22. ACCESIBILIDAD
+============================================================
+
+El diálogo debe admitir:
+
+- Enter para acción principal cuando sea seguro;
+- Escape para Cancelar/Cerrar;
+- navegación mediante Tab;
+- foco inicial apropiado;
+- contraste legible;
+- texto multilínea;
+- TextWrapping.
+
+En una confirmación destructiva:
+
+NO hacer que Enter confirme accidentalmente una operación peligrosa si la UX actual no lo hace.
+
+Preferir foco inicial en la opción segura.
+
+Ejemplo:
+
+Cancelar registro:
+
+foco inicial:
+Seguir editando
+
+no:
+Cancelar registro.
+
+============================================================
+23. EVITAR DOBLE DIÁLOGO
+============================================================
+
+La infraestructura debe evitar abrir accidentalmente múltiples instancias del mismo diálogo por doble click.
+
+Deshabilitar o proteger comandos mientras una confirmación esté abierta si es necesario.
+
+No crear una solución global excesivamente compleja.
+
+============================================================
+24. MENSAJES LARGOS
+============================================================
+
+Soportar:
+
+- títulos cortos;
+- mensajes de varias líneas;
+- detalle secundario opcional.
+
+Aplicar:
+
+TextWrapping
+MaxWidth razonable
+Scroll solo para textos excepcionalmente largos.
+
+No hacer crecer indefinidamente el diálogo.
+
+============================================================
+25. RESULTADOS MÁS FLEXIBLES
+============================================================
+
+Aunque inicialmente ConfirmAsync necesite bool, diseñar internamente de manera que pueda soportarse eventualmente:
+
+Primary
+Secondary
+Cancel
+
+sin reescribir toda la infraestructura.
+
+No sobrediseñar una API enorme ahora.
+
+============================================================
+26. SERVICIO DE NOTIFICACIONES
+============================================================
+
+Si arquitectónicamente queda más limpio, separar:
+
+IMessageDialogService
+INotificationService
+
+donde:
+
+MessageDialogService:
+- Error
+- Warning
+- Confirmation
+- Info modal
+
+NotificationService:
+- Success
+- Info no bloqueante
+- Warning no bloqueante
+
+Si eso añade duplicación innecesaria, puede existir una fachada común.
+
+Priorizar claridad.
+
+============================================================
+27. NO ACOPLAR VIEWMODEL A WPF
+============================================================
+
+Los ViewModels no deben conocer:
+
+Window
+MessageBox
+PackIcon
+Brush
+DialogHost
+Snackbar
+
+Solo deben solicitar una intención semántica.
+
+Ejemplo:
+
+_messageService.ShowErrorAsync(...)
+
+La implementación Desktop decide cómo renderizar.
+
+============================================================
+28. REGISTRO EN DI
+============================================================
+
+Registrar servicios siguiendo la estrategia actual de App.xaml.cs.
+
+Usar los lifetimes apropiados.
+
+No crear singletons con referencias permanentes a ventanas si eso puede provocar fugas.
+
+============================================================
+29. ESTILOS GLOBALES
+============================================================
+
+Crear recursos reutilizables para:
+
+- contenedor del diálogo;
+- iconos;
+- header;
 - botones;
-- footer;
-- textos;
-- flujo.
+- overlay;
+- Snackbar/Toast.
 
-Solo corregir la lógica que determina la habilitación del botón.
+No duplicar colores y estilos en cada ventana.
+
+Integrar con:
+
+Colors.xaml
+LightTheme.xaml
+DarkTheme.xaml
+ButtonStyles.xaml
+
+o recursos equivalentes reales.
+
+No mover recursos arbitrariamente si la estructura actual es distinta.
 
 ============================================================
-22. VALIDACIÓN TÉCNICA
+30. PRIMERA FASE DE MIGRACIÓN DE MENSAJES
+============================================================
+
+Después de construir la infraestructura:
+
+buscar usos actuales de:
+
+MessageBox.Show
+System.Windows.MessageBox
+
+Clasificarlos.
+
+Reemplazar prioritariamente los que pertenezcan a:
+
+- Login
+- Selección empresa
+- ProductsView
+- ProductForm
+- Inventario
+- formularios ya construidos y probados.
+
+No modificar lógica durante la sustitución.
+
+============================================================
+31. NO CAMBIAR TEXTOS SIN NECESIDAD
+============================================================
+
+En esta primera migración:
+
+mantener los textos actuales siempre que sean comprensibles.
+
+Si detectas un mensaje:
+
+- técnico;
+- confuso;
+- contradictorio;
+
+informarlo, pero no reescribir masivamente contenido sin necesidad.
+
+============================================================
+32. API DE EJEMPLO
+============================================================
+
+La API final debería permitir algo conceptualmente similar:
+
+await _messageService.ErrorAsync(
+    "No se pudo guardar",
+    "Revise los datos e intente nuevamente.");
+
+await _messageService.WarningAsync(
+    "Stock insuficiente",
+    "No existe suficiente existencia para completar la operación.");
+
+await _notificationService.SuccessAsync(
+    "Producto registrado correctamente.");
+
+await _notificationService.InfoAsync(
+    "Información actualizada.");
+
+var confirmado = await _messageService.ConfirmAsync(
+    "Cancelar nuevo producto",
+    "Hay información ingresada que todavía no se ha guardado. ¿Desea cancelar el registro?");
+
+Los nombres exactos deben seguir las convenciones del proyecto.
+
+============================================================
+33. EJEMPLOS VISUALES A VERIFICAR
+============================================================
+
+ERROR
+
+Icono rojo
+Título:
+No se pudo registrar
+
+Texto:
+Ocurrió un problema al guardar la información.
+
+Botón:
+Entendido
+
+------------------------------------------------------------
+
+WARNING
+
+Icono ámbar
+Título:
+Advertencia
+
+Texto:
+El precio configurado está por debajo del costo actual.
+
+Botones si requiere decisión:
+Cancelar
+Continuar
+
+------------------------------------------------------------
+
+INFO
+
+Icono azul
+Título:
+Información
+
+Texto:
+No existen movimientos para el período seleccionado.
+
+------------------------------------------------------------
+
+SUCCESS
+
+Notificación verde:
+
+✓ Producto registrado correctamente.
+
+------------------------------------------------------------
+
+CONFIRMATION
+
+Título:
+Cancelar nuevo producto
+
+Texto:
+Hay información ingresada que todavía no se ha guardado.
+¿Desea cancelar el registro?
+
+Botones:
+
+Seguir editando
+Cancelar registro
+
+La opción segura debe quedar visualmente clara.
+
+============================================================
+34. PRUEBAS
+============================================================
+
+Probar:
+
+1. Error modal.
+2. Warning modal.
+3. Info modal.
+4. Success Snackbar.
+5. Info Snackbar.
+6. Confirmation = aceptar.
+7. Confirmation = cancelar.
+8. Cerrar confirmation con X.
+9. Escape.
+10. Enter.
+11. Light.
+12. Dark.
+13. Mensaje largo.
+14. Owner correcto.
+15. Abrir desde ProductForm.
+16. Abrir desde ventana auxiliar de Inventario.
+17. Cambiar tema y volver a abrir.
+18. Confirmación Cancelar nuevo producto.
+
+============================================================
+35. BUSCAR MESSAGEBOX RESIDUALES
+============================================================
+
+Al finalizar ejecutar búsqueda global por:
+
+MessageBox.Show
+System.Windows.MessageBox
+MessageBoxResult
+MessageBoxButton
+
+Informar cuáles fueron reemplazados y cuáles permanecen.
+
+Si alguno permanece:
+
+explicar por qué.
+
+El objetivo final es no depender de MessageBox nativo para interacción normal de KONTAXPRO.
+
+============================================================
+36. VALIDACIÓN TÉCNICA
 ============================================================
 
 Ejecutar:
 
+dotnet restore
 dotnet build KONTAXPRO.slnx
 dotnet test
 git diff --check
 
-No generar migración.
+Verificar:
+
+- 0 errores;
+- 0 advertencias si es posible;
+- no cambios EF;
+- no migraciones;
+- no cambios en base.
 
 ============================================================
-23. INFORME FINAL
+37. INFORME FINAL
 ============================================================
 
-Informar específicamente:
+Informar:
 
-1. Cuál era la condición que mantenía el botón deshabilitado.
-2. Si era un problema de validación o de notificación CanExecute.
-3. Si ProductoLoteId del autocomplete estaba correctamente sincronizado.
-4. Si LoteAsociado de las series estaba correctamente sincronizado.
-5. Qué cambios se hicieron.
-6. Qué prueba reproduce el bug.
-7. Confirmar que con:
-   - lote 2/2
-   - series 2/2
-   - motivo válido
-   - costo válido
-   el botón queda habilitado.
-8. Confirmar que Observación sigue siendo opcional.
-9. Build.
-10. Tests.
+1. Arquitectura elegida.
+2. Interfaces creadas.
+3. Implementaciones creadas.
+4. Archivos XAML/recursos creados.
+5. Tipos de mensajes soportados.
+6. Cómo funciona Confirmation.
+7. Cómo funcionan Toast/Snackbar.
+8. Cómo se resuelve Light/Dark.
+9. Cómo se determina Owner.
+10. Qué MessageBox fueron sustituidos.
+11. Confirmar específicamente que “Cancelar nuevo producto” usa el nuevo diálogo.
+12. MessageBox residuales.
+13. Pruebas realizadas.
+14. Build.
+15. Tests.
+16. Pendientes, si existen.
 
-No modificar SALIDA.
-No modificar modo NUEVO.
+Confirmar expresamente:
+
+“No se modificaron reglas de negocio.”
+
+“No se modificó la base de datos.”
+
+“No se generaron migraciones.”
+
 No hacer commit ni push.

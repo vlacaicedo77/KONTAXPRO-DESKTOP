@@ -4,6 +4,7 @@ using KONTAXPRO.Application.Models.Inventario;
 using KONTAXPRO.Application.Models.Productos;
 using KONTAXPRO.Application.Products;
 using KONTAXPRO.Domain.Entities.Inventario;
+using KONTAXPRO.Domain.Entities.Catalogos;
 using KONTAXPRO.Domain.Entities.Seguridad;
 using KONTAXPRO.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +14,72 @@ namespace KONTAXPRO.Infrastructure.Inventory;
 public sealed class InventoryService(
     IDbContextFactory<KontaxDbContext> dbContextFactory) : IInventoryService
 {
+    public async Task<List<MotivoOperacionInventarioDto>> ObtenerMotivosOperacionAsync(
+        long empresaId, string tipoOperacion,
+        CancellationToken cancellationToken = default)
+    {
+        var tipo = MotivoOperacionInventarioRules.NormalizarTipo(tipoOperacion);
+        await using var context =
+            await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        return await context.MotivosOperacionInventario.AsNoTracking()
+            .Where(x => x.Estado == 1 && x.TipoOperacion == tipo &&
+                        (x.EmpresaId == null || x.EmpresaId == empresaId))
+            .OrderBy(x => x.EmpresaId == null ? 0 : 1)
+            .ThenBy(x => x.Orden).ThenBy(x => x.Nombre)
+            .Select(x => new MotivoOperacionInventarioDto
+            {
+                Id = x.Id,
+                Codigo = x.Codigo,
+                Nombre = x.Nombre,
+                Descripcion = x.Descripcion,
+                TipoOperacion = x.TipoOperacion,
+                EsSistema = x.EsSistema
+            }).ToListAsync(cancellationToken);
+    }
+
+    public async Task<InventoryOperationResult> CrearMotivoOperacionAsync(
+        CrearMotivoOperacionInventarioRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var tipo = MotivoOperacionInventarioRules.NormalizarTipo(
+            request.TipoOperacion);
+        var nombre = MotivoOperacionInventarioRules.NormalizarNombre(
+            request.Nombre);
+        if (request.EmpresaId <= 0 || request.UsuarioId <= 0 ||
+            string.IsNullOrWhiteSpace(nombre) ||
+            !MotivoOperacionInventarioRules.EsTipoValido(tipo))
+            return InventoryOperationResult.Fail(
+                "Empresa, usuario, tipo y nombre del motivo son obligatorios.");
+        await using var context =
+            await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        await ExigirPermisoAsync(context, request.UsuarioId, request.EmpresaId,
+            "INVENTARIO_CREAR_MOTIVO", cancellationToken);
+        var existente = await context.MotivosOperacionInventario
+            .FirstOrDefaultAsync(x => x.TipoOperacion == tipo &&
+                (x.EmpresaId == null || x.EmpresaId == request.EmpresaId) &&
+                x.Nombre == nombre, cancellationToken);
+        if (existente is not null)
+            return InventoryOperationResult.Ok(existente.Id,
+                $"Ya existe el motivo {existente.Nombre}.");
+        var now = DateTime.UtcNow;
+        var motivo = new MotivoOperacionInventario
+        {
+            EmpresaId = request.EmpresaId,
+            Codigo = $"EMP_{Guid.NewGuid():N}".ToUpperInvariant(),
+            Nombre = nombre,
+            Descripcion = Normalize(request.Descripcion),
+            TipoOperacion = tipo,
+            EsSistema = false,
+            Orden = 1000,
+            Estado = 1,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        context.MotivosOperacionInventario.Add(motivo);
+        await context.SaveChangesAsync(cancellationToken);
+        return InventoryOperationResult.Ok(motivo.Id, "Motivo creado correctamente.");
+    }
+
     public async Task<EstadoControlInventarioDto?> ObtenerEstadoControlAsync(
         long empresaId,
         long productoId,
@@ -117,7 +184,7 @@ public sealed class InventoryService(
         var anterior = request.TipoControlAnterior.Trim().ToUpperInvariant();
         var nuevo = request.TipoControlNuevo.Trim().ToUpperInvariant();
         if (request.EmpresaId <= 0 || request.ProductoId <= 0 ||
-            request.UsuarioId <= 0 || string.IsNullOrWhiteSpace(request.Motivo))
+            request.UsuarioId <= 0 || request.MotivoOperacionInventarioId <= 0)
             return InventoryOperationResult.Fail(
                 "Empresa, producto, usuario y motivo son obligatorios.");
 
@@ -131,6 +198,9 @@ public sealed class InventoryService(
             await ExigirPermisoAsync(context, request.UsuarioId,
                 request.EmpresaId, "INVENTARIO_CONVERTIR_TIPO_CONTROL",
                 cancellationToken);
+            var motivoOperacion = await ObtenerMotivoValidoAsync(context,
+                request.MotivoOperacionInventarioId, request.EmpresaId,
+                "CONVERSION_CONTROL", cancellationToken);
             var producto = await context.Productos.SingleOrDefaultAsync(x =>
                 x.Id == request.ProductoId && x.EmpresaId == request.EmpresaId,
                 cancellationToken)
@@ -204,7 +274,9 @@ public sealed class InventoryService(
                 TipoControlNuevo = nuevo,
                 FechaConversion = now,
                 UsuarioId = request.UsuarioId,
-                Motivo = request.Motivo.Trim().ToUpperInvariant(),
+                MotivoOperacionInventarioId = motivoOperacion.Id,
+                Motivo = MotivoOperacionInventarioRules.CrearSnapshot(
+                    motivoOperacion.Nombre),
                 Estado = "CONFIRMADA",
                 CreatedAt = now,
                 UpdatedAt = now
@@ -437,7 +509,7 @@ public sealed class InventoryService(
         if (request.EmpresaId <= 0 || request.EstablecimientoId <= 0 ||
             request.BodegaId <= 0 || request.UsuarioId <= 0 ||
             tipoAjuste is not ("ENTRADA" or "SALIDA") ||
-            string.IsNullOrWhiteSpace(request.Motivo) || request.Detalles.Count == 0)
+            request.MotivoOperacionInventarioId <= 0 || request.Detalles.Count == 0)
             return InventoryOperationResult.Fail(
                 "Empresa, establecimiento, bodega, tipo, motivo, usuario y detalles son obligatorios.");
 
@@ -449,6 +521,10 @@ public sealed class InventoryService(
         {
             await ExigirPermisoAsync(context, request.UsuarioId,
                 request.EmpresaId, "INVENTARIO_REGISTRAR_AJUSTE", cancellationToken);
+            var motivoOperacion = await ObtenerMotivoValidoAsync(context,
+                request.MotivoOperacionInventarioId, request.EmpresaId,
+                tipoAjuste == "ENTRADA" ? "AJUSTE_ENTRADA" : "AJUSTE_SALIDA",
+                cancellationToken);
             var bodegaValida = await context.Bodegas.AnyAsync(x =>
                 x.Id == request.BodegaId &&
                 x.EstablecimientoId == request.EstablecimientoId &&
@@ -471,7 +547,9 @@ public sealed class InventoryService(
                 NumeroAjuste = numero,
                 TipoAjuste = tipoAjuste,
                 FechaAjuste = AsegurarUtc(request.Fecha),
-                Motivo = request.Motivo.Trim().ToUpperInvariant(),
+                MotivoOperacionInventarioId = motivoOperacion.Id,
+                Motivo = MotivoOperacionInventarioRules.CrearSnapshot(
+                    motivoOperacion.Nombre),
                 Estado = "CONFIRMADO",
                 CreatedAt = now,
                 UpdatedAt = now
@@ -559,7 +637,7 @@ public sealed class InventoryService(
         if (request.EmpresaId <= 0 || request.ProductoId <= 0 ||
             request.LoteId <= 0 || request.UsuarioId <= 0 ||
             string.IsNullOrWhiteSpace(request.NumeroLote) ||
-            string.IsNullOrWhiteSpace(request.Motivo))
+            request.MotivoOperacionInventarioId <= 0)
             return InventoryOperationResult.Fail(
                 "Producto, lote, usuario, número y motivo son obligatorios.");
         if (request.FechaElaboracion.HasValue && request.FechaCaducidad.HasValue &&
@@ -575,6 +653,9 @@ public sealed class InventoryService(
         {
             await ExigirPermisoAsync(context, request.UsuarioId,
                 request.EmpresaId, "INVENTARIO_CORREGIR_LOTE", cancellationToken);
+            var motivoOperacion = await ObtenerMotivoValidoAsync(context,
+                request.MotivoOperacionInventarioId, request.EmpresaId,
+                "CORRECCION_LOTE_SERIE", cancellationToken);
             var lote = await context.ProductosLotes
                 .Include(x => x.Producto)
                 .SingleOrDefaultAsync(x => x.Id == request.LoteId &&
@@ -600,6 +681,22 @@ public sealed class InventoryService(
             lote.FechaCaducidad = request.FechaCaducidad.HasValue
                 ? DateOnly.FromDateTime(request.FechaCaducidad.Value) : null;
             lote.UpdatedAt = DateTime.UtcNow;
+            var nuevoValor = $"LOTE={numero}; ELABORACION={lote.FechaElaboracion}; CADUCIDAD={lote.FechaCaducidad}";
+            context.CorreccionesDatosInventario.Add(new CorreccionDatoInventario
+            {
+                EmpresaId = request.EmpresaId,
+                ProductoId = request.ProductoId,
+                TipoEntidad = "LOTE",
+                EntidadId = lote.Id,
+                MotivoOperacionInventarioId = motivoOperacion.Id,
+                Motivo = MotivoOperacionInventarioRules.CrearSnapshot(
+                    motivoOperacion.Nombre),
+                UsuarioId = request.UsuarioId,
+                FechaCorreccion = DateTime.UtcNow,
+                ValorAnterior = anterior,
+                ValorNuevo = nuevoValor,
+                CreatedAt = DateTime.UtcNow
+            });
             context.Auditorias.Add(new Auditoria
             {
                 UsuarioId = request.UsuarioId,
@@ -607,7 +704,7 @@ public sealed class InventoryService(
                 Accion = "CORREGIR_LOTE",
                 Entidad = "productos_lotes",
                 EntidadId = lote.Id,
-                Descripcion = $"{anterior}; NUEVO_LOTE={numero}; NUEVA_ELABORACION={lote.FechaElaboracion}; NUEVA_CADUCIDAD={lote.FechaCaducidad}; MOTIVO={request.Motivo.Trim()}",
+                Descripcion = $"{anterior}; {nuevoValor}; MOTIVO={motivoOperacion.Nombre}",
                 CreatedAt = DateTime.UtcNow
             });
             await context.SaveChangesAsync(cancellationToken);
@@ -634,7 +731,7 @@ public sealed class InventoryService(
         if (request.EmpresaId <= 0 || request.ProductoId <= 0 ||
             request.SerieId <= 0 || request.UsuarioId <= 0 ||
             string.IsNullOrWhiteSpace(request.NumeroSerie) ||
-            string.IsNullOrWhiteSpace(request.Motivo))
+            request.MotivoOperacionInventarioId <= 0)
             return InventoryOperationResult.Fail(
                 "Producto, serie, usuario, número y motivo son obligatorios.");
 
@@ -646,6 +743,9 @@ public sealed class InventoryService(
         {
             await ExigirPermisoAsync(context, request.UsuarioId,
                 request.EmpresaId, "INVENTARIO_CORREGIR_SERIE", cancellationToken);
+            var motivoOperacion = await ObtenerMotivoValidoAsync(context,
+                request.MotivoOperacionInventarioId, request.EmpresaId,
+                "CORRECCION_LOTE_SERIE", cancellationToken);
             var serie = await context.ProductosSeries
                 .Include(x => x.Producto)
                 .Include(x => x.EstadoSerie)
@@ -673,6 +773,21 @@ public sealed class InventoryService(
             var anterior = serie.NumeroSerie;
             serie.NumeroSerie = numero;
             serie.UpdatedAt = DateTime.UtcNow;
+            context.CorreccionesDatosInventario.Add(new CorreccionDatoInventario
+            {
+                EmpresaId = request.EmpresaId,
+                ProductoId = request.ProductoId,
+                TipoEntidad = "SERIE",
+                EntidadId = serie.Id,
+                MotivoOperacionInventarioId = motivoOperacion.Id,
+                Motivo = MotivoOperacionInventarioRules.CrearSnapshot(
+                    motivoOperacion.Nombre),
+                UsuarioId = request.UsuarioId,
+                FechaCorreccion = DateTime.UtcNow,
+                ValorAnterior = anterior,
+                ValorNuevo = numero,
+                CreatedAt = DateTime.UtcNow
+            });
             context.Auditorias.Add(new Auditoria
             {
                 UsuarioId = request.UsuarioId,
@@ -680,7 +795,7 @@ public sealed class InventoryService(
                 Accion = "CORREGIR_SERIE",
                 Entidad = "productos_series",
                 EntidadId = serie.Id,
-                Descripcion = $"SERIE_ANTERIOR={anterior}; SERIE_NUEVA={numero}; MOTIVO={request.Motivo.Trim()}",
+                Descripcion = $"SERIE_ANTERIOR={anterior}; SERIE_NUEVA={numero}; MOTIVO={motivoOperacion.Nombre}",
                 CreatedAt = DateTime.UtcNow
             });
             await context.SaveChangesAsync(cancellationToken);
@@ -1400,6 +1515,23 @@ public sealed class InventoryService(
         if (!autorizado)
             throw new InvalidOperationException(
                 $"El usuario no posee el permiso {permiso}.");
+    }
+
+    private static async Task<MotivoOperacionInventario>
+        ObtenerMotivoValidoAsync(
+            KontaxDbContext context,
+            long motivoId,
+            long empresaId,
+            string tipoOperacion,
+            CancellationToken cancellationToken)
+    {
+        return await context.MotivosOperacionInventario.SingleOrDefaultAsync(x =>
+                   x.Id == motivoId && x.Estado == 1 &&
+                   x.TipoOperacion == tipoOperacion &&
+                   (x.EmpresaId == null || x.EmpresaId == empresaId),
+                   cancellationToken)
+               ?? throw new InvalidOperationException(
+                   "El motivo no está activo o no corresponde a la empresa y operación seleccionadas.");
     }
 
     private static string? Normalize(string? value) =>

@@ -39,12 +39,6 @@ public partial class ProductFormView : UserControl
             oldViewModel.PropertyChanged -= ViewModel_PropertyChanged;
             oldViewModel.PresentationAdded -= ViewModel_PresentationAdded;
             oldViewModel.InitialFocusRequested -= ViewModel_InitialFocusRequested;
-            oldViewModel.CancelConfirmationRequested -=
-                ViewModel_CancelConfirmationRequested;
-            oldViewModel.SimilarLotConfirmationRequested -=
-                ViewModel_SimilarLotConfirmationRequested;
-            oldViewModel.AdjustmentContextChangeConfirmationRequested -=
-                ViewModel_AdjustmentContextChangeConfirmationRequested;
         }
 
         if (e.NewValue is global::KONTAXPRO.Desktop.ViewModels.Products.ProductFormViewModel newViewModel)
@@ -52,12 +46,6 @@ public partial class ProductFormView : UserControl
             newViewModel.PropertyChanged += ViewModel_PropertyChanged;
             newViewModel.PresentationAdded += ViewModel_PresentationAdded;
             newViewModel.InitialFocusRequested += ViewModel_InitialFocusRequested;
-            newViewModel.CancelConfirmationRequested +=
-                ViewModel_CancelConfirmationRequested;
-            newViewModel.SimilarLotConfirmationRequested +=
-                ViewModel_SimilarLotConfirmationRequested;
-            newViewModel.AdjustmentContextChangeConfirmationRequested +=
-                ViewModel_AdjustmentContextChangeConfirmationRequested;
         }
 
         ActualizarColumnasInventario();
@@ -76,31 +64,6 @@ public partial class ProductFormView : UserControl
                     NombreProductoInput.Text.Length;
             });
     }
-
-    private static bool ViewModel_CancelConfirmationRequested() =>
-        MessageBox.Show(
-            "Hay información ingresada que todavía no se ha guardado. ¿Desea cancelar el registro?",
-            "Cancelar nuevo producto",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Question,
-            MessageBoxResult.No) == MessageBoxResult.Yes;
-
-    private static bool ViewModel_SimilarLotConfirmationRequested(string mensaje) =>
-        MessageBox.Show(
-            mensaje,
-            "Confirmar lote diferente",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning,
-            MessageBoxResult.No) == MessageBoxResult.Yes;
-
-    private static bool ViewModel_AdjustmentContextChangeConfirmationRequested(
-        string mensaje) =>
-        MessageBox.Show(
-            mensaje,
-            "Cambiar datos del ajuste",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Question,
-            MessageBoxResult.No) == MessageBoxResult.Yes;
 
     private void ViewModel_PresentationAdded()
     {

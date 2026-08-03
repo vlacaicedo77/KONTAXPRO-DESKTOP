@@ -489,6 +489,50 @@
              CABECERA
              ===================================================== -->
 
+        <!-- NUEVO MOTIVO DE INVENTARIO -->
+        <Border Grid.Row="0" Grid.RowSpan="3" Panel.ZIndex="108"
+                Background="{DynamicResource OverlayBrush}"
+                Visibility="{Binding IsNuevoMotivoOpen,
+                  Converter={StaticResource BooleanToVisibilityConverter}}" />
+        <Border Grid.Row="0" Grid.RowSpan="3" Panel.ZIndex="109"
+                Width="520" MaxWidth="620" Padding="22" CornerRadius="14"
+                HorizontalAlignment="Center" VerticalAlignment="Center"
+                Background="{DynamicResource ElevatedSurfaceBrush}"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                Visibility="{Binding IsNuevoMotivoOpen,
+                  Converter={StaticResource BooleanToVisibilityConverter}}">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <materialDesign:PackIcon Kind="TagPlusOutline" Width="21" Height="21"
+                                             Margin="0,0,8,0"
+                                             Foreground="{DynamicResource BrandProBrush}" />
+                    <TextBlock Text="Nuevo motivo" Style="{StaticResource SectionTitleStyle}" />
+                </StackPanel>
+                <TextBlock Style="{StaticResource FieldLabelStyle}" Margin="1,16,0,6">
+                    <Run Text="Nombre" />
+                    <Run Text=" *" Foreground="#DC2626" FontWeight="Bold" />
+                </TextBlock>
+                <Border Style="{StaticResource FormFieldBorderStyle}">
+                    <TextBox Text="{Binding NuevoMotivoNombre, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource UpperTextBoxStyle}" />
+                </Border>
+                <TextBlock Text="Descripción" Style="{StaticResource FieldLabelStyle}" Margin="1,12,0,6" />
+                <Border Style="{StaticResource FormFieldBorderStyle}">
+                    <TextBox Text="{Binding NuevoMotivoDescripcion, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource ModernTextBoxStyle}" />
+                </Border>
+                <TextBlock Text="{Binding NuevoMotivoError}" Foreground="#EF4444"
+                           TextWrapping="Wrap" Margin="0,10,0,0" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+                    <Button Content="Cancelar" Command="{Binding CerrarNuevoMotivoCommand}"
+                            Style="{StaticResource DangerButtonStyle}" />
+                    <Button Content="Guardar" Command="{Binding GuardarNuevoMotivoCommand}"
+                            IsEnabled="{Binding IsNuevoMotivoSaving, Converter={StaticResource BooleanInverterConverter}}"
+                            Margin="10,0,0,0" Style="{StaticResource PrimaryButtonStyle}" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
         <Border Grid.Row="0"
                 Background="{DynamicResource ElevatedSurfaceBrush}"
                 BorderBrush="{DynamicResource BorderBrush}"
@@ -811,7 +855,7 @@
                             </Popup>
 
                         </Grid>
-                        <TextBlock Text="Incluye la presentación o medida que distingue al producto. Ej.: Mulgatol 100 ML, Quemax 1 LT, Rey Quemante 1 GL o Clavo de Acero 1 Pulgada."
+                        <TextBlock Text="Ej.: Mulgatol 100 ML, Quemax 1 LT, Rey Quemante 1 GL o Clavo de Acero 1 Pulgada."
                                    Style="{StaticResource FieldHelpStyle}"
                                    TextWrapping="Wrap"
                                    Margin="0,0,0,15" />
@@ -1052,14 +1096,14 @@
 
                             <Button Grid.Column="1"
                                     Margin="8,0,0,0"
-                                    Style="{DynamicResource CatalogAddButtonStyle}"
+                                    Width="46" Height="46" Padding="0"
+                                    Style="{StaticResource PrimaryButtonStyle}"
                                     Command="{Binding NuevaCategoriaCommand}">
 
                                 <materialDesign:PackIcon Kind="Plus"
                                                          Width="19"
                                                          Height="19"
-                                                         Foreground="{Binding Foreground,
-                                    RelativeSource={RelativeSource AncestorType=Button}}" />
+                                                         Foreground="White" />
 
                             </Button>
 
@@ -1093,11 +1137,14 @@
 
                             <Button Grid.Column="1"
                                     Margin="8,0,0,0"
-                                    Style="{StaticResource CatalogAddButtonStyle}"
+                                    Width="46" Height="46" Padding="0"
+                                    Style="{StaticResource PrimaryButtonStyle}"
                                     Command="{Binding NuevaMarcaCommand}">
 
                                 <materialDesign:PackIcon Kind="Plus"
-                                                         Foreground="{DynamicResource CatalogButtonForegroundBrush}" />
+                                                         Width="19"
+                                                         Height="19"
+                                                         Foreground="White" />
 
                             </Button>
 
@@ -1295,10 +1342,14 @@
                                            Margin="0,2,0,0" />
                             </StackPanel>
                             <Button Grid.Column="1"
-                                    Content="Agregar presentación"
                                     Command="{Binding AgregarPresentacionCommand}"
                                     Click="AgregarPresentacionButton_Click"
-                                    Style="{StaticResource PrimaryButtonStyle}" />
+                                    Style="{StaticResource PrimaryButtonStyle}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Plus" Width="17" Height="17" Margin="0,0,7,0" />
+                                    <TextBlock Text="Agregar presentación" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
                         </Grid>
 
                         <DataGrid x:Name="PresentacionesAdicionalesGrid"
@@ -1602,12 +1653,16 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <Button Content="Agregar precios de presentación"
-                                Command="{Binding AgregarPreciosPresentacionCommand}"
+                        <Button Command="{Binding AgregarPreciosPresentacionCommand}"
                                 behaviors:CommitInputOnClickBehavior.IsEnabled="True"
                                 Style="{StaticResource PrimaryButtonStyle}"
                                 HorizontalAlignment="Left"
-                                Margin="0,2,0,14" />
+                                Margin="0,2,0,14">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Plus" Width="17" Height="17" Margin="0,0,7,0" />
+                                <TextBlock Text="Agregar precios de presentación" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
                         <TextBlock Text="Presentaciones con precios configurados"
                                    Style="{StaticResource FieldLabelStyle}" />
                         <TextBlock Text="Cada presentación debe aparecer en este listado antes de guardar el producto."
@@ -1738,7 +1793,7 @@
                              <TextBlock Text="Costo promedio actual"
                                         Style="{StaticResource FieldLabelStyle}" />
                              <TextBlock Text="{Binding CostoBaseInventarioInicial,
-                                 StringFormat={}{0:0.######}}"
+                                 StringFormat={}{0:0.00####}}"
                                        FontSize="18" FontWeight="SemiBold"
                                        Foreground="{DynamicResource BrandProBrush}" />
                         </StackPanel>
@@ -1766,14 +1821,16 @@
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Bodega" Binding="{Binding BodegaDisplay}"
                                                         IsReadOnly="True" Width="*" />
-                                    <DataGridTextColumn Header="Actual" Binding="{Binding StockActual, StringFormat=N2}"
+                                    <DataGridTextColumn Header="Actual" Binding="{Binding StockActual, StringFormat={}{0:0.##}}"
                                                         IsReadOnly="True" Width="80" />
-                                    <DataGridTextColumn Header="Reservado" Binding="{Binding StockReservado, StringFormat=N2}"
+                                    <DataGridTextColumn Header="Reservado" Binding="{Binding StockReservado, StringFormat={}{0:0.##}}"
                                                         IsReadOnly="True" Width="85" />
-                                    <DataGridTextColumn Header="Disponible" Binding="{Binding Disponible, StringFormat=N2}"
+                                    <DataGridTextColumn Header="Disponible" Binding="{Binding Disponible, StringFormat={}{0:0.##}}"
                                                         IsReadOnly="True" Width="85" />
                                     <DataGridTextColumn Header="Mínimo"
-                                                        Binding="{Binding StockMinimo, UpdateSourceTrigger=PropertyChanged}"
+                                                        Binding="{Binding StockMinimo,
+                                                            StringFormat={}{0:0.##},
+                                                            UpdateSourceTrigger=PropertyChanged}"
                                                         Width="80" />
                                     <DataGridTextColumn Header="Ubicación"
                                                         Binding="{Binding Ubicacion, UpdateSourceTrigger=PropertyChanged}"
@@ -2019,6 +2076,8 @@
                                             <Button Command="{Binding AbrirCorreccionControlCommand}"
                                                     ToolTip="Corrige identificadores o fechas; no modifica cantidades."
                                                     Margin="10,0,0,0"
+                                                    Visibility="{Binding MostrarCorreccionLotesSeries,
+                                                        Converter={StaticResource BooleanToVisibilityConverter}}"
                                                     Style="{StaticResource NeutralButtonStyle}">
                                                 <StackPanel Orientation="Horizontal">
                                                     <materialDesign:PackIcon Kind="PencilOutline"
@@ -2220,12 +2279,16 @@
                                                                Style="{StaticResource SectionTitleStyle}" />
                                                     <TextBlock Text="Distribuye la cantidad base entre los lotes."
                                                                Style="{StaticResource FieldHelpStyle}" />
-                                                </StackPanel>
+                                                 </StackPanel>
                                                  <Button Grid.Column="1"
-                                                         Content="Agregar lote"
                                                          Command="{Binding AgregarLoteInicialCommand}"
                                                          Click="AgregarLoteButton_Click"
-                                                         Style="{StaticResource PrimaryButtonStyle}" />
+                                                         Style="{StaticResource PrimaryButtonStyle}">
+                                                     <StackPanel Orientation="Horizontal">
+                                                         <materialDesign:PackIcon Kind="Plus" Width="17" Height="17" Margin="0,0,7,0" />
+                                                         <TextBlock Text="Agregar lote" VerticalAlignment="Center" />
+                                                     </StackPanel>
+                                                 </Button>
                                              </Grid>
                                              <DataGrid x:Name="LotesInventarioInicialGrid"
                                                        ItemsSource="{Binding LotesInventarioInicial}"
@@ -2364,12 +2427,16 @@
                                                     <TextBlock Text="Agrega una serie por unidad base y asocia su lote cuando corresponda."
                                                                TextWrapping="Wrap"
                                                                Style="{StaticResource FieldHelpStyle}" />
-                                                </StackPanel>
+                                                 </StackPanel>
                                                  <Button Grid.Column="1"
-                                                         Content="Agregar serie"
                                                          Command="{Binding AgregarSerieInicialCommand}"
                                                          Click="AgregarSerieButton_Click"
-                                                         Style="{StaticResource PrimaryButtonStyle}" />
+                                                         Style="{StaticResource PrimaryButtonStyle}">
+                                                     <StackPanel Orientation="Horizontal">
+                                                         <materialDesign:PackIcon Kind="Plus" Width="17" Height="17" Margin="0,0,7,0" />
+                                                         <TextBlock Text="Agregar serie" VerticalAlignment="Center" />
+                                                     </StackPanel>
+                                                 </Button>
                                              </Grid>
                                              <DataGrid x:Name="SeriesInventarioInicialGrid"
                                                        ItemsSource="{Binding SeriesInventarioInicial}"
@@ -2455,13 +2522,17 @@
                                         </StackPanel>
                                     </StackPanel>
                                 </Grid>
-                                <Button Content="Agregar existencia inicial"
-                                        Command="{Binding AgregarInventarioInicialCommand}"
+                                <Button Command="{Binding AgregarInventarioInicialCommand}"
                                         Style="{StaticResource PrimaryButtonStyle}"
                                         HorizontalAlignment="Left"
                                         Margin="0,16,0,10"
                                         Visibility="{Binding MostrarCapturaInventarioInicial,
-                                          Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                          Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Plus" Width="17" Height="17" Margin="0,0,7,0" />
+                                        <TextBlock Text="Agregar existencia inicial" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
                                 <TextBlock Text="Los ingresos confirmados son históricos. Para corregir cantidades, lotes o series utiliza un ajuste de inventario."
                                            TextWrapping="Wrap"
                                            Margin="0,0,0,8"
@@ -2599,9 +2670,7 @@
                 Visibility="{Binding IsCorreccionControlOpen,
                   Converter={StaticResource BooleanToVisibilityConverter}}" />
         <Border Grid.Row="0" Grid.RowSpan="3" Panel.ZIndex="97"
-                Margin="42" Padding="22" CornerRadius="16"
-                Background="{DynamicResource ElevatedSurfaceBrush}"
-                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                Style="{StaticResource InventoryDialogContainerStyle}"
                 Visibility="{Binding IsCorreccionControlOpen,
                   Converter={StaticResource BooleanToVisibilityConverter}}">
             <Grid>
@@ -2612,7 +2681,7 @@
                     <RowDefinition Height="14" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <StackPanel>
+                <StackPanel Margin="0,0,50,0">
                     <StackPanel Orientation="Horizontal">
                         <materialDesign:PackIcon Kind="DatabaseEditOutline"
                                                  Width="22" Height="22"
@@ -2625,13 +2694,29 @@
                     </StackPanel>
                     <TextBlock Text="Solo se corrigen datos identificativos. Las cantidades y estados históricos no se modifican."
                                Style="{StaticResource FieldHelpStyle}" />
-                    <TextBlock Text="Motivo de la corrección *"
-                               Style="{StaticResource FieldLabelStyle}" Margin="0,12,0,0" />
-                    <Border Style="{StaticResource FormFieldBorderStyle}">
-                        <TextBox Text="{Binding CorreccionMotivo, UpdateSourceTrigger=PropertyChanged}"
-                                 Style="{StaticResource UpperTextBoxStyle}" />
-                    </Border>
+                    <TextBlock Style="{StaticResource FieldLabelStyle}" Margin="1,12,0,6">
+                        <Run Text="Motivo de la corrección" />
+                        <Run Text=" *" Foreground="#DC2626" FontWeight="Bold" />
+                    </TextBlock>
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="46"/></Grid.ColumnDefinitions>
+                        <ComboBox ItemsSource="{Binding MotivosCorreccion}"
+                                  DisplayMemberPath="Nombre" SelectedValuePath="Id"
+                                  SelectedValue="{Binding CorreccionMotivoId}"
+                                  Style="{StaticResource ModernComboBoxStyle}" />
+                        <Button Grid.Column="2" Command="{Binding AbrirNuevoMotivoCommand}"
+                                CommandParameter="CORRECCION"
+                                Visibility="{Binding PuedeCrearMotivo, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                Style="{StaticResource PrimaryButtonStyle}" Padding="0">
+                            <materialDesign:PackIcon Kind="Plus" Width="18" Height="18" />
+                        </Button>
+                    </Grid>
                 </StackPanel>
+                <Button Command="{Binding CerrarCorreccionControlCommand}"
+                        HorizontalAlignment="Right" VerticalAlignment="Top"
+                        Style="{StaticResource InventoryDialogCloseButtonStyle}">
+                    <materialDesign:PackIcon Kind="Close" Width="18" Height="18" Foreground="White" />
+                </Button>
                 <Grid Grid.Row="2">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -2736,8 +2821,14 @@
                                        Foreground="{DynamicResource BrandProBrush}" />
                         </StackPanel>
                     </Border>
-                    <Button Content="Cerrar" Command="{Binding CerrarCorreccionControlCommand}"
-                            HorizontalAlignment="Right" Style="{StaticResource DangerButtonStyle}" />
+                    <Button Command="{Binding CerrarCorreccionControlCommand}"
+                            HorizontalAlignment="Right"
+                            Style="{StaticResource InventoryDialogCancelButtonStyle}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Close" Width="18" Height="18" Margin="0,0,8,0" />
+                            <TextBlock Text="Cerrar" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
                 </Grid>
             </Grid>
         </Border>
@@ -2748,9 +2839,7 @@
                 Visibility="{Binding IsConversionOpen,
                   Converter={StaticResource BooleanToVisibilityConverter}}" />
         <Border Grid.Row="0" Grid.RowSpan="3" Panel.ZIndex="95"
-                Margin="34" Padding="22" CornerRadius="16"
-                Background="{DynamicResource ElevatedSurfaceBrush}"
-                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                Style="{StaticResource InventoryDialogContainerStyle}"
                 Visibility="{Binding IsConversionOpen,
                   Converter={StaticResource BooleanToVisibilityConverter}}">
             <Grid>
@@ -2790,17 +2879,32 @@
                                       Style="{StaticResource ModernComboBoxStyle}" />
                         </StackPanel>
                         <StackPanel Grid.Column="2">
-                            <TextBlock Text="Nuevo control *" Style="{StaticResource FieldLabelStyle}" />
+                            <TextBlock Style="{StaticResource FieldLabelStyle}">
+                                <Run Text="Nuevo control" />
+                                <Run Text=" *" Foreground="#DC2626" FontWeight="Bold" />
+                            </TextBlock>
                             <ComboBox ItemsSource="{Binding TiposControlDestino}"
                                       SelectedItem="{Binding ConversionTipoNuevo}"
                                       Style="{StaticResource ModernComboBoxStyle}" />
                         </StackPanel>
                         <StackPanel Grid.Column="4">
-                            <TextBlock Text="Motivo *" Style="{StaticResource FieldLabelStyle}" />
-                            <Border Style="{StaticResource FormFieldBorderStyle}">
-                                <TextBox Text="{Binding ConversionMotivo, UpdateSourceTrigger=PropertyChanged}"
-                                         Style="{StaticResource UpperTextBoxStyle}" />
-                            </Border>
+                            <TextBlock Style="{StaticResource FieldLabelStyle}">
+                                <Run Text="Motivo" />
+                                <Run Text=" *" Foreground="#DC2626" FontWeight="Bold" />
+                            </TextBlock>
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="46"/></Grid.ColumnDefinitions>
+                                <ComboBox ItemsSource="{Binding MotivosConversion}"
+                                          DisplayMemberPath="Nombre" SelectedValuePath="Id"
+                                          SelectedValue="{Binding ConversionMotivoId}"
+                                          Style="{StaticResource ModernComboBoxStyle}" />
+                                <Button Grid.Column="2" Command="{Binding AbrirNuevoMotivoCommand}"
+                                        CommandParameter="CONVERSION"
+                                        Visibility="{Binding PuedeCrearMotivo, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                        Style="{StaticResource PrimaryButtonStyle}" Padding="0">
+                                    <materialDesign:PackIcon Kind="Plus" Width="18" Height="18" />
+                                </Button>
+                            </Grid>
                         </StackPanel>
                     </Grid>
                     <Border Margin="0,12,0,0" Padding="12"
@@ -2845,6 +2949,11 @@
                         </Grid>
                     </Border>
                 </StackPanel>
+                <Button Command="{Binding CerrarConversionCommand}"
+                        HorizontalAlignment="Right" VerticalAlignment="Top"
+                        Style="{StaticResource InventoryDialogCloseButtonStyle}">
+                    <materialDesign:PackIcon Kind="Close" Width="18" Height="18" Foreground="White" />
+                </Button>
                 <ScrollViewer Grid.Row="2"
                               VerticalScrollBarVisibility="Auto"
                               PreviewMouseWheel="FormScrollViewer_PreviewMouseWheel">
@@ -2909,12 +3018,17 @@
                                                     Visibility="{Binding DataContext.ConversionDestinoLotes,
                                                       RelativeSource={RelativeSource AncestorType=UserControl},
                                                       Converter={StaticResource BooleanToVisibilityConverter}}">
-                                             <Button Content="Agregar lote" HorizontalAlignment="Left"
+                                             <Button HorizontalAlignment="Left"
                                                     Command="{Binding DataContext.AgregarLoteConversionCommand,
                                                      RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                      CommandParameter="{Binding}"
                                                      Click="AgregarLoteConversionButton_Click"
-                                                     Style="{StaticResource PrimaryButtonStyle}" />
+                                                      Style="{StaticResource InventoryAddButtonStyle}">
+                                                 <StackPanel Orientation="Horizontal">
+                                                     <materialDesign:PackIcon Kind="Plus" Width="17" Height="17" Margin="0,0,7,0" />
+                                                     <TextBlock Text="Agregar lote" VerticalAlignment="Center" />
+                                                 </StackPanel>
+                                             </Button>
                                             <TextBlock Margin="0,14,0,4"
                                                        Foreground="{DynamicResource SecondaryTextBrush}">
                                                 <Run Text="Asignado: " /><Run Text="{Binding CantidadLotesAsignada, Mode=OneWay, StringFormat={}{0:0.######}}" FontWeight="SemiBold" />
@@ -3003,12 +3117,17 @@
                                                     Visibility="{Binding DataContext.ConversionDestinoSeries,
                                                       RelativeSource={RelativeSource AncestorType=UserControl},
                                                       Converter={StaticResource BooleanToVisibilityConverter}}">
-                                             <Button Content="Agregar serie" HorizontalAlignment="Left"
+                                             <Button HorizontalAlignment="Left"
                                                     Command="{Binding DataContext.AgregarSerieConversionCommand,
                                                      RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                     CommandParameter="{Binding}"
-                                                     Click="AgregarSerieConversionButton_Click"
-                                                     Style="{StaticResource PrimaryButtonStyle}" />
+                                                    CommandParameter="{Binding}"
+                                                    Click="AgregarSerieConversionButton_Click"
+                                                     Style="{StaticResource InventoryAddButtonStyle}">
+                                                 <StackPanel Orientation="Horizontal">
+                                                     <materialDesign:PackIcon Kind="Plus" Width="17" Height="17" Margin="0,0,7,0" />
+                                                     <TextBlock Text="Agregar serie" VerticalAlignment="Center" />
+                                                 </StackPanel>
+                                             </Button>
                                             <TextBlock Margin="0,14,0,4"
                                                        Foreground="{DynamicResource SecondaryTextBrush}">
                                                 <Run Text="Asignado: " /><Run Text="{Binding CantidadSeriesAsignada, Mode=OneWay}" FontWeight="SemiBold" />
@@ -3060,11 +3179,21 @@
                 <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
                     <TextBlock Text="{Binding MensajeError}" Foreground="#EF4444"
                                VerticalAlignment="Center" Margin="0,0,16,0" TextWrapping="Wrap" />
-                    <Button Content="Cancelar" Command="{Binding CerrarConversionCommand}"
-                            Style="{StaticResource DangerButtonStyle}" />
-                    <Button Content="Confirmar conversión" Command="{Binding ConfirmarConversionCommand}"
+                    <Button Command="{Binding CerrarConversionCommand}"
+                            Style="{StaticResource InventoryDialogCancelButtonStyle}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Close" Width="18" Height="18" Margin="0,0,8,0" />
+                            <TextBlock Text="Cancelar" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding ConfirmarConversionCommand}"
                             IsEnabled="{Binding PuedeConfirmarConversion}"
-                            Margin="10,0,0,0" Style="{StaticResource PrimaryButtonStyle}" />
+                            Margin="10,0,0,0" Style="{StaticResource InventoryDialogPrimaryButtonStyle}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="SwapHorizontal" Width="18" Height="18" Margin="0,0,8,0" />
+                            <TextBlock Text="Confirmar conversión" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>
@@ -3075,11 +3204,7 @@
                 Visibility="{Binding IsAjusteOpen,
                   Converter={StaticResource BooleanToVisibilityConverter}}" />
         <Border Grid.Row="0" Grid.RowSpan="3" Panel.ZIndex="93"
-                Margin="28" MaxWidth="1120" MaxHeight="820"
-                Padding="24" CornerRadius="16"
-                HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-                Background="{DynamicResource ElevatedSurfaceBrush}"
-                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                Style="{StaticResource InventoryDialogContainerStyle}"
                 Visibility="{Binding IsAjusteOpen,
                   Converter={StaticResource BooleanToVisibilityConverter}}">
             <Grid>
@@ -3104,6 +3229,11 @@
                     <TextBlock Text="Genera un movimiento trazable; no modifica directamente el stock histórico."
                                Style="{StaticResource FieldHelpStyle}" Margin="31,3,0,0" />
                 </StackPanel>
+                <Button Command="{Binding CerrarAjusteCommand}"
+                        HorizontalAlignment="Right" VerticalAlignment="Top"
+                        Style="{StaticResource InventoryDialogCloseButtonStyle}">
+                    <materialDesign:PackIcon Kind="Close" Width="18" Height="18" Foreground="White" />
+                </Button>
                 <ScrollViewer Grid.Row="2"
                               VerticalScrollBarVisibility="Auto"
                               PreviewMouseWheel="FormScrollViewer_PreviewMouseWheel">
@@ -3188,10 +3318,19 @@
                                  <Run Text="Motivo" />
                                  <Run Text=" *" Foreground="#DC2626" FontWeight="Bold" />
                              </TextBlock>
-                            <Border Style="{StaticResource FormFieldBorderStyle}">
-                                <TextBox Text="{Binding AjusteMotivo, UpdateSourceTrigger=PropertyChanged}"
-                                         Style="{StaticResource UpperTextBoxStyle}" />
-                            </Border>
+                             <Grid>
+                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="46"/></Grid.ColumnDefinitions>
+                                 <ComboBox ItemsSource="{Binding MotivosAjuste}"
+                                           DisplayMemberPath="Nombre" SelectedValuePath="Id"
+                                           SelectedValue="{Binding AjusteMotivoId}"
+                                           Style="{StaticResource ModernComboBoxStyle}" />
+                                 <Button Grid.Column="2" Command="{Binding AbrirNuevoMotivoCommand}"
+                                         CommandParameter="AJUSTE"
+                                         Visibility="{Binding PuedeCrearMotivo, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                         Style="{StaticResource PrimaryButtonStyle}" Padding="0">
+                                     <materialDesign:PackIcon Kind="Plus" Width="18" Height="18" />
+                                 </Button>
+                             </Grid>
                         </StackPanel>
                     </Grid>
                     <StackPanel Margin="0,14,0,0"
@@ -3201,14 +3340,19 @@
                             <TextBlock Text="LOTES DEL AJUSTE"
                                        Style="{StaticResource FieldLabelStyle}"
                                        VerticalAlignment="Center" />
-                              <Button Content="+ AGREGAR LOTE"
-                                      Command="{Binding AgregarLoteAjusteCommand}"
-                                      IsEnabled="{Binding PuedeAgregarLoteAjuste}"
-                                      Visibility="{Binding AjusteEsEntrada,
-                                          Converter={StaticResource BooleanToVisibilityConverter}}"
-                                      Click="AgregarLoteAjusteButton_Click"
-                                     HorizontalAlignment="Right"
-                                     Style="{StaticResource PrimaryButtonStyle}" />
+                              <Button
+                                       Command="{Binding AgregarLoteAjusteCommand}"
+                                       IsEnabled="{Binding PuedeAgregarLoteAjuste}"
+                                       Visibility="{Binding AjusteEsEntrada,
+                                           Converter={StaticResource BooleanToVisibilityConverter}}"
+                                       Click="AgregarLoteAjusteButton_Click"
+                                       HorizontalAlignment="Right"
+                                       Style="{StaticResource InventoryAddButtonStyle}">
+                                  <StackPanel Orientation="Horizontal">
+                                      <materialDesign:PackIcon Kind="Plus" Width="17" Height="17" Margin="0,0,7,0" />
+                                      <TextBlock Text="Agregar lote" VerticalAlignment="Center" />
+                                  </StackPanel>
+                              </Button>
                          </Grid>
                          <DataGrid x:Name="AjusteLotesGrid"
                                    ItemsSource="{Binding AjusteLotes}"
@@ -3450,12 +3594,17 @@
                                   Converter={StaticResource BooleanToVisibilityConverter}}">
                         <Grid Margin="0,0,0,8">
                             <TextBlock Text="SERIES NUEVAS" Style="{StaticResource FieldLabelStyle}" />
-                             <Button Content="+ AGREGAR SERIE"
-                                     Command="{Binding AgregarSerieNuevaAjusteCommand}"
-                                     IsEnabled="{Binding PuedeAgregarSerieNuevaAjuste}"
-                                     Click="AgregarSerieAjusteButton_Click"
-                                     HorizontalAlignment="Right"
-                                     Style="{StaticResource PrimaryButtonStyle}" />
+                              <Button
+                                      Command="{Binding AgregarSerieNuevaAjusteCommand}"
+                                      IsEnabled="{Binding PuedeAgregarSerieNuevaAjuste}"
+                                      Click="AgregarSerieAjusteButton_Click"
+                                      HorizontalAlignment="Right"
+                                      Style="{StaticResource InventoryAddButtonStyle}">
+                                  <StackPanel Orientation="Horizontal">
+                                      <materialDesign:PackIcon Kind="Plus" Width="17" Height="17" Margin="0,0,7,0" />
+                                      <TextBlock Text="Agregar serie" VerticalAlignment="Center" />
+                                  </StackPanel>
+                              </Button>
                          </Grid>
                          <DataGrid x:Name="AjusteSeriesNuevasGrid"
                                    ItemsSource="{Binding AjusteSeriesNuevas}"
@@ -3595,11 +3744,21 @@
                 </ScrollViewer>
                 <StackPanel Grid.Row="4" Orientation="Horizontal"
                             HorizontalAlignment="Right">
-                    <Button Content="Cancelar" Command="{Binding CerrarAjusteCommand}"
-                            Style="{StaticResource DangerButtonStyle}" />
-                    <Button Content="Registrar ajuste" Command="{Binding RegistrarAjusteCommand}"
+                    <Button Command="{Binding CerrarAjusteCommand}"
+                            Style="{StaticResource InventoryDialogCancelButtonStyle}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Close" Width="18" Height="18" Margin="0,0,8,0" />
+                            <TextBlock Text="Cancelar" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding RegistrarAjusteCommand}"
                             IsEnabled="{Binding PuedeRegistrarAjuste}"
-                            Margin="10,0,0,0" Style="{StaticResource PrimaryButtonStyle}" />
+                            Margin="10,0,0,0" Style="{StaticResource InventoryDialogPrimaryButtonStyle}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="ContentSaveOutline" Width="18" Height="18" Margin="0,0,8,0" />
+                            <TextBlock Text="Registrar ajuste" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>
@@ -3610,9 +3769,7 @@
                 Visibility="{Binding IsKardexOpen,
                   Converter={StaticResource BooleanToVisibilityConverter}}" />
         <Border Grid.Row="0" Grid.RowSpan="3" Panel.ZIndex="91"
-                Margin="38" Padding="20" CornerRadius="16"
-                Background="{DynamicResource ElevatedSurfaceBrush}"
-                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                Style="{StaticResource InventoryDialogContainerStyle}"
                 Visibility="{Binding IsKardexOpen,
                   Converter={StaticResource BooleanToVisibilityConverter}}">
             <Grid>
@@ -3642,10 +3799,15 @@
                         <TextBlock Text="Movimientos históricos; esta consulta no modifica existencias."
                                    Style="{StaticResource FieldHelpStyle}" />
                     </StackPanel>
-                    <ProgressBar Grid.Column="1" Width="110" Height="4"
-                                 IsIndeterminate="True"
-                                 Visibility="{Binding IsKardexLoading,
-                                   Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <ProgressBar Grid.Column="1" Width="110" Height="4" Margin="0,0,50,0"
+                                  IsIndeterminate="True"
+                                  Visibility="{Binding IsKardexLoading,
+                                    Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <Button Grid.Column="1" Command="{Binding CerrarKardexCommand}"
+                            HorizontalAlignment="Right" VerticalAlignment="Top"
+                            Style="{StaticResource InventoryDialogCloseButtonStyle}">
+                        <materialDesign:PackIcon Kind="Close" Width="18" Height="18" Foreground="White" />
+                    </Button>
                 </Grid>
                 <DataGrid Grid.Row="2" ItemsSource="{Binding KardexItems}"
                            Style="{StaticResource KontaxDataGridStyle}"
@@ -3674,10 +3836,15 @@
                         <DataGridTextColumn Header="OBSERVACIÓN" Binding="{Binding Observacion}" Width="220" />
                     </DataGrid.Columns>
                 </DataGrid>
-                <Button Grid.Row="4" Content="Cerrar"
+                <Button Grid.Row="4"
                         Command="{Binding CerrarKardexCommand}"
                         HorizontalAlignment="Right"
-                        Style="{StaticResource DangerButtonStyle}" />
+                        Style="{StaticResource InventoryDialogCancelButtonStyle}">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="Close" Width="18" Height="18" Margin="0,0,8,0" />
+                        <TextBlock Text="Cerrar" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
             </Grid>
         </Border>
 
@@ -3771,6 +3938,7 @@
 
 
                 <Button Grid.Column="1"
+                        Width="190"
                         Style="{StaticResource DangerButtonStyle}"
                         Command="{Binding CancelarCommand}">
 
@@ -3792,6 +3960,7 @@
 
 
                 <Button Grid.Column="3"
+                        Width="190"
                         Style="{StaticResource PrimaryButtonStyle}"
                         Command="{Binding GuardarCommand}"
                         IsEnabled="{Binding IsLoading,
@@ -3940,16 +4109,36 @@
 
                     <Button Grid.Column="1"
                             Style="{StaticResource DangerButtonStyle}"
-                            Content="Cancelar"
-                            Command="{Binding CancelarCatalogoRapidoCommand}" />
+                            Width="132" Height="42" Padding="12,0"
+                            Command="{Binding CancelarCatalogoRapidoCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Close"
+                                                     Width="17" Height="17"
+                                                     Margin="0,0,7,0"
+                                                     Foreground="White" />
+                            <TextBlock Text="Cancelar"
+                                       VerticalAlignment="Center"
+                                       Foreground="White" />
+                        </StackPanel>
+                    </Button>
 
 
                     <Button Grid.Column="3"
                             Style="{StaticResource PrimaryButtonStyle}"
-                            Content="Guardar"
+                            Width="132" Height="42" Padding="12,0"
                             IsEnabled="{Binding IsQuickCatalogSaving,
             Converter={StaticResource BooleanInverterConverter}}"
-                            Command="{Binding GuardarCatalogoRapidoCommand}" />
+                            Command="{Binding GuardarCatalogoRapidoCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="ContentSaveOutline"
+                                                     Width="17" Height="17"
+                                                     Margin="0,0,7,0"
+                                                     Foreground="White" />
+                            <TextBlock Text="Guardar"
+                                       VerticalAlignment="Center"
+                                       Foreground="White" />
+                        </StackPanel>
+                    </Button>
 
                 </Grid>
 

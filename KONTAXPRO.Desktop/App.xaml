@@ -19,6 +19,8 @@
                 <ResourceDictionary Source="Styles/ScrollBarStyles.xaml"/>
                 <ResourceDictionary Source="Styles/CheckBoxStyles.xaml"/>
                 <ResourceDictionary Source="Styles/DatePickerStyles.xaml"/>
+                <ResourceDictionary Source="Styles/InventoryDialogStyles.xaml"/>
+                <ResourceDictionary Source="Styles/MessageDialogStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>

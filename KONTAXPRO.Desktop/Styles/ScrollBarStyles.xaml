@@ -1,6 +1,12 @@
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:behaviors="clr-namespace:KONTAXPRO.Desktop.Behaviors">
+
+    <Style TargetType="ScrollViewer">
+        <Setter Property="behaviors:ScrollViewerResetBehavior.ResetOnHide"
+                Value="True" />
+    </Style>
 
     <Style x:Key="KontaxHorizontalScrollThumbStyle" TargetType="Thumb">
         <Setter Property="MinWidth" Value="44" />

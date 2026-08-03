@@ -125,6 +125,8 @@ public sealed class AjusteInventarioConfiguration
             .HasMaxLength(16).IsRequired();
         b.Property(x => x.FechaAjuste).HasColumnName("fecha_ajuste")
             .HasColumnType("timestamp with time zone").IsRequired();
+        b.Property(x => x.MotivoOperacionInventarioId)
+            .HasColumnName("motivo_operacion_inventario_id").IsRequired();
         b.Property(x => x.Motivo).HasColumnName("motivo")
             .HasMaxLength(500).IsRequired();
         b.Property(x => x.Estado).HasColumnName("estado")
@@ -152,6 +154,9 @@ public sealed class AjusteInventarioConfiguration
             .OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.AnuladoPorUsuario).WithMany()
             .HasForeignKey(x => x.AnuladoPorUsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(x => x.MotivoOperacionInventario).WithMany(x => x.Ajustes)
+            .HasForeignKey(x => x.MotivoOperacionInventarioId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }
@@ -207,6 +212,7 @@ public sealed class ConversionControlInventarioConfiguration
         b.Property(x => x.TipoControlNuevo).HasColumnName("tipo_control_nuevo").HasMaxLength(20).IsRequired();
         b.Property(x => x.FechaConversion).HasColumnName("fecha_conversion").HasColumnType("timestamp with time zone").IsRequired();
         b.Property(x => x.UsuarioId).HasColumnName("usuario_id").IsRequired();
+        b.Property(x => x.MotivoOperacionInventarioId).HasColumnName("motivo_operacion_inventario_id").IsRequired();
         b.Property(x => x.Motivo).HasColumnName("motivo").HasMaxLength(500).IsRequired();
         b.Property(x => x.Estado).HasColumnName("estado").HasMaxLength(20).IsRequired();
         b.Property(x => x.AnuladoPorUsuarioId).HasColumnName("anulado_por_usuario_id");
@@ -218,6 +224,7 @@ public sealed class ConversionControlInventarioConfiguration
         b.HasOne(x => x.Producto).WithMany().HasForeignKey(x => x.ProductoId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.Usuario).WithMany().HasForeignKey(x => x.UsuarioId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.AnuladoPorUsuario).WithMany().HasForeignKey(x => x.AnuladoPorUsuarioId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(x => x.MotivoOperacionInventario).WithMany(x => x.Conversiones).HasForeignKey(x => x.MotivoOperacionInventarioId).OnDelete(DeleteBehavior.Restrict);
         b.HasIndex(x => new { x.EmpresaId, x.ProductoId, x.FechaConversion });
     }
 }

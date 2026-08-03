@@ -1,0 +1,56 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
+    <Style x:Key="InventoryDialogContainerStyle" TargetType="Border">
+        <Setter Property="Margin" Value="28" />
+        <Setter Property="Padding" Value="24" />
+        <Setter Property="CornerRadius" Value="16" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+        <Setter Property="MinWidth" Value="760" />
+        <Setter Property="MinHeight" Value="560" />
+        <Setter Property="MaxWidth" Value="1120" />
+        <Setter Property="MaxHeight" Value="820" />
+        <Setter Property="Background" Value="{DynamicResource ElevatedSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+
+    <Style x:Key="InventoryDialogCloseButtonStyle"
+           TargetType="Button" BasedOn="{StaticResource DangerButtonStyle}">
+        <Setter Property="Width" Value="38" />
+        <Setter Property="Height" Value="38" />
+        <Setter Property="MinWidth" Value="38" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="ToolTip" Value="Cerrar" />
+    </Style>
+
+    <Style x:Key="InventoryDialogCancelButtonStyle"
+           TargetType="Button" BasedOn="{StaticResource DangerButtonStyle}">
+        <Setter Property="Width" Value="190" />
+        <Setter Property="Height" Value="44" />
+        <Setter Property="Padding" Value="14,0" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <Style x:Key="InventoryDialogPrimaryButtonStyle"
+           TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+        <Setter Property="Width" Value="190" />
+        <Setter Property="Height" Value="44" />
+        <Setter Property="Padding" Value="14,0" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <Style x:Key="InventoryAddButtonStyle"
+           TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+        <Setter Property="Height" Value="38" />
+        <Setter Property="Padding" Value="12,0" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <Style x:Key="InventoryDialogFooterStyle" TargetType="Border">
+        <Setter Property="Padding" Value="0,14,0,0" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+        <Setter Property="BorderThickness" Value="0,1,0,0" />
+    </Style>
+</ResourceDictionary>

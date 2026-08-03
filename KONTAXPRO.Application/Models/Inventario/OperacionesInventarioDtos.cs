@@ -8,6 +8,7 @@ public sealed class AjusteInventarioRequest
     public long UsuarioId { get; set; }
     public string TipoAjuste { get; set; } = "ENTRADA";
     public DateTime Fecha { get; set; } = DateTime.UtcNow;
+    public long MotivoOperacionInventarioId { get; set; }
     public string Motivo { get; set; } = string.Empty;
     public string? Observacion { get; set; }
     public List<IngresoInventarioDetalleRequest> Detalles { get; set; } = [];
@@ -19,6 +20,7 @@ public sealed class CorregirLoteRequest
     public long ProductoId { get; set; }
     public long LoteId { get; set; }
     public long UsuarioId { get; set; }
+    public long MotivoOperacionInventarioId { get; set; }
     public string NumeroLote { get; set; } = string.Empty;
     public DateTime? FechaElaboracion { get; set; }
     public DateTime? FechaCaducidad { get; set; }
@@ -31,6 +33,7 @@ public sealed class CorregirSerieRequest
     public long ProductoId { get; set; }
     public long SerieId { get; set; }
     public long UsuarioId { get; set; }
+    public long MotivoOperacionInventarioId { get; set; }
     public string NumeroSerie { get; set; } = string.Empty;
     public string Motivo { get; set; } = string.Empty;
 }
@@ -40,12 +43,32 @@ public sealed class ConversionControlInventarioRequest
     public long EmpresaId { get; set; }
     public long ProductoId { get; set; }
     public long UsuarioId { get; set; }
+    public long MotivoOperacionInventarioId { get; set; }
     public string TipoControlAnterior { get; set; } = string.Empty;
     public string TipoControlNuevo { get; set; } = string.Empty;
     public bool ControlCaducidad { get; set; }
     public int DiasAnticipacionCaducidad { get; set; }
     public string Motivo { get; set; } = string.Empty;
     public List<ConversionControlBodegaRequest> Bodegas { get; set; } = [];
+}
+
+public sealed class MotivoOperacionInventarioDto
+{
+    public long Id { get; set; }
+    public string Codigo { get; set; } = string.Empty;
+    public string Nombre { get; set; } = string.Empty;
+    public string? Descripcion { get; set; }
+    public string TipoOperacion { get; set; } = string.Empty;
+    public bool EsSistema { get; set; }
+}
+
+public sealed class CrearMotivoOperacionInventarioRequest
+{
+    public long EmpresaId { get; set; }
+    public long UsuarioId { get; set; }
+    public string TipoOperacion { get; set; } = string.Empty;
+    public string Nombre { get; set; } = string.Empty;
+    public string? Descripcion { get; set; }
 }
 
 public sealed class ConversionControlBodegaRequest

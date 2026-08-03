@@ -32,4 +32,13 @@ public interface IInventoryService
         long empresaId,
         long productoId,
         CancellationToken cancellationToken = default);
+
+    Task<List<MotivoOperacionInventarioDto>> ObtenerMotivosOperacionAsync(
+        long empresaId,
+        string tipoOperacion,
+        CancellationToken cancellationToken = default);
+
+    Task<InventoryOperationResult> CrearMotivoOperacionAsync(
+        CrearMotivoOperacionInventarioRequest request,
+        CancellationToken cancellationToken = default);
 }

@@ -101,6 +101,9 @@ public class KontaxDbContext : DbContext
     public DbSet<MedioPago> MediosPago
         => Set<MedioPago>();
 
+    public DbSet<MotivoOperacionInventario> MotivosOperacionInventario
+        => Set<MotivoOperacionInventario>();
+
     public DbSet<TipoAmbiente> TiposAmbiente
         => Set<TipoAmbiente>();
 
@@ -238,6 +241,9 @@ public class KontaxDbContext : DbContext
     public DbSet<ConversionControlInventarioSerie>
         ConversionesControlInventarioSeries
         => Set<ConversionControlInventarioSerie>();
+
+    public DbSet<CorreccionDatoInventario> CorreccionesDatosInventario
+        => Set<CorreccionDatoInventario>();
 
     public DbSet<ProductoCosto> ProductosCostos
         => Set<ProductoCosto>();

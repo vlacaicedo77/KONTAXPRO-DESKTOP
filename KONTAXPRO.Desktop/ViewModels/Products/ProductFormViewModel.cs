@@ -18,6 +18,7 @@ public partial class ProductFormViewModel : ObservableObject
     private readonly IProductCatalogService _catalogService;
     private readonly IInventoryService _inventoryService;
     private readonly CurrentSession _currentSession;
+    private readonly IMessageDialogService _messageDialogService;
 
     private CancellationTokenSource?
     _suggestionsCancellationTokenSource;
@@ -33,9 +34,6 @@ public partial class ProductFormViewModel : ObservableObject
     public event Action<long>? ExistingProductRequested;
     public event Action? PresentationAdded;
     public event Action? InitialFocusRequested;
-    public event Func<bool>? CancelConfirmationRequested;
-    public event Func<string, bool>? SimilarLotConfirmationRequested;
-    public event Func<string, bool>? AdjustmentContextChangeConfirmationRequested;
     public ObservableCollection<ProductoSugerenciaDto>
     SugerenciasProductos
     { get; }
@@ -84,6 +82,9 @@ public partial class ProductFormViewModel : ObservableObject
     public ObservableCollection<AjusteSerieDisponibleViewModel> AjusteSeriesDisponibles { get; } = new();
     public ObservableCollection<AjusteLoteEditorViewModel> AjusteLotes { get; } = new();
     public ObservableCollection<AjusteSerieNuevaEditorViewModel> AjusteSeriesNuevas { get; } = new();
+    public ObservableCollection<MotivoOperacionInventarioDto> MotivosAjuste { get; } = new();
+    public ObservableCollection<MotivoOperacionInventarioDto> MotivosConversion { get; } = new();
+    public ObservableCollection<MotivoOperacionInventarioDto> MotivosCorreccion { get; } = new();
     private EstadoControlInventarioDto? _estadoControlAjuste;
     private readonly HashSet<string> _seriesExistentesAjuste =
         new(StringComparer.OrdinalIgnoreCase);
@@ -135,6 +136,7 @@ public partial class ProductFormViewModel : ObservableObject
     [ObservableProperty] private decimal ajusteCantidad;
     [ObservableProperty] private decimal ajusteCostoPresentacion;
     [ObservableProperty] private string ajusteMotivo = string.Empty;
+    [ObservableProperty] private long? ajusteMotivoId;
     [ObservableProperty] private string? ajusteObservacion;
     [ObservableProperty] private string? ajusteNumeroLote;
     [ObservableProperty] private string? ajusteSeriesTexto;
@@ -145,12 +147,23 @@ public partial class ProductFormViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ConversionDestinoSeries))]
     private string? conversionTipoNuevo;
     [ObservableProperty] private string conversionMotivo = string.Empty;
+    [ObservableProperty] private long? conversionMotivoId;
     [ObservableProperty] private string conversionTipoAnterior = "NORMAL";
     [ObservableProperty] private string conversionUnidadBase = "UND";
     [ObservableProperty] private bool conversionControlCaducidad = true;
     [ObservableProperty] private int conversionDiasAnticipacionCaducidad = 30;
     [ObservableProperty] private bool isCorreccionControlOpen;
     [ObservableProperty] private string correccionMotivo = string.Empty;
+    [ObservableProperty] private long? correccionMotivoId;
+    [ObservableProperty] private bool isNuevoMotivoOpen;
+    [ObservableProperty] private string nuevoMotivoNombre = string.Empty;
+    [ObservableProperty] private string? nuevoMotivoDescripcion;
+    [ObservableProperty] private string? nuevoMotivoError;
+    [ObservableProperty] private bool isNuevoMotivoSaving;
+    private string _nuevoMotivoDestino = string.Empty;
+    private string _nuevoMotivoTipo = string.Empty;
+    public bool PuedeCrearMotivo =>
+        _currentSession.HasPermission("INVENTARIO_CREAR_MOTIVO");
     [ObservableProperty] private bool isCorreccionSaving;
     [ObservableProperty] private string? correccionMensajeExito;
     public bool ConversionDestinoLotes =>
@@ -163,7 +176,7 @@ public partial class ProductFormViewModel : ObservableObject
     public bool PuedeConfirmarConversion =>
         !IsLoading &&
         !string.IsNullOrWhiteSpace(ConversionTipoNuevo) &&
-        !string.IsNullOrWhiteSpace(ConversionMotivo) &&
+        ConversionMotivoId.HasValue &&
         ConversionBodegas.All(x => x.DistribucionCompleta(
             ConversionDestinoLotes, ConversionDestinoSeries));
 
@@ -456,6 +469,8 @@ public partial class ProductFormViewModel : ObservableObject
         TipoControlInventario is "LOTE" or "LOTE_Y_SERIE";
     public bool MostrarLoteAsociadoSeries =>
         TipoControlInventario == "LOTE_Y_SERIE";
+    public bool MostrarCorreccionLotesSeries =>
+        TipoControlInventario is "LOTE" or "SERIE" or "LOTE_Y_SERIE";
     public bool AjusteRequiereLotes =>
         TipoControlInventario is "LOTE" or "LOTE_Y_SERIE";
     public bool AjusteRequiereSeries =>
@@ -504,7 +519,7 @@ public partial class ProductFormViewModel : ObservableObject
             ? ObtenerRazonesEntradaLoteYSerieNoValida().Count == 0
             : !IsLoading && AjusteBodegaId.HasValue &&
               AjustePresentacionId.HasValue && AjusteCantidad > 0 &&
-              !string.IsNullOrWhiteSpace(AjusteMotivo) &&
+              AjusteMotivoId.HasValue &&
               (AjusteEsSalida || AjusteCostoPresentacion >= 0) &&
               ValidarControlAjuste(AjusteCantidadBase) is null;
     public bool MostrarColumnaCaducidad =>
@@ -701,12 +716,14 @@ public partial class ProductFormViewModel : ObservableObject
         IProductService productService,
         IProductCatalogService catalogService,
         IInventoryService inventoryService,
-        CurrentSession currentSession)
+        CurrentSession currentSession,
+        IMessageDialogService messageDialogService)
     {
         _productService = productService;
         _catalogService = catalogService;
         _inventoryService = inventoryService;
         _currentSession = currentSession;
+        _messageDialogService = messageDialogService;
         LotesInventarioInicial.CollectionChanged +=
             DistribucionInventarioCollectionChanged;
         SeriesInventarioInicial.CollectionChanged +=
@@ -1164,7 +1181,7 @@ public partial class ProductFormViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void Cancelar()
+    private async Task CancelarAsync()
     {
         if (IsQuickCatalogOpen)
         {
@@ -1172,11 +1189,18 @@ public partial class ProductFormViewModel : ObservableObject
             return;
         }
 
-        if (!IsEditing &&
-            TieneCambiosModoNuevo() &&
-            CancelConfirmationRequested is not null &&
-            !CancelConfirmationRequested.Invoke())
-            return;
+        if (!IsEditing && TieneCambiosModoNuevo())
+        {
+            var confirmar = await _messageDialogService.ConfirmAsync(
+                "Cancelar nuevo producto",
+                "Hay información ingresada que todavía no se ha guardado. ¿Desea cancelar el registro?",
+                "Cancelar registro",
+                "Seguir editando",
+                true);
+
+            if (!confirmar)
+                return;
+        }
 
         CloseRequested?.Invoke();
     }
@@ -2115,6 +2139,7 @@ public partial class ProductFormViewModel : ObservableObject
         AjusteCantidad = 0;
         AjusteCostoPresentacion = 0;
         AjusteMotivo = string.Empty;
+        AjusteMotivoId = null;
         AjusteObservacion = null;
         AjusteNumeroLote = null;
         AjusteSeriesTexto = null;
@@ -2132,6 +2157,9 @@ public partial class ProductFormViewModel : ObservableObject
                 _seriesExistentesAjuste.Add(
                     serie.Trim().ToUpperInvariant());
         ActualizarOpcionesAjuste();
+        await CargarMotivosAsync(
+            MotivosAjuste,
+            AjusteTipo == "ENTRADA" ? "AJUSTE_ENTRADA" : "AJUSTE_SALIDA");
         IsAjusteOpen = true;
     }
 
@@ -2193,6 +2221,7 @@ public partial class ProductFormViewModel : ObservableObject
                     UsuarioId = _currentSession.UsuarioId,
                     TipoAjuste = AjusteTipo,
                     Fecha = DateTime.UtcNow,
+                    MotivoOperacionInventarioId = AjusteMotivoId!.Value,
                     Motivo = AjusteMotivo,
                     Observacion = AjusteObservacion,
                     Detalles = [detalle]
@@ -2223,10 +2252,14 @@ public partial class ProductFormViewModel : ObservableObject
             return;
         }
         NotificarContextoTipoAjuste();
+        AjusteMotivoId = null;
+        AjusteMotivo = string.Empty;
         AjusteNumeroLote = null;
         AjusteSeriesTexto = null;
         LimpiarEditoresAjuste();
         ActualizarOpcionesAjuste();
+        _ = CargarMotivosAsync(MotivosAjuste,
+            newValue == "ENTRADA" ? "AJUSTE_ENTRADA" : "AJUSTE_SALIDA");
     }
 
     private void NotificarContextoTipoAjuste()
@@ -2281,6 +2314,24 @@ public partial class ProductFormViewModel : ObservableObject
 
     partial void OnAjusteMotivoChanged(string value) =>
         NotificarEstadoBotonesAjuste();
+
+    partial void OnAjusteMotivoIdChanged(long? value)
+    {
+        AjusteMotivo = MotivosAjuste.FirstOrDefault(x => x.Id == value)?.Nombre
+            ?? string.Empty;
+        NotificarEstadoBotonesAjuste();
+    }
+
+    partial void OnConversionMotivoIdChanged(long? value)
+    {
+        ConversionMotivo = MotivosConversion.FirstOrDefault(x => x.Id == value)
+            ?.Nombre ?? string.Empty;
+        NotificarEstadoConversion();
+    }
+
+    partial void OnCorreccionMotivoIdChanged(long? value) =>
+        CorreccionMotivo = MotivosCorreccion.FirstOrDefault(x => x.Id == value)
+            ?.Nombre ?? string.Empty;
 
     partial void OnAjusteManejaFechaCaducidadChanged(bool value) =>
         NotificarEstadoBotonesAjuste();
@@ -2425,11 +2476,16 @@ public partial class ProductFormViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void CrearLoteSimilar(AjusteLoteEditorViewModel? lote)
+    private async Task CrearLoteSimilarAsync(AjusteLoteEditorViewModel? lote)
     {
         if (lote?.LoteSimilar is null) return;
         var mensaje = $"Existe el lote '{lote.LoteSimilar.NumeroLote}', posiblemente equivalente a '{lote.NumeroLote}'. ¿Confirma crear uno distinto usando el motivo general del ajuste?";
-        if (SimilarLotConfirmationRequested?.Invoke(mensaje) != true) return;
+        var confirmar = await _messageDialogService.ConfirmWarningAsync(
+            "Confirmar lote diferente",
+            mensaje,
+            "Crear lote diferente",
+            "Volver al ajuste");
+        if (!confirmar) return;
         lote.PermitirCrearLoteSimilar = true;
         lote.LoteSimilar = null;
     }
@@ -2605,8 +2661,11 @@ public partial class ProductFormViewModel : ObservableObject
     private bool ConfirmarPerdidaDatosAjuste(string cambio)
     {
         if (!TieneDatosTemporalesAjuste()) return true;
-        return AdjustmentContextChangeConfirmationRequested?.Invoke(
-            $"Al cambiar {cambio} se limpiarán los lotes y series ingresados. ¿Desea continuar?") == true;
+        return _messageDialogService.Confirm(
+            "Cambiar datos del ajuste",
+            $"Al cambiar {cambio} se limpiarán los lotes y series ingresados. ¿Desea continuar?",
+            "Cambiar y limpiar",
+            "Conservar datos");
     }
 
     private bool TieneDatosTemporalesAjuste() =>
@@ -2783,6 +2842,7 @@ public partial class ProductFormViewModel : ObservableObject
                     ? DiasAlertaCaducidad
                     : 30;
             ConversionMotivo = string.Empty;
+            ConversionMotivoId = null;
             ConversionBodegas.Clear();
             foreach (var bodega in estado.Bodegas)
             {
@@ -2813,6 +2873,7 @@ public partial class ProductFormViewModel : ObservableObject
                     });
                 ConversionBodegas.Add(editor);
             }
+            await CargarMotivosAsync(MotivosConversion, "CONVERSION_CONTROL");
             NotificarEstadoConversion();
             IsConversionOpen = true;
         }
@@ -2916,7 +2977,7 @@ public partial class ProductFormViewModel : ObservableObject
     private async Task ConfirmarConversionAsync()
     {
         if (!_productoId.HasValue || string.IsNullOrWhiteSpace(ConversionTipoNuevo) ||
-            string.IsNullOrWhiteSpace(ConversionMotivo))
+            !ConversionMotivoId.HasValue)
         {
             MensajeError = "Seleccione el nuevo control e ingrese el motivo.";
             return;
@@ -2937,6 +2998,7 @@ public partial class ProductFormViewModel : ObservableObject
                     EmpresaId = ObtenerEmpresaId(),
                     ProductoId = _productoId.Value,
                     UsuarioId = _currentSession.UsuarioId,
+                    MotivoOperacionInventarioId = ConversionMotivoId.Value,
                     TipoControlAnterior = ConversionTipoAnterior,
                     TipoControlNuevo = ConversionTipoNuevo,
                     ControlCaducidad = MostrarConversionCaducidad &&
@@ -3061,7 +3123,9 @@ public partial class ProductFormViewModel : ObservableObject
         MensajeError = null;
         CorreccionMensajeExito = null;
         CorreccionMotivo = string.Empty;
+        CorreccionMotivoId = null;
         await CargarCorreccionesAsync();
+        await CargarMotivosAsync(MotivosCorreccion, "CORRECCION_LOTE_SERIE");
         IsCorreccionControlOpen = true;
     }
 
@@ -3078,7 +3142,7 @@ public partial class ProductFormViewModel : ObservableObject
         CorreccionLoteEditorViewModel? lote)
     {
         if (lote is null || !_productoId.HasValue ||
-            string.IsNullOrWhiteSpace(CorreccionMotivo))
+            !CorreccionMotivoId.HasValue)
         {
             MensajeError = "Ingrese el motivo obligatorio de la corrección.";
             return;
@@ -3120,6 +3184,7 @@ public partial class ProductFormViewModel : ObservableObject
                     ProductoId = _productoId.Value,
                     LoteId = lote.LoteId,
                     UsuarioId = _currentSession.UsuarioId,
+                    MotivoOperacionInventarioId = CorreccionMotivoId.Value,
                     NumeroLote = lote.NumeroLote,
                     FechaElaboracion = MostrarColumnaCaducidad
                         ? lote.FechaElaboracion : null,
@@ -3147,7 +3212,7 @@ public partial class ProductFormViewModel : ObservableObject
         CorreccionSerieEditorViewModel? serie)
     {
         if (serie is null || !_productoId.HasValue ||
-            string.IsNullOrWhiteSpace(CorreccionMotivo))
+            !CorreccionMotivoId.HasValue)
         {
             MensajeError = "Ingrese el motivo obligatorio de la corrección.";
             return;
@@ -3162,6 +3227,7 @@ public partial class ProductFormViewModel : ObservableObject
                     ProductoId = _productoId.Value,
                     SerieId = serie.SerieId,
                     UsuarioId = _currentSession.UsuarioId,
+                    MotivoOperacionInventarioId = CorreccionMotivoId.Value,
                     NumeroSerie = serie.NumeroSerie,
                     Motivo = CorreccionMotivo
                 });
@@ -3204,6 +3270,92 @@ public partial class ProductFormViewModel : ObservableObject
                 NumeroSerie = serie.NumeroSerie,
                 NumeroLote = serie.NumeroLote
             });
+    }
+
+    private async Task CargarMotivosAsync(
+        ObservableCollection<MotivoOperacionInventarioDto> destino,
+        string tipoOperacion)
+    {
+        var seleccionActual = destino == MotivosAjuste
+            ? AjusteMotivoId
+            : destino == MotivosConversion ? ConversionMotivoId : CorreccionMotivoId;
+        var items = await _inventoryService.ObtenerMotivosOperacionAsync(
+            ObtenerEmpresaId(), tipoOperacion);
+        destino.Clear();
+        foreach (var item in items)
+            destino.Add(item);
+        if (seleccionActual.HasValue && destino.All(x => x.Id != seleccionActual))
+        {
+            if (destino == MotivosAjuste) AjusteMotivoId = null;
+            else if (destino == MotivosConversion) ConversionMotivoId = null;
+            else CorreccionMotivoId = null;
+        }
+    }
+
+    [RelayCommand]
+    private void AbrirNuevoMotivo(string? destino)
+    {
+        if (!PuedeCrearMotivo || string.IsNullOrWhiteSpace(destino)) return;
+        _nuevoMotivoDestino = destino;
+        _nuevoMotivoTipo = destino switch
+        {
+            "AJUSTE" => AjusteTipo == "ENTRADA"
+                ? "AJUSTE_ENTRADA" : "AJUSTE_SALIDA",
+            "CONVERSION" => "CONVERSION_CONTROL",
+            "CORRECCION" => "CORRECCION_LOTE_SERIE",
+            _ => string.Empty
+        };
+        if (_nuevoMotivoTipo.Length == 0) return;
+        NuevoMotivoNombre = string.Empty;
+        NuevoMotivoDescripcion = null;
+        NuevoMotivoError = null;
+        IsNuevoMotivoOpen = true;
+    }
+
+    [RelayCommand]
+    private void CerrarNuevoMotivo() => IsNuevoMotivoOpen = false;
+
+    [RelayCommand]
+    private async Task GuardarNuevoMotivoAsync()
+    {
+        if (string.IsNullOrWhiteSpace(NuevoMotivoNombre))
+        {
+            NuevoMotivoError = "Ingrese el nombre obligatorio del motivo.";
+            return;
+        }
+        IsNuevoMotivoSaving = true;
+        try
+        {
+            var result = await _inventoryService.CrearMotivoOperacionAsync(
+                new CrearMotivoOperacionInventarioRequest
+                {
+                    EmpresaId = ObtenerEmpresaId(),
+                    UsuarioId = _currentSession.UsuarioId,
+                    TipoOperacion = _nuevoMotivoTipo,
+                    Nombre = NuevoMotivoNombre,
+                    Descripcion = NuevoMotivoDescripcion
+                });
+            if (!result.Success)
+            {
+                NuevoMotivoError = result.Message;
+                return;
+            }
+            var destino = _nuevoMotivoDestino == "AJUSTE" ? MotivosAjuste
+                : _nuevoMotivoDestino == "CONVERSION" ? MotivosConversion
+                : MotivosCorreccion;
+            await CargarMotivosAsync(destino, _nuevoMotivoTipo);
+            if (_nuevoMotivoDestino == "AJUSTE")
+                AjusteMotivoId = result.MovimientoInventarioId;
+            else if (_nuevoMotivoDestino == "CONVERSION")
+                ConversionMotivoId = result.MovimientoInventarioId;
+            else
+                CorreccionMotivoId = result.MovimientoInventarioId;
+            IsNuevoMotivoOpen = false;
+        }
+        finally
+        {
+            IsNuevoMotivoSaving = false;
+        }
     }
 
     private void MostrarMensajeCorreccionExitosa(string mensaje)
@@ -3671,6 +3823,7 @@ public partial class ProductFormViewModel : ObservableObject
         OnPropertyChanged(
             nameof(MostrarConfiguracionCaducidad));
         OnPropertyChanged(nameof(MostrarLoteAsociadoSeries));
+        OnPropertyChanged(nameof(MostrarCorreccionLotesSeries));
         OnPropertyChanged(nameof(AjusteRequiereLotes));
         OnPropertyChanged(nameof(AjusteRequiereSeries));
         OnPropertyChanged(nameof(MostrarAjusteLotes));

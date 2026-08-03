@@ -11,6 +11,8 @@ public partial class ProductsViewModel : ObservableObject
 {
     private readonly IProductService _productService;
     private readonly CurrentSession _currentSession;
+    private readonly INotificationService _notificationService;
+    private readonly ILoadingService _loadingService;
 
     private CancellationTokenSource? _searchCancellationTokenSource;
 
@@ -89,10 +91,14 @@ public partial class ProductsViewModel : ObservableObject
     public ProductsViewModel(
     IProductService productService,
     CurrentSession currentSession,
-    ProductFormViewModel productForm)
+    ProductFormViewModel productForm,
+    INotificationService notificationService,
+    ILoadingService loadingService)
     {
         _productService = productService;
         _currentSession = currentSession;
+        _notificationService = notificationService;
+        _loadingService = loadingService;
 
         ProductForm = productForm;
 
@@ -322,9 +328,21 @@ public partial class ProductsViewModel : ObservableObject
             return;
         }
 
-        await ProductForm.EditarAsync(producto.Id);
+        IsLoading = true;
 
-        IsProductFormOpen = true;
+        try
+        {
+            await using var loading = await _loadingService.ShowAsync(
+                "Cargando producto",
+                "Estamos preparando la información para editarla.");
+
+            await ProductForm.EditarAsync(producto.Id);
+            IsProductFormOpen = true;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
     private void OnProductFormCloseRequested()
@@ -336,14 +354,14 @@ public partial class ProductsViewModel : ObservableObject
     {
         IsProductFormOpen = false;
 
-        MensajeEstado =
-            "Producto guardado correctamente.";
-
         await CargarProductosAsync();
 
         ProductoSeleccionado =
             Productos.FirstOrDefault(
                 x => x.Id == productoId);
+
+        await _notificationService.ShowSuccessAsync(
+            "Producto guardado correctamente.");
     }
 
     [RelayCommand]

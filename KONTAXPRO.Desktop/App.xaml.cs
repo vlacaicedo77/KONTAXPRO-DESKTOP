@@ -46,6 +46,9 @@ namespace KONTAXPRO.Desktop
 
             // Servicios
             services.AddSingleton<ThemeService>();
+            services.AddSingleton<IMessageDialogService, MessageDialogService>();
+            services.AddSingleton<INotificationService, NotificationService>();
+            services.AddSingleton<ILoadingService, LoadingService>();
             services.AddSingleton<INavigationService, NavigationService>();
             services.AddSingleton<SessionFlowService>();
             services.AddTransient<IInventoryService, InventoryService>();
@@ -118,12 +121,13 @@ namespace KONTAXPRO.Desktop
 
                 if (!puedeConectar)
                 {
-                    MessageBox.Show(
-                        "No fue posible establecer conexión con PostgreSQL.\n\n" +
-                        "Verifica que el servidor esté disponible e intenta nuevamente.",
+                    var messageService =
+                        _serviceProvider.GetRequiredService<IMessageDialogService>();
+
+                    await messageService.ShowErrorAsync(
                         "KONTAXPRO · Conexión no disponible",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Error);
+                        "No fue posible establecer conexión con PostgreSQL.",
+                        "Verifica que el servidor esté disponible e intenta nuevamente.");
 
                     Shutdown();
                     return;
@@ -179,11 +183,15 @@ namespace KONTAXPRO.Desktop
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
-                    $"KONTAXPRO no pudo completar el inicio.\n\n{ex.Message}",
+                System.Diagnostics.Debug.WriteLine(ex);
+
+                var messageService =
+                    _serviceProvider.GetRequiredService<IMessageDialogService>();
+
+                await messageService.ShowErrorAsync(
                     "Error de inicialización",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                    "KONTAXPRO no pudo completar el inicio.",
+                    "Cierra la aplicación, verifica la configuración e intenta nuevamente.");
 
                 Shutdown();
             }

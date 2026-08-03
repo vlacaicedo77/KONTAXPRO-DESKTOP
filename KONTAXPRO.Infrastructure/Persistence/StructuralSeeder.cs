@@ -61,6 +61,8 @@ public sealed class StructuralSeeder
             cancellationToken);
 
         await SeedDocumentosInternosAsync(context, now, cancellationToken);
+        await SeedMotivosOperacionInventarioAsync(
+            context, now, cancellationToken);
 
         await SeedConNaturalezaAsync(
             context,
@@ -343,6 +345,7 @@ public sealed class StructuralSeeder
             ("INVENTARIO_CREAR_LOTE_REGULARIZACION", "INVENTARIO"),
             ("INVENTARIO_CORREGIR_LOTE", "INVENTARIO"),
             ("INVENTARIO_CORREGIR_SERIE", "INVENTARIO"),
+            ("INVENTARIO_CREAR_MOTIVO", "INVENTARIO"),
             ("CARTERA_ANULAR_COBRO", "CARTERA"),
             ("CONTABILIDAD_REABRIR_PERIODO", "CONTABILIDAD"),
             ("CONTABILIDAD_CREAR_ASIENTO_MANUAL", "CONTABILIDAD"),
@@ -423,6 +426,61 @@ public sealed class StructuralSeeder
                     CreatedAt = now
                 });
             paresExistentes.Add(par);
+        }
+    }
+
+    private static async Task SeedMotivosOperacionInventarioAsync(
+        KontaxDbContext context,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        (string Codigo, string Nombre, string Tipo, int Orden)[] seeds =
+        [
+            ("II_OMISION_CONTEO", "OMISIÓN EN CONTEO INICIAL", "INVENTARIO_INICIAL_ADICIONAL", 10),
+            ("II_PRODUCTO_ENCONTRADO", "PRODUCTO ENCONTRADO EN BODEGA", "INVENTARIO_INICIAL_ADICIONAL", 20),
+            ("II_CORRECCION_CARGA", "CORRECCIÓN DE CARGA INICIAL", "INVENTARIO_INICIAL_ADICIONAL", 30),
+            ("AE_SOBRANTE_CONTEO", "SOBRANTE EN CONTEO FÍSICO", "AJUSTE_ENTRADA", 10),
+            ("AE_OMISION_REGISTRO", "OMISIÓN DE REGISTRO DE EXISTENCIA", "AJUSTE_ENTRADA", 20),
+            ("AE_PRODUCTO_ENCONTRADO", "PRODUCTO ENCONTRADO EN BODEGA", "AJUSTE_ENTRADA", 30),
+            ("AE_CORRECCION_EXISTENCIA", "CORRECCIÓN DE EXISTENCIA", "AJUSTE_ENTRADA", 40),
+            ("AS_FALTANTE_CONTEO", "FALTANTE EN CONTEO FÍSICO", "AJUSTE_SALIDA", 10),
+            ("AS_PRODUCTO_DETERIORADO", "PRODUCTO DETERIORADO", "AJUSTE_SALIDA", 20),
+            ("AS_PRODUCTO_CADUCADO", "PRODUCTO CADUCADO", "AJUSTE_SALIDA", 30),
+            ("AS_MERMA", "MERMA", "AJUSTE_SALIDA", 40),
+            ("AS_PERDIDA_EXTRAVIO", "PÉRDIDA O EXTRAVÍO", "AJUSTE_SALIDA", 50),
+            ("AS_CORRECCION_EXISTENCIA", "CORRECCIÓN DE EXISTENCIA", "AJUSTE_SALIDA", 60),
+            ("CC_IMPLEMENTACION_LOTES", "IMPLEMENTACIÓN DE CONTROL POR LOTES", "CONVERSION_CONTROL", 10),
+            ("CC_IMPLEMENTACION_SERIES", "IMPLEMENTACIÓN DE CONTROL POR SERIES", "CONVERSION_CONTROL", 20),
+            ("CC_IMPLEMENTACION_TRAZABILIDAD", "IMPLEMENTACIÓN DE TRAZABILIDAD", "CONVERSION_CONTROL", 30),
+            ("CC_CORRECCION_CONFIGURACION", "CORRECCIÓN DE CONFIGURACIÓN DE INVENTARIO", "CONVERSION_CONTROL", 40),
+            ("CLS_ERROR_DIGITACION", "ERROR DE DIGITACIÓN", "CORRECCION_LOTE_SERIE", 10),
+            ("CLS_NUMERO_LOTE", "CORRECCIÓN DE NÚMERO DE LOTE", "CORRECCION_LOTE_SERIE", 20),
+            ("CLS_FECHA_ELABORACION", "CORRECCIÓN DE FECHA DE ELABORACIÓN", "CORRECCION_LOTE_SERIE", 30),
+            ("CLS_FECHA_CADUCIDAD", "CORRECCIÓN DE FECHA DE CADUCIDAD", "CORRECCION_LOTE_SERIE", 40),
+            ("CLS_NUMERO_SERIE", "CORRECCIÓN DE NÚMERO DE SERIE", "CORRECCION_LOTE_SERIE", 50)
+        ];
+        var existentes = await context.MotivosOperacionInventario
+            .Where(x => x.EmpresaId == null)
+            .ToDictionaryAsync(x => x.Codigo, cancellationToken);
+        foreach (var seed in seeds)
+        {
+            if (!existentes.TryGetValue(seed.Codigo, out var motivo))
+            {
+                motivo = new MotivoOperacionInventario
+                {
+                    Codigo = seed.Codigo,
+                    CreatedAt = now
+                };
+                context.MotivosOperacionInventario.Add(motivo);
+                existentes.Add(seed.Codigo, motivo);
+            }
+            motivo.EmpresaId = null;
+            motivo.Nombre = seed.Nombre;
+            motivo.TipoOperacion = seed.Tipo;
+            motivo.EsSistema = true;
+            motivo.Orden = seed.Orden;
+            motivo.Estado = 1;
+            motivo.UpdatedAt = now;
         }
     }
 

@@ -13,15 +13,18 @@ public class SessionFlowService
     private readonly IServiceProvider _serviceProvider;
     private readonly IUsuarioEmpresaService _usuarioEmpresaService;
     private readonly CurrentSession _currentSession;
+    private readonly IMessageDialogService _messageDialogService;
 
     public SessionFlowService(
         IServiceProvider serviceProvider,
         IUsuarioEmpresaService usuarioEmpresaService,
-        CurrentSession currentSession)
+        CurrentSession currentSession,
+        IMessageDialogService messageDialogService)
     {
         _serviceProvider = serviceProvider;
         _usuarioEmpresaService = usuarioEmpresaService;
         _currentSession = currentSession;
+        _messageDialogService = messageDialogService;
     }
 
     public async Task<bool> IniciarSesionAsync(
@@ -53,12 +56,10 @@ public class SessionFlowService
 
         if (empresas.Count == 0)
         {
-            MessageBox.Show(
-                "Tu cuenta no tiene empresas habilitadas para trabajar.\n\n" +
-                "Solicita al administrador que revise la configuración de acceso.",
+            await _messageDialogService.ShowWarningAsync(
                 "Acceso empresarial no disponible",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning);
+                "Tu cuenta no tiene empresas habilitadas para trabajar.",
+                "Solicita al administrador que revise la configuración de acceso.");
 
             _currentSession.Clear();
             return false;
