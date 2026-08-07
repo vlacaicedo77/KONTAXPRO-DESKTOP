@@ -664,10 +664,34 @@
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
                                                 <StackPanel Orientation="Horizontal" Margin="0,1">
-                                                    <TextBlock Text="{Binding ListaCodigo, StringFormat=LISTA {0}:}"
-                                                               Margin="0,0,4,0"
-                                                               FontSize="10"
-                                                               Foreground="{DynamicResource MutedTextBrush}"/>
+                                                    <Border Width="22" Height="20" CornerRadius="6"
+                                                            Margin="0,0,5,0"
+                                                            ToolTip="{Binding ListaNombre}">
+                                                        <Border.Style>
+                                                            <Style TargetType="Border">
+                                                                <Setter Property="Background" Value="#2563EB"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding ClasificacionPrecio}" Value="B">
+                                                                        <Setter Property="Background" Value="#16A34A"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding ClasificacionPrecio}" Value="C">
+                                                                        <Setter Property="Background" Value="#D97706"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding ClasificacionPrecio}" Value="D">
+                                                                        <Setter Property="Background" Value="#9333EA"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding ClasificacionPrecio}" Value="E">
+                                                                        <Setter Property="Background" Value="#DB2777"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Border.Style>
+                                                        <TextBlock Text="{Binding ClasificacionPrecio}"
+                                                                   Foreground="White" FontSize="9"
+                                                                   FontWeight="Bold"
+                                                                   HorizontalAlignment="Center"
+                                                                   VerticalAlignment="Center"/>
+                                                    </Border>
                                                     <TextBlock FontSize="10" FontWeight="Bold"
                                                                Foreground="{DynamicResource BrandProBrush}">
                                                         <TextBlock.Style>

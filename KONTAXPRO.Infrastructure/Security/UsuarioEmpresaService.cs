@@ -50,6 +50,7 @@ public class UsuarioEmpresaService : IUsuarioEmpresaService
     public async Task SeleccionarEmpresaAsync(
     long usuarioEmpresaId)
     {
+        var empresaAnteriorId = _currentSession.EmpresaId;
         await using var context =
             await _dbContextFactory.CreateDbContextAsync();
 
@@ -63,7 +64,9 @@ public class UsuarioEmpresaService : IUsuarioEmpresaService
             .FirstOrDefaultAsync(x =>
                 x.Id == usuarioEmpresaId &&
                 x.UsuarioId == _currentSession.UsuarioId &&
-                x.Estado == 1);
+                x.Estado == 1 &&
+                x.Empresa != null &&
+                x.Empresa.Estado == 1);
 
         if (usuarioEmpresa is null)
         {
@@ -163,5 +166,7 @@ public class UsuarioEmpresaService : IUsuarioEmpresaService
                 _currentSession.BodegaNombre = configuracion.Bodega.Nombre;
             }
         }
+
+        _currentSession.NotifyEmpresaActivaChanged(empresaAnteriorId);
     }
 }

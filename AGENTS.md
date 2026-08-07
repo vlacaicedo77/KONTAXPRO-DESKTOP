@@ -85,6 +85,8 @@ BD vacía
 
 La base actual no es la fuente de verdad. Las entidades + configuraciones EF Core son la fuente de verdad.
 
+Las pruebas relacionales automatizadas usan exclusivamente `KONTAXPRO_TEST_CONNECTION_STRING`. Solo pueden ejecutarse en `Development` y contra una base dedicada cuyo nombre termine en `_test`; nunca reutilizan `KONTAXPRO_CONNECTION_STRING` ni `kontax_desktop`. La suite puede aplicar migraciones y el `StructuralSeeder`, usa datos sintéticos y limpia únicamente los registros propios.
+
 Antes de cualquier borrado:
 - confirmar ambiente `Development`;
 - identificar explícitamente host y nombre de base;
@@ -181,8 +183,10 @@ KONTAXPRO es multiempresa y multiestablecimiento.
 Reglas:
 - aislamiento estricto;
 - validar que relaciones pertenezcan a la misma empresa;
+- validar en la frontera de servicio que el usuario tenga acceso a la empresa activa;
 - usar integridad compuesta donde ayude;
 - no confiar solo en filtros de UI.
+- los módulos que muestran configuración empresarial deben cancelar y recargar sus datos al cambiar la empresa activa.
 
 Ejemplo:
 `productos_presentaciones(producto_id, empresa_id)` debe poder validarse contra `productos(id, empresa_id)`.
@@ -564,6 +568,7 @@ Incluir como mínimo:
 - VENTAS_APLICAR_DESCUENTO
 - VENTAS_VENDER_BAJO_COSTO
 - INVENTARIO_VER_COSTO
+- TERCEROS_GESTIONAR
 - CARTERA_ANULAR_COBRO
 - CONTABILIDAD_REABRIR_PERIODO
 - CONTABILIDAD_CREAR_ASIENTO_MANUAL
@@ -598,17 +603,41 @@ No `estado`, no `updated_at`.
 
 ## terceros
 Global:
-`id, tipo_identificacion_id, numero_identificacion, razon_social, nombre_comercial?, direccion?, correo?, telefono?, origen_registro, estado_verificacion, fuente_verificacion?, verificado_at?, estado, created_at, updated_at`
+`id, tipo_identificacion_id, numero_identificacion, clave_identidad, razon_social, nombre_comercial?, direccion?, correo?, telefono?, origen_registro, estado_verificacion, fuente_verificacion?, verificado_at?, es_cliente, estado_cliente, es_proveedor, estado_proveedor, estado, created_at, updated_at`
 - UNIQUE(tipo_identificacion_id,numero_identificacion)
+- UNIQUE(clave_identidad)
 - origen: OFICIAL|OFFLINE
 - verificación: PENDIENTE|VERIFICADO
+- `es_cliente` y `estado_cliente` expresan el rol y estado global Cliente
+- `es_proveedor` y `estado_proveedor` expresan el rol y estado global Proveedor
+- los estados de ambos roles son independientes y no alteran el otro rol
+
+`clave_identidad` protege la identidad real: una cédula y el RUC natural formado por esa cédula más `001` comparten clave canónica. Los RUC no naturales, pasaportes y documentos del exterior conservan espacios de identidad independientes. La clave se recalcula al cambiar tipo o número y no sustituye el documento original mostrado al usuario.
+
+## terceros_identificaciones
+Documentos oficiales adicionales de un Tercero:
+`id, tercero_id, tipo_identificacion_id, numero_identificacion, numero_normalizado, es_principal, estado_verificacion, fuente_verificacion?, verificado_at?, estado, created_at, updated_at`
+- UNIQUE(tipo_identificacion_id,numero_normalizado)
+- una identificación principal por Tercero mediante índice parcial
+- `terceros.tipo_identificacion_id + numero_identificacion` permanece como documento principal compatible
+- cédula y RUC natural equivalentes pertenecen al mismo Tercero, pero ambos documentos pueden conservarse
 
 ## empresas_terceros
-`id, empresa_id, tercero_id, es_cliente, es_proveedor, lista_precio_id?, credito_habilitado, cupo_credito?, dias_credito?, motivo_bloqueo_credito?, observacion?, estado, created_at, updated_at`
+`id, empresa_id, tercero_id, lista_precio_id?, credito_habilitado, cupo_credito?, dias_credito?, motivo_bloqueo_credito?, observacion?, estado, created_at, updated_at`
 - UNIQUE(empresa_id,tercero_id)
-- CHECK(es_cliente OR es_proveedor)
 - cupo >=0 si no NULL
 - días >=0 si no NULL
+- es una relación interna y neutral, no la fuente de los roles Cliente/Proveedor
+- se crea bajo demanda al guardar configuración comercial o al registrar una operación de una empresa con el Tercero
+- las transacciones conservan `empresa_tercero_id` para reforzar el aislamiento multiempresa
+
+Clientes y Proveedores son globales y no se registran nuevamente por empresa. Lista de precios, crédito y observación del cliente sí son configuraciones por empresa. Condición de pago, plazo, fecha de vencimiento y observaciones de pago pertenecen a cada futura Compra, no al maestro Proveedor.
+
+La verificación oficial de identificaciones es autoritativa fuera de la UI. Los comandos de guardado no aceptan como confiables el estado, la fuente ni los datos oficiales declarados por un ViewModel. GUIA/SIFAE emiten una constancia temporal asociada a usuario, documento y propósito; el modo offline solo se autoriza después de tres rondas reales con las fuentes no disponibles. Un documento inválido, no encontrado o con datos insuficientes nunca habilita el modo offline.
+
+`Tercero` usa concurrencia optimista mediante la columna de sistema PostgreSQL `xmin`, expuesta en el modelo como `uint Version`. Toda edición y cambio de estado desde Clientes o Proveedores debe enviar la versión leída originalmente. Un conflicto nunca se fusiona ni sobrescribe automáticamente: se informa al usuario y se recarga la información vigente.
+
+Las mutaciones del `Tercero` global desde Clientes y Proveedores generan auditoría append-only para creación, asignación de rol, actualización, verificación oficial y cambio de estado. El evento se confirma dentro de la misma transacción que la mutación, conserva usuario y empresa/establecimiento activos como contexto —no como propiedad del Tercero— y no incluye identificación, dirección, correo, teléfono ni otros datos personales en la descripción. Una operación rechazada o con conflicto no genera auditoría.
 
 No almacenar saldo aquí.
 

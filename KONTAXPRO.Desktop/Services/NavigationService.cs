@@ -1,6 +1,8 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using KONTAXPRO.Desktop.ViewModels;
 using KONTAXPRO.Desktop.ViewModels.Products;
+using KONTAXPRO.Desktop.ViewModels.Clientes;
+using KONTAXPRO.Desktop.ViewModels.Proveedores;
 
 namespace KONTAXPRO.Desktop.Services
 {
@@ -19,7 +21,7 @@ namespace KONTAXPRO.Desktop.Services
 
         public void NavigateTo(string route)
         {
-            CurrentViewModel = route switch
+            var nextViewModel = route switch
             {
                 "Inicio" => _serviceProvider.GetService(
                                 typeof(DashboardViewModel))
@@ -33,8 +35,24 @@ namespace KONTAXPRO.Desktop.Services
                                    typeof(ProductsViewModel))
                                as ObservableObject,
 
+                "Clientes" => _serviceProvider.GetService(
+                                   typeof(ClientesViewModel))
+                               as ObservableObject,
+
+                "Proveedores" => _serviceProvider.GetService(
+                                      typeof(ProveedoresViewModel))
+                                  as ObservableObject,
+
                 _ => CurrentViewModel
             };
+
+            if (!ReferenceEquals(CurrentViewModel, nextViewModel) &&
+                CurrentViewModel is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
+
+            CurrentViewModel = nextViewModel;
 
             CurrentViewModelChanged?.Invoke();
         }

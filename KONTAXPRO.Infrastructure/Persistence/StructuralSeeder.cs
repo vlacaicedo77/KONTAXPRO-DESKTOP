@@ -1,3 +1,4 @@
+using KONTAXPRO.Application.Clientes;
 using KONTAXPRO.Domain.Entities.Catalogos;
 using KONTAXPRO.Domain.Entities.Comercial;
 using KONTAXPRO.Domain.Entities.Seguridad;
@@ -312,6 +313,9 @@ public sealed class StructuralSeeder
         }
 
         tercero.TipoIdentificacion = tipoIdentificacion;
+        tercero.ClaveIdentidad = ClaveIdentidadTercero.Crear(
+            tipoIdentificacion.Codigo,
+            TerceroEstructural.ConsumidorFinalIdentificacion);
         tercero.RazonSocial =
             TerceroEstructural.ConsumidorFinalRazonSocial;
         tercero.NombreComercial =
@@ -320,6 +324,8 @@ public sealed class StructuralSeeder
         tercero.EstadoVerificacion = "VERIFICADO";
         tercero.FuenteVerificacion = "SRI";
         tercero.VerificadoAt ??= now;
+        tercero.EsCliente = true;
+        tercero.EstadoCliente = 1;
         tercero.Estado = 1;
     }
 
@@ -346,6 +352,7 @@ public sealed class StructuralSeeder
             ("INVENTARIO_CORREGIR_LOTE", "INVENTARIO"),
             ("INVENTARIO_CORREGIR_SERIE", "INVENTARIO"),
             ("INVENTARIO_CREAR_MOTIVO", "INVENTARIO"),
+            ("TERCEROS_GESTIONAR", "COMERCIAL"),
             ("CARTERA_ANULAR_COBRO", "CARTERA"),
             ("CONTABILIDAD_REABRIR_PERIODO", "CONTABILIDAD"),
             ("CONTABILIDAD_CREAR_ASIENTO_MANUAL", "CONTABILIDAD"),

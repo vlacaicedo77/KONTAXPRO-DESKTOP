@@ -12,6 +12,8 @@ using KONTAXPRO.Domain.Entities.Bancos;
 using KONTAXPRO.Domain.Entities.Contabilidad;
 using KONTAXPRO.Domain.Entities.Tributacion;
 using KONTAXPRO.Domain.Entities.FacturacionElectronica;
+using KONTAXPRO.Application.Clientes;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using ConfiguracionFacturacionElectronica =
     KONTAXPRO.Domain.Entities.Configuracion.FacturacionElectronica;
 
@@ -170,6 +172,9 @@ public class KontaxDbContext : DbContext
 
     public DbSet<Tercero> Terceros
         => Set<Tercero>();
+
+    public DbSet<TerceroIdentificacion> TercerosIdentificaciones
+        => Set<TerceroIdentificacion>();
 
     public DbSet<EmpresaTercero> EmpresasTerceros
         => Set<EmpresaTercero>();
@@ -374,5 +379,110 @@ public class KontaxDbContext : DbContext
 
         modelBuilder.ApplyConfigurationsFromAssembly(
             typeof(KontaxDbContext).Assembly);
+    }
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        ApplyCanonicalThirdPartyKeys();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override async Task<int> SaveChangesAsync(
+        bool acceptAllChangesOnSuccess,
+        CancellationToken cancellationToken = default)
+    {
+        await ApplyCanonicalThirdPartyKeysAsync(cancellationToken);
+        return await base.SaveChangesAsync(
+            acceptAllChangesOnSuccess,
+            cancellationToken);
+    }
+
+    private void ApplyCanonicalThirdPartyKeys()
+    {
+        var entries = CanonicalKeyEntries();
+        if (entries.Count == 0)
+            return;
+
+        var typeCodes = LoadIdentificationTypeCodes(
+            entries.Select(x => x.Entity.TipoIdentificacionId));
+        foreach (var entry in entries)
+        {
+            entry.Entity.ClaveIdentidad = ClaveIdentidadTercero.Crear(
+                ResolveTypeCode(entry.Entity, typeCodes),
+                entry.Entity.NumeroIdentificacion);
+        }
+    }
+
+    private async Task ApplyCanonicalThirdPartyKeysAsync(
+        CancellationToken cancellationToken)
+    {
+        var entries = CanonicalKeyEntries();
+        if (entries.Count == 0)
+            return;
+
+        var typeIds = entries.Select(x => x.Entity.TipoIdentificacionId)
+            .Distinct()
+            .ToArray();
+        var typeCodes = TiposIdentificacion.Local
+            .Where(x => x.Id > 0 && typeIds.Contains(x.Id))
+            .ToDictionary(x => x.Id, x => x.Codigo);
+        var missingIds = typeIds.Where(x => !typeCodes.ContainsKey(x)).ToArray();
+        if (missingIds.Length > 0)
+        {
+            var storedCodes = await TiposIdentificacion.AsNoTracking()
+                .Where(x => missingIds.Contains(x.Id))
+                .ToDictionaryAsync(x => x.Id, x => x.Codigo, cancellationToken);
+            foreach (var pair in storedCodes)
+                typeCodes[pair.Key] = pair.Value;
+        }
+
+        foreach (var entry in entries)
+        {
+            entry.Entity.ClaveIdentidad = ClaveIdentidadTercero.Crear(
+                ResolveTypeCode(entry.Entity, typeCodes),
+                entry.Entity.NumeroIdentificacion);
+        }
+    }
+
+    private List<EntityEntry<Tercero>> CanonicalKeyEntries() =>
+        ChangeTracker.Entries<Tercero>()
+            .Where(x =>
+                x.State == EntityState.Added ||
+                x.Property(y => y.TipoIdentificacionId).IsModified ||
+                x.Property(y => y.NumeroIdentificacion).IsModified)
+            .ToList();
+
+    private Dictionary<long, string> LoadIdentificationTypeCodes(
+        IEnumerable<long> typeIds)
+    {
+        var ids = typeIds.Distinct().ToArray();
+        var result = TiposIdentificacion.Local
+            .Where(x => x.Id > 0 && ids.Contains(x.Id))
+            .ToDictionary(x => x.Id, x => x.Codigo);
+        var missingIds = ids.Where(x => !result.ContainsKey(x)).ToArray();
+        if (missingIds.Length == 0)
+            return result;
+
+        foreach (var pair in TiposIdentificacion.AsNoTracking()
+                     .Where(x => missingIds.Contains(x.Id))
+                     .Select(x => new { x.Id, x.Codigo }))
+        {
+            result[pair.Id] = pair.Codigo;
+        }
+
+        return result;
+    }
+
+    private static string ResolveTypeCode(
+        Tercero thirdParty,
+        IReadOnlyDictionary<long, string> typeCodes)
+    {
+        if (thirdParty.TipoIdentificacion is not null)
+            return thirdParty.TipoIdentificacion.Codigo;
+        if (typeCodes.TryGetValue(thirdParty.TipoIdentificacionId, out var code))
+            return code;
+
+        throw new InvalidOperationException(
+            "No se pudo determinar el tipo de identificación del tercero.");
     }
 }

@@ -2,17 +2,17 @@
 
 ## 1. Estado del módulo
 
-- Fecha de auditoría: 2026-08-05.
+- Fecha de última validación: 2026-08-06.
 - Rama: `dev`.
-- Commit base: `cbc5ec1294e1cf5137bc97000554494865894871`.
+- Commit base de mantenimiento: `a12b57b3d197daee7588e9637f6b24614dcafdac`.
 - Estado del árbol: con cambios previos sin confirmar; la mayor parte de Clientes está en archivos nuevos y todavía no pertenece al commit base.
 - Build: correcto, 0 advertencias y 0 errores.
-- Pruebas: 197 correctas en la solución; 92 corresponden al namespace de Clientes; 0 fallidas y 0 omitidas.
-- EF Core: el modelo no tiene cambios pendientes respecto de `20260802213548_InitialCreate`.
+- Pruebas: 251 correctas en la solución; 0 fallidas y 0 omitidas, incluidas 5 contra PostgreSQL real.
+- EF Core: `20260806153953_MakeClientRoleGlobal` aplicada en PostgreSQL Development y sin cambios pendientes de modelo.
 
-Clientes V1 permite listar, buscar, filtrar, crear, reutilizar, editar, verificar, activar e inactivar clientes dentro de la empresa activa. La identidad y el contacto pertenecen a un `Tercero` global; el rol Cliente y su configuración comercial pertenecen a `EmpresaTercero`.
+Clientes V1 permite listar, buscar, filtrar, crear, reutilizar, editar, verificar, activar e inactivar un catálogo global de clientes. Identidad, contacto, rol y estado pertenecen a `Tercero`; lista de precios, crédito y observación pertenecen a la configuración `EmpresaTercero` de la empresa activa.
 
-La arquitectura por capas, persistencia transaccional, integración GUIA/SIFAE, fallback y aislamiento de consultas están implementados. La auditoría también confirma riesgos pendientes: la vista no se recarga automáticamente al cambiar de empresa, el servicio no vuelve a autorizar la pertenencia del usuario y faltan pruebas de ViewModels, WPF y PostgreSQL real.
+La arquitectura por capas, persistencia transaccional, integración GUIA/SIFAE, fallback y aislamiento de consultas están implementados. El mantenimiento añadió autorización empresarial en la frontera, identidad canónica con índice único, recarga segura al cambiar de empresa, concurrencia optimista, auditoría transaccional y pruebas relacionales de los invariantes compartidos de `Tercero`. Permanecen pendientes las pruebas automatizadas de WPF y servicios oficiales reales.
 
 Evidencia comprobada mediante ejecución: restore, build, test y `dotnet ef migrations has-pending-model-changes`. Evidencia de repositorio: `git status`, rama y commit.
 
@@ -28,10 +28,10 @@ Evidencia: `ClientesViewModel`, `ClienteFormViewModel`, `IClienteService` y `Cli
 
 - `Tercero` es global.
 - No existe entidad ni tabla `Cliente`.
-- El rol Cliente se expresa mediante `EmpresaTercero.EsCliente`.
+- El rol Cliente se expresa mediante `Tercero.EsCliente` y su estado mediante `Tercero.EstadoCliente`.
 - `Tercero` no tiene `EmpresaId`; `EmpresaTercero` sí.
 - Identidad, razón social, dirección, correo, teléfono y verificación son globales.
-- Lista, crédito, observación, rol y estado operativo son empresariales.
+- Lista, crédito y observación son empresariales; rol y estado del cliente son globales.
 - Consumidor Final es estructural, está protegido y no aparece en el catálogo editable.
 - Pasaporte y Exterior se registran manualmente y la UI deriva `NoAplica`; la persistencia mantiene el workflow aprobado `PENDIENTE | VERIFICADO`.
 - Un cliente nuevo siempre se crea activo; la activación/inactivación posterior se realiza desde el listado.
@@ -64,7 +64,7 @@ Evidencia: proyectos `.csproj`, `App.xaml.cs`, `KontaxDbContext` y archivos indi
 ### KONTAXPRO.Domain
 
 - `Entities/Comercial/Tercero.cs`: identidad y contacto global.
-- `Entities/Comercial/EmpresaTercero.cs`: roles y configuración por empresa.
+- `Entities/Comercial/EmpresaTercero.cs`: configuración y vínculo interno por empresa.
 - `Entities/Catalogos/TipoIdentificacion.cs`: catálogo SRI.
 
 ### KONTAXPRO.Application
@@ -89,7 +89,8 @@ Evidencia: proyectos `.csproj`, `App.xaml.cs`, `KontaxDbContext` y archivos indi
 - `Persistence/Configurations/ComercialConfiguration.cs`.
 - `Persistence/KontaxDbContext.cs`.
 - `Persistence/StructuralSeeder.cs`.
-- `Persistence/Migrations/20260802213548_InitialCreate.cs` y snapshot.
+- `Persistence/Migrations/20260802213548_InitialCreate.cs`.
+- `Persistence/Migrations/20260806004947_AddCanonicalIdentityKeyToTerceros.cs` y snapshot.
 
 ### KONTAXPRO.Desktop
 
@@ -127,6 +128,7 @@ erDiagram
         bigint id PK
         bigint tipo_identificacion_id FK
         varchar numero_identificacion
+        varchar clave_identidad UK
         varchar razon_social
         varchar direccion
         varchar correo
@@ -135,14 +137,14 @@ erDiagram
         varchar estado_verificacion
         varchar fuente_verificacion
         timestamptz verificado_at
+        boolean es_cliente
+        integer estado_cliente
         integer estado
     }
     EMPRESA_TERCERO {
         bigint id PK
         bigint empresa_id FK
         bigint tercero_id FK
-        boolean es_cliente
-        boolean es_proveedor
         bigint lista_precio_id FK
         boolean credito_habilitado
         numeric cupo_credito
@@ -154,27 +156,34 @@ erDiagram
 
 ### `s_comercial.terceros`
 
-PK `BIGINT GENERATED BY DEFAULT AS IDENTITY`; no tiene UUID. Son obligatorios tipo, número, razón social, origen, verificación, estado y `created_at`. Nombre comercial, dirección, correo, teléfono, fuente, fecha de verificación y `updated_at` son opcionales en base de datos. La UI exige dirección y el servicio siempre normaliza correo.
+PK `BIGINT GENERATED BY DEFAULT AS IDENTITY`; no tiene UUID. Son obligatorios tipo, número, clave de identidad, razón social, origen, verificación, estado y `created_at`. Nombre comercial, dirección, correo, teléfono, fuente, fecha de verificación y `updated_at` son opcionales en base de datos. La UI exige dirección y el servicio siempre normaliza correo.
 
-Restricciones: origen `OFICIAL | OFFLINE`, verificación `PENDIENTE | VERIFICADO`, estado `0 | 1`, protección de Consumidor Final e índice único `ux_terceros_tipo_identificacion_numero`. La FK al tipo usa `Restrict`.
+Restricciones: origen `OFICIAL | OFFLINE`, verificación `PENDIENTE | VERIFICADO`, estado `0 | 1`, protección de Consumidor Final, índice único exacto `ux_terceros_tipo_identificacion_numero` e índice único canónico `ux_terceros_clave_identidad`. La FK al tipo usa `Restrict`.
+
+`ClaveIdentidadTercero` genera la clave reutilizable: cédula y RUC natural válido comparten `NAT:{cédula}`; RUC no natural, pasaporte, exterior y Consumidor Final usan prefijos separados. `KontaxDbContext` la recalcula antes de guardar cuando cambia tipo o número. La migración nueva rellena los datos existentes, se detiene mostrando únicamente Id internos si encuentra conflictos y crea el índice después de validar.
 
 ### `s_comercial.empresas_terceros`
 
-PK identity; no tiene UUID. Posee clave alternativa `(id, empresa_id)`, índice único `(empresa_id, tercero_id)`, checks de rol, cupo, días y estado. Las FK a Empresa, Tercero y Lista usan `Restrict`. La lista se protege mediante FK compuesta `(lista_precio_id, empresa_id)` hacia `(id, empresa_id)`.
+PK identity; no tiene UUID. Es una relación interna neutral creada bajo demanda. Posee clave alternativa `(id, empresa_id)`, índice único `(empresa_id, tercero_id)` y checks de cupo, días y estado. Las FK a Empresa, Tercero y Lista usan `Restrict`. La lista se protege mediante FK compuesta `(lista_precio_id, empresa_id)` hacia `(id, empresa_id)`.
 
 La migración y el snapshot coinciden con el modelo actual, comprobado mediante EF Core.
+
+### `s_comercial.terceros_identificaciones`
+
+Proveedores V1 incorporó la extensión normalizada para conservar más de un documento oficial del mismo Tercero. Los campos de identificación de `terceros` continúan siendo el documento principal compatible; la tabla hija guarda cada tipo y número normalizado con unicidad global y una sola marca principal por tercero. Guardar Clientes mantiene sincronizada la identificación utilizada, por lo que Clientes conserva compatibilidad y puede coexistir con el RUC natural añadido posteriormente desde Proveedores.
 
 ## 7. Datos globales y datos por empresa
 
 | Globales en `Tercero` | Empresariales en `EmpresaTercero` |
 |---|---|
-| Tipo y número de identificación | Rol Cliente/Proveedor |
-| Razón social y nombre comercial | Lista de precios |
-| Dirección, correo y teléfono | Crédito, cupo y días |
-| Origen y estado de verificación | Motivo de bloqueo y observación |
-| Fuente y fecha de verificación | Estado activo/inactivo |
+| Tipo y número de identificación | Lista de precios |
+| Razón social y nombre comercial | Crédito, cupo y días |
+| Dirección, correo y teléfono | Motivo de bloqueo y observación |
+| Origen y estado de verificación | Estado técnico de la relación |
+| Fuente y fecha de verificación | — |
+| Roles Cliente/Proveedor y sus estados independientes | — |
 
-Editar contacto desde una empresa modifica el tercero compartido y afecta lo observado desde otras empresas. Cambiar lista, crédito, observación o estado no modifica otras relaciones empresariales.
+Editar contacto, rol o estado modifica el tercero compartido y se refleja desde todas las empresas. Cambiar lista, crédito u observación solo modifica la configuración de la empresa activa.
 
 Evidencia: entidades, configuración EF y pruebas `SameIdentificationInTwoCompanies...` y `ChangingOneCompanyDoesNotAlterTheOtherCompany`.
 
@@ -182,7 +191,8 @@ Evidencia: entidades, configuración EF y pruebas `SameIdentificationInTwoCompan
 
 - Una identificación exacta no se duplica por tipo y número.
 - Cédula y RUC de persona natural terminado en `001` se consideran el mismo contribuyente cuando la base de cédula es válida.
-- Si existen ya separados ambos registros, el guardado se bloquea y solicita consolidación.
+- La clave canónica y su índice único impiden físicamente que cédula y RUC natural creen terceros separados aun ante concurrencia.
+- Si la migración encuentra registros históricos separados, se detiene y solicita consolidarlos por Id interno; nunca los combina ni elimina automáticamente.
 - Un tercero existente se reutiliza y puede adquirir el rol Cliente sin perder Proveedor.
 - Dirección es obligatoria para guardar desde el servicio.
 - La lista debe estar activa y pertenecer a la empresa.
@@ -307,9 +317,15 @@ La tarjeta muestra Registro Civil para Cédula, SRI para RUC y badge `[G]` o `[F
 
 ## 19. Multiempresa
 
-El catálogo filtra `EmpresaTercero.EmpresaId`, `EsCliente` y excluye Consumidor Final. Obtener detalle y cambiar estado también filtran empresa. Lista y relación están protegidas por FK compuesta.
+El catálogo parte de `Tercero.EsCliente` y excluye Consumidor Final. Proyecta mediante unión opcional la configuración de la empresa activa; si aún no existe, usa lista base y crédito habilitado como valores predeterminados sin crear filas masivas. Obtener detalle y cambiar estado trabajan por `TerceroId`. La configuración y las futuras transacciones siguen protegidas por la relación y las FK compuestas.
 
-Al cambiar de empresa en la aplicación, `CurrentSession` se actualiza, pero el `ClientesViewModel` activo no recibe evento ni recarga. Puede continuar mostrando datos de la empresa anterior hasta navegar fuera y volver. Sus nuevas operaciones ya usan el nuevo `EmpresaId`, lo que puede producir rechazos sobre filas obsoletas. Confirmado mediante inspección de `MainWindow`, `MainViewModel`, `UsuarioEmpresaService` y `ClientesViewModel`; no existe prueba automatizada.
+`ClienteService` exige en cada operación empresarial que exista usuario autenticado, que el `EmpresaId` coincida con `CurrentSession.EmpresaId`, que `UsuarioEmpresa` esté habilitada y que la empresa esté activa. Los rechazos no devuelven configuración comercial ni exponen detalles internos y generan únicamente un log técnico genérico.
+
+Las consultas permanecen disponibles para usuarios con acceso a la empresa. Crear, editar, activar o inactivar exige además el permiso estructural `TERCEROS_GESTIONAR`, validado en el servicio contra la asignación persistida de roles. El permiso se asigna inicialmente a `ADMINISTRADOR`; la UI deshabilita las acciones cuando falta, pero el servicio conserva el control definitivo.
+
+Para identificaciones nacionales, GUIA/SIFAE emite una constancia temporal de un solo uso asociada al usuario, documento y propósito Cliente. `ClienteService` deriva de ella el estado, fuente y nombre oficial, y no acepta que el ViewModel los declare. La autorización offline se emite únicamente tras tres rondas completas con las fuentes no disponibles; los documentos inválidos, inexistentes o sin datos mínimos quedan bloqueados. Una edición sin nueva constancia conserva la verificación ya persistida y una identificación pendiente puede elevarse mediante una nueva consulta oficial.
+
+`UsuarioEmpresaService` publica `EmpresaActivaChanged` después de completar el nuevo contexto. `ClientesViewModel` cancela cargas, invalida respuestas antiguas, limpia inmediatamente los datos comerciales, conserva búsqueda, filtros y tamaño de página, reinicia la página a 1 y recarga en una consulta agrupada. Un formulario abierto se cierra con advertencia; adicionalmente el formulario conserva el Id empresarial esperado y se niega a guardar si la sesión cambió. La navegación dispone el ViewModel anterior y elimina sus suscripciones.
 
 ## 20. Listas de precios
 
@@ -378,7 +394,7 @@ Filtros: estado, verificación y crédito. Seleccionar un KPI limpia los filtros
 
 ## 27. Activación e inactivación
 
-La acción requiere confirmación visual. `CambiarEstadoAsync` filtra por relación, empresa y rol Cliente, impide operar Consumidor Final y modifica solo `EmpresaTercero.Estado` con fecha UTC. No elimina ni inactiva el tercero global. La operación es una sola actualización, sin transacción explícita adicional ni auditoría.
+La acción requiere confirmación visual. `CambiarEstadoAsync` valida el contexto empresarial, localiza el rol global por `TerceroId`, impide operar Consumidor Final y modifica solo `Tercero.EstadoCliente` con fecha UTC. No altera el rol Proveedor, el estado maestro ni los históricos.
 
 ## 28. Estilos y coherencia con Productos
 
@@ -398,31 +414,36 @@ No se realizaron pruebas visuales automatizadas ni se comprobaron físicamente t
 
 El menú `Clientes` resuelve un `ClientesViewModel` transient mediante `NavigationService` y un `DataTemplate` en `App.xaml`. La View inicia la carga una vez en `Loaded`.
 
-No existe permiso específico ni comprobación de pertenencia del usuario dentro de `ClienteService`. La UI usa la empresa de `CurrentSession`, pero Infrastructure confía en el `EmpresaId` recibido. Esto no cumple completamente el patrón de autorización en la frontera definido por `AGENTS.md`.
+No existe permiso funcional específico de Clientes. La autorización empresarial sí se comprueba en `ClienteService` usando la sesión autenticada y `UsuarioEmpresa`; esto protege catálogo, detalle, búsqueda con configuración, listas, guardado y estado. Los roles/permisos de acciones más granulares siguen fuera del alcance V1.
 
 ## 31. Inyección de dependencias
 
-`App.xaml.cs` registra `IClienteService` y los ViewModels como transient; los proveedores, orquestador, token y opciones como singleton; y tres `HttpClient` nombrados. `CurrentSession` es singleton. `ClienteService` recibe `IDbContextFactory`; los ViewModels reciben contratos de Application y servicios globales de diálogo/notificación.
+`App.xaml.cs` registra `IClienteService` y los ViewModels como transient; los proveedores, orquestador, token y opciones como singleton; y tres `HttpClient` nombrados. `CurrentSession` es singleton. `ClienteService` recibe `IDbContextFactory`, `CurrentSession` e `ILogger`; los ViewModels reciben contratos de Application y servicios globales de diálogo/notificación.
 
 Credenciales GUIA se prefieren desde variables de entorno; configuración local puede completar valores. La cadena de conexión también prioriza `KONTAXPRO_CONNECTION_STRING`.
 
 ## 32. Transacciones y consistencia
 
-Guardar abre un contexto y una transacción. Dentro valida tipo, documento, nombre, dirección, contacto, lista, equivalencias, tercero y relación; después guarda todo y confirma. Una violación única de PostgreSQL se traduce a mensaje funcional. Los retornos anticipados disponen la transacción sin commit.
+Guardar abre un contexto y una transacción. Dentro autoriza empresa, valida tipo, documento, nombre, dirección, contacto, lista, equivalencias, tercero y relación; vuelve a comprobar que la empresa activa no cambió, guarda y confirma. Los retornos anticipados disponen la transacción sin commit.
 
-La unicidad exacta está protegida en base. La equivalencia Cédula/RUC natural solo está protegida por lógica de aplicación y es susceptible a una carrera concurrente entre tipos distintos. `CambiarEstadoAsync` usa contexto por operación y una escritura atómica, sin transacción explícita.
+La unicidad exacta y la identidad canónica están protegidas por índices únicos. La validación previa conserva mensajes amigables y PostgreSQL decide la carrera final. Solo las violaciones de `ux_terceros_clave_identidad` o `ux_terceros_tipo_identificacion_numero` se traducen como duplicado; otras `DbUpdateException` no se ocultan bajo ese mensaje. `CambiarEstadoAsync` usa contexto por operación, autorización previa y comprobación de sesión antes de escribir.
 
 ## 33. Asincronía, cancelación y concurrencia
 
+- `Tercero` usa `xmin` de PostgreSQL como token de concurrencia optimista mediante `uint Version`.
+- Formularios, listados y comandos de estado conservan la versión leída originalmente.
+- Una edición o cambio de estado obsoleto no sobrescribe datos: informa el conflicto y recarga la información vigente.
 - Búsqueda: debounce, `CancellationTokenSource` y secuencia de carga.
 - Identificación: debounce de 350 ms y cancelación al cambiar número, modo o cerrar.
 - Las respuestas comprueban tipo/número actual antes de aplicar datos.
+- El listado compara secuencia y empresa antes de aplicar una respuesta.
+- Cambiar empresa cancela búsqueda/carga, limpia la configuración anterior y recarga una sola vez.
 - SIFAE RUC ejecuta dos endpoints en paralelo.
 - GUIA sincroniza la obtención normal de token con `SemaphoreSlim`.
 - La cancelación explícita no se convierte en fallback.
 - Los comandos evitan consulta cuando el documento no es válido o hay otra operación activa.
 
-No hay pruebas de ViewModel que demuestren las tres rondas, el foco o descarte visual de respuestas. La renovación forzada concurrente tras múltiples 401 no tiene prueba específica.
+Hay pruebas de ViewModel para cambio de empresa, descarte de respuesta anterior, formulario abierto y liberación de suscripción. Siguen pendientes pruebas de las tres rondas, foco y renovación forzada concurrente tras múltiples 401.
 
 ## 34. Manejo de errores
 
@@ -437,7 +458,7 @@ Proveedores convierten fallos técnicos en estados seguros y el orquestador no e
 - No se registran respuestas completas, nombres, correos, direcciones ni secretos en el código de Clientes.
 - `appsettings.Local.json` está excluido por `.gitignore`.
 - Una aplicación Desktop no puede proteger absolutamente un secreto presente en el equipo cliente.
-- Falta autorización empresarial/permiso en `ClienteService`.
+- La pertenencia empresarial se valida en `ClienteService`; no existe todavía un permiso granular de Clientes.
 - Altas, ediciones, verificaciones e inactivaciones no escriben en `s_seguridad.auditoria`.
 
 Confirmado mediante código y configuración; no se realizó análisis dinámico de tráfico ni almacenamiento seguro del sistema operativo.
@@ -467,9 +488,12 @@ La suite cubre:
 - parsing GUIA, códigos 009/001 y respuestas defensivas;
 - SIFAE Cédula/RUC, combinación paralela, correo opcional y JSON/HTML;
 - fallback y cancelación;
-- reutilización global, aislamiento de relaciones, lista base/ajena, KPIs, estado inicial y reverificación en edición.
+- reutilización global, aislamiento de relaciones, lista base/ajena, KPIs, estado inicial y reverificación en edición;
+- autorización empresarial positiva y negativa, EmpresaId manipulado, empresa inexistente/inactiva y ausencia de filtración;
+- generación, actualización e índice único de identidad canónica;
+- recarga de ViewModel, respuesta atrasada, formulario abierto y liberación de suscripción al cambiar empresa.
 
-Resultado comprobado: 92 casos de Clientes y 197 totales, todos correctos. Los HTTP son simulados y EF usa InMemory; no prueban APIs reales, PostgreSQL, restricciones físicas, ViewModels ni WPF.
+Resultado comprobado: 251 casos totales, todos correctos. Los HTTP son simulados y las pruebas de ViewModel no automatizan la vista WPF. Cinco casos usan PostgreSQL real y comprueban migraciones, `xmin`, identidad canónica, rollback e independencia de roles. `MakeClientRoleGlobal` sí fue aplicada y verificada contra PostgreSQL Development.
 
 ## 38. Procedimiento de prueba manual
 
@@ -495,16 +519,13 @@ Las resoluciones y APIs solo se consideran validadas después de ejecutar estas 
 
 ## 39. Limitaciones actuales
 
-- No recarga automáticamente Clientes al cambiar empresa con la vista abierta.
-- No existe autorización ni permiso específico en Infrastructure.
+- No existe un permiso granular específico de Clientes; sí existe autorización empresarial.
 - RUC offline solo puede comprobar longitud/formato, no existencia.
 - Pasaporte/Exterior no hacen búsqueda local anticipada desde el formulario.
-- Cédula/RUC natural equivalente no tiene restricción única física conjunta.
-- No hay auditoría de mutaciones.
 - No se exponen cupo, días ni bloqueo de crédito.
 - No hay ordenamiento ni paginación numérica como en Productos.
 - No hay dirty tracking real en Editar.
-- No hay pruebas de ViewModels, WPF, PostgreSQL o APIs reales.
+- Las pruebas de ViewModel cubren cambio de empresa y existe cobertura PostgreSQL para los invariantes centrales; no hay automatización de la vista WPF ni APIs reales.
 - Nombre comercial permanece en el modelo, pero no se usa en la UI.
 
 ## 40. Hallazgos de auditoría
@@ -513,35 +534,33 @@ No se identificó un hallazgo Crítico con evidencia suficiente.
 
 | ID | Severidad | Área | Hallazgo | Evidencia | Impacto | Recomendación |
 |---|---|---|---|---|---|---|
-| CLI-001 | Alto | Multiempresa/UI | La vista activa no recarga al cambiar empresa | `MainWindow`, `MainViewModel`, `ClientesViewModel` | Puede mostrar temporalmente clientes de la empresa anterior y operar con IDs obsoletos | Notificar cambio de contexto y cancelar/recargar o cerrar el módulo |
-| CLI-002 | Alto | Seguridad | `ClienteService` confía en `EmpresaId` sin validar acceso del usuario | Constructor y métodos de `ClienteService` | Una llamada interna incorrecta puede consultar o mutar otra empresa | Exigir sesión/actor y autorización en la frontera del servicio |
-| CLI-003 | Medio | Concurrencia | Equivalencia cédula/RUC natural no está protegida en BD | Índice exacto y `FindMatchingThirdPartiesAsync` | Inserciones concurrentes por tipos distintos podrían duplicar al contribuyente | Definir estrategia transaccional/normalizada antes de producción concurrente |
+| CLI-001 | Alto | Multiempresa/UI | **RESUELTO 2026-08-05.** La vista activa no recargaba al cambiar empresa | Evento de `CurrentSession`, `ClientesViewModelCompanyChangeTests` | El riesgo histórico era mostrar datos comerciales obsoletos | Se implementó cancelación, limpieza, recarga y cierre seguro del formulario |
+| CLI-002 | Alto | Seguridad | **RESUELTO 2026-08-05.** `ClienteService` confiaba en `EmpresaId` | `EnsureCompanyAccessAsync` y pruebas de autorización | El riesgo histórico era consultar o mutar otra empresa | Se exige sesión activa, coincidencia, pertenencia y empresa habilitada |
+| CLI-003 | Medio | Concurrencia | **RESUELTO 2026-08-05.** La equivalencia cédula/RUC natural no estaba protegida en BD | `ClaveIdentidadTercero`, migración e índice único | El riesgo histórico era duplicar al contribuyente en carreras | Se añadió clave canónica, backfill controlado y restricción única física |
 | CLI-004 | Medio | Identificación | Un RUC de 13 dígitos puede registrarse offline sin confirmar existencia | `ValidateRuc` y modo offline | Puede almacenarse un RUC inexistente durante caída total | Documentar riesgo y evaluar política operativa de confirmación posterior |
-| CLI-005 | Medio | Auditoría | Mutaciones de cliente no escriben auditoría | `GuardarAsync`, `CambiarEstadoAsync` | Menor trazabilidad de cambios globales y empresariales | Integrar auditoría en una tarea autorizada y transaccional |
-| CLI-006 | Medio | Pruebas | No hay pruebas de ViewModels/WPF/PostgreSQL/APIs reales | Inventario de `KONTAXPRO.Tests/Clientes` | Foco, tres rondas, FK/checks y contratos remotos no están demostrados end-to-end | Añadir pruebas focales y procedimiento manual controlado |
+| CLI-005 | Medio | Auditoría | **RESUELTO 2026-08-06.** Las mutaciones de cliente no escribían auditoría | `GuardarAsync`, `CambiarEstadoAsync`, `TercerosAuditActions` | El riesgo histórico era perder trazabilidad del tercero global | Se añadieron eventos sin datos personales dentro de la misma transacción; rechazos y conflictos no generan eventos |
+| CLI-006 | Medio | Pruebas | **PARCIALMENTE RESUELTO 2026-08-06.** Faltaban pruebas WPF/PostgreSQL/APIs reales | `KONTAXPRO.Tests/PostgreSql`, pruebas de ViewModel | PostgreSQL central ya está comprobado; WPF y contratos remotos siguen sin demostración end-to-end | Mantener la suite relacional y añadir automatización/manual controlado para UI y fuentes oficiales |
 | CLI-007 | Medio | Duplicados | Pasaporte/Exterior no buscan localmente antes de guardar | `OnNumeroIdentificacionChanged` y consulta core | Puede reutilizar/actualizar silenciosamente un tercero existente | Incorporar búsqueda local para tipos manuales con UX explícita |
 | CLI-008 | Bajo | UX | Editar siempre advierte al cancelar aunque no haya cambios | `HasEnteredData` | Fricción sin pérdida de datos | Implementar dirty tracking si se prioriza |
 | CLI-009 | Bajo | Tema | Algunos badges/iconos usan colores fijos | XAML de Clientes | Posible contraste desigual en temas futuros | Migrar a recursos semánticos tras validación visual |
-| CLI-010 | Informativo | Dominio | No existe Cliente global; el rol es empresarial | Entidades y migración | Es el diseño aprobado, no un defecto | Conservar esta separación |
+| CLI-010 | Alto | Dominio | **RESUELTO 2026-08-06.** El rol Cliente era empresarial mientras Proveedor era global | `Tercero`, `EmpresaTercero`, `MakeClientRoleGlobal` | El riesgo histórico era duplicar habilitaciones y complicar ventas, compras y cartera multiempresa | Ambos roles son globales; la relación empresarial queda neutral y se crea bajo demanda |
 
-Los hallazgos se documentan; esta tarea no los corrige.
+Los hallazgos CLI-001, CLI-002, CLI-003, CLI-005 y CLI-010 conservan su descripción histórica y están resueltos mediante el mantenimiento indicado. Los demás permanecen pendientes.
 
 ## 41. Cobertura pendiente
 
 - ViewModel: tres intentos, edición pendiente, cancelación, foco y cambio de identidad.
 - WPF: bindings, temas, popup de correo, máscara telefónica y diseño adaptable.
-- PostgreSQL: índices únicos, FK compuesta, checks, `ILIKE` y rollback real.
+- PostgreSQL pendiente adicional: ampliar cobertura a FK compuestas, checks e `ILIKE`; identidad canónica, `xmin` y rollback real ya están comprobados.
 - Integración controlada GUIA/SIFAE sin guardar secretos ni datos personales.
-- Concurrencia cédula/RUC y guardados simultáneos.
-- Autorización positiva/negativa por empresa.
-- Cambio de empresa con listado/formulario abiertos.
-- Auditoría de cambios cuando sea implementada.
+- Carrera simultánea cédula/RUC; la equivalencia secuencial y el índice único ya están comprobados contra PostgreSQL real.
+- Comportamiento visual manual del cambio de empresa con la ventana WPF abierta.
 
 ## 42. Preparación futura
 
 ### Proveedores
 
-Confirmado: reutilizarán `Tercero` y la misma relación, activando `EsProveedor`; no debe crearse una tabla global paralela.
+Confirmado: Proveedores reutiliza `Tercero` y activa allí el rol global `EsProveedor`; no crea una tabla paralela ni altera la relación empresarial exclusiva del rol Cliente.
 
 ### Registro de empresas
 
@@ -575,6 +594,9 @@ Confirmado: habilitación y condiciones viven en `EmpresaTercero`; saldos y movi
 - No exponer tokens, secretos, JSON o excepciones técnicas.
 - No acceder a EF desde ViewModels.
 - Mantener contexto/transacción únicos para guardar tercero y relación.
+- Validar usuario, empresa activa, pertenencia y estado empresarial en toda operación comercial por empresa.
+- Mantener `ClaveIdentidad` sincronizada y su índice único; cédula y RUC natural deben compartir clave.
+- Cancelar y recargar datos empresariales cuando cambie la empresa activa.
 - No modificar Productos para mantener Clientes.
 
 ## 44. Historial de auditoría
@@ -583,5 +605,49 @@ Confirmado: habilitación y condiciones viven en `EmpresaTercero`; saldos y movi
 |---|---|---|
 | 2026-08-05 | Exploración técnica y funcional completa | Código, EF, HTTP, Desktop, pruebas y configuración revisados; informe entregado en conversación |
 | 2026-08-05 | Auditoría documental definitiva | Este documento reemplaza la memoria resumida anterior e incorpora hallazgos clasificados |
+| 2026-08-05 | Mantenimiento prioritario sobre `a12b57b3d197daee7588e9637f6b24614dcafdac` | CLI-001, CLI-002 y CLI-003 corregidos; 217 pruebas correctas y modelo EF alineado |
 
 `docs/CLIENTES_ANALISIS_PREVIO.md` no existía al iniciar esta etapa. Por ello no fue usado como evidencia; se volvió a contrastar directamente el código ya explorado, el modelo EF, la migración, las pruebas y la configuración. La fuente de verdad continúa siendo el código actual.
+
+## 45. Mantenimiento de hallazgos prioritarios
+
+Fecha: 2026-08-05. Commit base: `a12b57b3d197daee7588e9637f6b24614dcafdac`.
+
+### Seguridad empresarial
+
+Se reutilizaron `CurrentSession`, `UsuarioEmpresa` y el estado de `Empresa`; no se creó otra sesión ni otro sistema de permisos. `ClienteService` valida el contexto antes de catálogo, detalle, búsqueda empresarial, listas, guardado y cambio de estado. También vuelve a comprobar la empresa activa inmediatamente antes de mutar. Evidencia principal: `EmpresaAccessDeniedException`, `ClienteService` y pruebas nuevas en `ClienteServiceTests`.
+
+### Identidad canónica
+
+Se añadió `ClaveIdentidadTercero` en Application, la propiedad persistida `Tercero.ClaveIdentidad`, actualización automática desde `KontaxDbContext` e índice único `ux_terceros_clave_identidad`. La identificación principal almacenada sigue siendo la del primer tercero encontrado: registrar después el documento equivalente reutiliza ese tercero y no sustituye silenciosamente su tipo o número.
+
+La migración `20260806004947_AddCanonicalIdentityKeyToTerceros` agrega la columna inicialmente nullable, rellena claves, detiene la actualización si encuentra valores irresolubles o duplicados mostrando solo Id internos, vuelve la columna obligatoria y crea el índice. No combina ni elimina datos. Para aplicarla en un ambiente previamente verificado:
+
+```powershell
+dotnet ef database update --project KONTAXPRO.Infrastructure --startup-project KONTAXPRO.Desktop
+```
+
+Esta tarea no ejecutó el comando contra ninguna base.
+
+### Cambio de empresa
+
+`CurrentSession` publica un único evento después de completar la selección. `ClientesViewModel` conserva búsqueda, filtros y tamaño de página, reinicia página, cancela operaciones, descarta respuestas fuera de orden y recarga la configuración comercial. Si el editor está abierto se cierra con advertencia; `ClienteFormViewModel` conserva además la empresa esperada y bloquea un guardado posterior al cambio. `NavigationService` dispone el ViewModel anterior para retirar suscripciones y cancelar tareas.
+
+### Archivos principales
+
+- `KONTAXPRO.Application/Session/CurrentSession.cs` y `Security/EmpresaAccessDeniedException.cs`.
+- `KONTAXPRO.Application/Clientes/ClaveIdentidadTercero.cs`.
+- `KONTAXPRO.Domain/Entities/Comercial/Tercero.cs`.
+- `KONTAXPRO.Infrastructure/Clientes/ClienteService.cs`.
+- `KONTAXPRO.Infrastructure/Persistence/KontaxDbContext.cs`, configuración, migración y snapshot.
+- `KONTAXPRO.Infrastructure/Security/UsuarioEmpresaService.cs`.
+- ViewModels de Clientes y `NavigationService`.
+- Pruebas de servicio, identidad canónica y cambio empresarial.
+
+### Pruebas agregadas
+
+- Hallazgo 1: acceso autorizado, múltiples empresas, manipulación de Id, usuario sin acceso, empresa inexistente/inactiva y ausencia de filtración o modificación.
+- Hallazgo 2: claves por tipo, equivalencia natural, separación de RUC no natural/pasaporte/exterior, normalización, actualización automática e índice único EF; las pruebas secuenciales existentes confirman reutilización en ambos órdenes.
+- Hallazgo 3: A→B, actualización de Clase, permanencia del dato global, respuesta antigua ignorada, formulario abierto, bloqueo de guardado, misma empresa y liberación de suscripción.
+
+Resultado ejecutado: restore correcto; build con 0 advertencias y 0 errores; 217/217 pruebas generales y 112/112 de Clientes; sin cambios pendientes del modelo respecto de la nueva migración. Permanecen las limitaciones de las secciones 39 y 41.

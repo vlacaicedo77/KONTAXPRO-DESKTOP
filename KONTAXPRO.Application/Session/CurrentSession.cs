@@ -1,7 +1,18 @@
 ﻿namespace KONTAXPRO.Application.Session;
 
+public sealed class EmpresaActivaChangedEventArgs(
+    long? empresaAnteriorId,
+    long empresaActualId) : EventArgs
+{
+    public long? EmpresaAnteriorId { get; } = empresaAnteriorId;
+    public long EmpresaActualId { get; } = empresaActualId;
+}
+
 public class CurrentSession
 {
+    public event EventHandler<EmpresaActivaChangedEventArgs>?
+        EmpresaActivaChanged;
+
     public long UsuarioId { get; set; }
 
     public string NumeroIdentificacion { get; set; } = string.Empty;
@@ -58,6 +69,18 @@ public class CurrentSession
         return Permisos.Contains(
             permiso,
             StringComparer.OrdinalIgnoreCase);
+    }
+
+    public void NotifyEmpresaActivaChanged(long? empresaAnteriorId)
+    {
+        if (!EmpresaId.HasValue || EmpresaId == empresaAnteriorId)
+            return;
+
+        EmpresaActivaChanged?.Invoke(
+            this,
+            new EmpresaActivaChangedEventArgs(
+                empresaAnteriorId,
+                EmpresaId.Value));
     }
 
     public void Clear()

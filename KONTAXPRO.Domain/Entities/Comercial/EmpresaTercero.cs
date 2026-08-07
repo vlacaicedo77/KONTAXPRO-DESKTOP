@@ -8,8 +8,6 @@ public class EmpresaTercero
     public long Id { get; set; }
     public long EmpresaId { get; set; }
     public long TerceroId { get; set; }
-    public bool EsCliente { get; set; }
-    public bool EsProveedor { get; set; }
     public long? ListaPrecioId { get; set; }
     public bool CreditoHabilitado { get; set; }
     public decimal? CupoCredito { get; set; }

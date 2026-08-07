@@ -279,6 +279,7 @@ public sealed class ProductService(
                 {
                     ProductoId = presentacion.ProductoId,
                     ListaCodigo = lista.Codigo,
+                    ListaNombre = lista.Nombre,
                     Orden = lista.Orden,
                     EsListaBase = lista.EsListaBase,
                     FactorConversion = presentacion.FactorConversion,
@@ -307,6 +308,7 @@ public sealed class ProductService(
                     .Select(x => new ProductoPrecioBaseListaDto
                     {
                         ListaCodigo = x.ListaCodigo,
+                        ListaNombre = x.ListaNombre,
                         Orden = x.Orden,
                         Precio = CalcularPrecioBaseLista(x, precioBase)
                     })
@@ -1288,6 +1290,7 @@ public sealed class ProductService(
     {
         public long ProductoId { get; init; }
         public string ListaCodigo { get; init; } = string.Empty;
+        public string ListaNombre { get; init; } = string.Empty;
         public int Orden { get; init; }
         public bool EsListaBase { get; init; }
         public decimal FactorConversion { get; init; }

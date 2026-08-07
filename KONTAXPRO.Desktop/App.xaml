@@ -5,7 +5,11 @@
              xmlns:converters="clr-namespace:KONTAXPRO.Desktop.Converters"
              xmlns:viewModels="clr-namespace:KONTAXPRO.Desktop.ViewModels"
              xmlns:productViews="clr-namespace:KONTAXPRO.Desktop.Views.Products"
-             xmlns:productViewModels="clr-namespace:KONTAXPRO.Desktop.ViewModels.Products">
+             xmlns:productViewModels="clr-namespace:KONTAXPRO.Desktop.ViewModels.Products"
+             xmlns:clientViews="clr-namespace:KONTAXPRO.Desktop.Views.Clientes"
+             xmlns:clientViewModels="clr-namespace:KONTAXPRO.Desktop.ViewModels.Clientes"
+             xmlns:supplierViews="clr-namespace:KONTAXPRO.Desktop.Views.Proveedores"
+             xmlns:supplierViewModels="clr-namespace:KONTAXPRO.Desktop.ViewModels.Proveedores">
 
     <Application.Resources>
         
@@ -46,6 +50,14 @@
 
             <DataTemplate DataType="{x:Type productViewModels:ProductsViewModel}">
                 <productViews:ProductsView/>
+            </DataTemplate>
+
+            <DataTemplate DataType="{x:Type clientViewModels:ClientesViewModel}">
+                <clientViews:ClientesView/>
+            </DataTemplate>
+
+            <DataTemplate DataType="{x:Type supplierViewModels:ProveedoresViewModel}">
+                <supplierViews:ProveedoresView/>
             </DataTemplate>
 
         </ResourceDictionary>

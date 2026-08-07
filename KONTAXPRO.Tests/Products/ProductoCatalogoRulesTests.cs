@@ -5,6 +5,25 @@ namespace KONTAXPRO.Tests.Products;
 
 public sealed class ProductoCatalogoRulesTests
 {
+    [Theory]
+    [InlineData("A", "A")]
+    [InlineData("B", "B")]
+    [InlineData("c", "C")]
+    [InlineData("D", "D")]
+    [InlineData("e", "E")]
+    [InlineData("BASE", "A")]
+    public void ClasificacionPrecio_UsaLasMismasCincoClasesDelCliente(
+        string codigo,
+        string esperado)
+    {
+        var precio = new ProductoPrecioBaseListaDto
+        {
+            ListaCodigo = codigo
+        };
+
+        Assert.Equal(esperado, precio.ClasificacionPrecio);
+    }
+
     [Fact]
     public void UnaPresentacion_SeMuestraDirectamenteSinContador()
     {

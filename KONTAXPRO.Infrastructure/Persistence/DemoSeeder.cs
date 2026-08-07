@@ -312,8 +312,6 @@ public sealed class DemoSeeder
                 {
                     EmpresaId = empresa.Id,
                     TerceroId = consumidorFinal.Id,
-                    EsCliente = true,
-                    EsProveedor = false,
                     ListaPrecioId = listaBase!.Id,
                     CreditoHabilitado = false,
                     Estado = 1,

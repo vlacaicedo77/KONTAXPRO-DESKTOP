@@ -1,0 +1,274 @@
+<UserControl x:Class="KONTAXPRO.Desktop.Views.Proveedores.ProveedorFormView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:controls="clr-namespace:KONTAXPRO.Desktop.Controls"
+             xmlns:behaviors="clr-namespace:KONTAXPRO.Desktop.Behaviors"
+             IsVisibleChanged="UserControl_IsVisibleChanged">
+    <UserControl.Resources>
+        <Style x:Key="SupplierSectionTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        </Style>
+        <Style x:Key="SupplierFieldLabelStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+            <Setter Property="Margin" Value="1,0,0,6"/>
+        </Style>
+        <Style x:Key="SupplierFieldHelpStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}"/>
+            <Setter Property="Margin" Value="1,5,0,0"/>
+        </Style>
+        <Style x:Key="SupplierFormSectionStyle" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource SecondarySurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="14"/>
+            <Setter Property="Padding" Value="18"/>
+        </Style>
+        <Style x:Key="SupplierFormFieldBorderStyle" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="9"/>
+            <Setter Property="MinHeight" Value="48"/>
+            <Style.Triggers>
+                <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource FocusBorderBrush}"/>
+                    <Setter Property="BorderThickness" Value="2"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="SupplierModernTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+            <Setter Property="CaretBrush" Value="{DynamicResource FocusBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="13,10"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="SupplierUpperTextBoxStyle" TargetType="TextBox"
+               BasedOn="{StaticResource SupplierModernTextBoxStyle}">
+            <Setter Property="CharacterCasing" Value="Upper"/>
+        </Style>
+        <Style x:Key="SupplierIdentificationTypeStyle" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="9"/>
+            <Setter Property="Height" Value="48"/>
+            <Setter Property="Padding" Value="14,0"/>
+        </Style>
+        <Style x:Key="SupplierIdentificationClearButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="30"/><Setter Property="Height" Value="30"/>
+            <Setter Property="Padding" Value="0"/><Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Focusable" Value="False"/><Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ClearBackground" Background="{TemplateBinding Background}" CornerRadius="7">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ClearBackground" Property="Background" Value="{DynamicResource SuccessSoftBrush}"/><Setter Property="Foreground" Value="{DynamicResource BrandProBrush}"/></Trigger>
+                            <Trigger Property="IsPressed" Value="True"><Setter Property="Opacity" Value="0.7"/></Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Background="{DynamicResource ElevatedSurfaceBrush}">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="{DynamicResource ElevatedSurfaceBrush}"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="26,18">
+            <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="13"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <Border Width="48" Height="48" CornerRadius="14" Background="{DynamicResource SuccessSoftBrush}">
+                    <materialDesign:PackIcon Kind="TruckCheck" Width="25" Height="25" Foreground="{DynamicResource BrandProBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding FormTitle}" FontSize="23" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/>
+                    <TextBlock Text="{Binding FormSubtitle}" Margin="0,4,12,0" TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                </StackPanel>
+                <Button Grid.Column="3" Width="42" Height="42" Padding="0" Style="{StaticResource DangerButtonStyle}"
+                        Command="{Binding CancelarCommand}" ToolTip="Cerrar formulario">
+                    <materialDesign:PackIcon Kind="Close" Foreground="White"/>
+                </Button>
+            </Grid>
+        </Border>
+
+        <ScrollViewer x:Name="FormScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <controls:AdaptiveGrid Margin="26" Columns="2" CompactBreakpoint="760" ColumnSpacing="18" RowSpacing="18">
+                <Border Style="{StaticResource SupplierFormSectionStyle}" controls:AdaptiveGrid.Span="2">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                            <materialDesign:PackIcon Kind="CardAccountDetailsOutline" Width="20" Height="20" Foreground="{DynamicResource BrandProBrush}" Margin="0,0,8,0"/>
+                            <TextBlock Text="Identificación" Style="{StaticResource SupplierSectionTitleStyle}"/>
+                        </StackPanel>
+                        <controls:AdaptiveGrid Columns="2" CompactBreakpoint="760" ColumnSpacing="14" RowSpacing="14">
+                            <StackPanel>
+                                <TextBlock Text="Tipo de identificación *" Style="{StaticResource SupplierFieldLabelStyle}"/>
+                                <Border Style="{StaticResource SupplierIdentificationTypeStyle}">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Width="25" Height="25" CornerRadius="12.5" Background="{DynamicResource BrandProBrush}" Margin="0,0,9,0">
+                                            <TextBlock Text="R" Foreground="White" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock Text="RUC nacional" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+
+                            <StackPanel>
+                                <TextBlock Text="Estado de verificación" Style="{StaticResource SupplierFieldLabelStyle}"/>
+                                <Border Height="48" Padding="9,0" CornerRadius="9" BorderThickness="1">
+                                    <Border.Style><Style TargetType="Border"><Setter Property="Background" Value="{DynamicResource InfoSoftBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource FocusBorderBrush}"/><Style.Triggers><DataTrigger Binding="{Binding IsVerified}" Value="True"><Setter Property="Background" Value="{DynamicResource SuccessSoftBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource BrandProBrush}"/></DataTrigger><DataTrigger Binding="{Binding IsOfflineMode}" Value="True"><Setter Property="Background" Value="{DynamicResource WarningSoftBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource WarningTextBrush}"/></DataTrigger><DataTrigger Binding="{Binding HasVerificationError}" Value="True"><Setter Property="Background" Value="{DynamicResource DangerSoftBrush}"/><Setter Property="BorderBrush" Value="#EF4444"/></DataTrigger></Style.Triggers></Style></Border.Style>
+                                    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <Border Width="30" Height="30" Margin="0,0,9,0" CornerRadius="15" VerticalAlignment="Center">
+                                            <Border.Style><Style TargetType="Border"><Setter Property="Background" Value="#263B82F6"/><Style.Triggers><DataTrigger Binding="{Binding IsVerified}" Value="True"><Setter Property="Background" Value="#2622C55E"/></DataTrigger><DataTrigger Binding="{Binding IsOfflineMode}" Value="True"><Setter Property="Background" Value="#26F59E0B"/></DataTrigger><DataTrigger Binding="{Binding HasVerificationError}" Value="True"><Setter Property="Background" Value="#26EF4444"/></DataTrigger></Style.Triggers></Style></Border.Style>
+                                            <materialDesign:PackIcon Width="17" Height="17" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                <materialDesign:PackIcon.Style><Style TargetType="materialDesign:PackIcon"><Setter Property="Kind" Value="ShieldAccount"/><Setter Property="Foreground" Value="{DynamicResource FocusBorderBrush}"/><Style.Triggers><DataTrigger Binding="{Binding IsVerifying}" Value="True"><Setter Property="Kind" Value="AccountSearch"/></DataTrigger><DataTrigger Binding="{Binding IsVerified}" Value="True"><Setter Property="Kind" Value="ShieldCheck"/><Setter Property="Foreground" Value="{DynamicResource BrandProBrush}"/></DataTrigger><DataTrigger Binding="{Binding IsOfflineMode}" Value="True"><Setter Property="Kind" Value="CloudOffOutline"/><Setter Property="Foreground" Value="{DynamicResource WarningTextBrush}"/></DataTrigger><DataTrigger Binding="{Binding HasVerificationError}" Value="True"><Setter Property="Kind" Value="AlertCircleOutline"/><Setter Property="Foreground" Value="#EF4444"/></DataTrigger></Style.Triggers></Style></materialDesign:PackIcon.Style>
+                                            </materialDesign:PackIcon>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding VerificationTitle}" FontWeight="SemiBold" FontSize="12.5"
+                                                           Foreground="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <Border Margin="6,0,0,0" Width="20" Height="20" CornerRadius="10"
+                                                        Background="{DynamicResource BrandProBrush}"
+                                                        Visibility="{Binding ShowVerificationSource, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                    <TextBlock Text="{Binding VerificationSourceBadge}" Foreground="White" FontSize="10"
+                                                               FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding VerificationMessage}" FontSize="10.5"
+                                                       TextTrimming="CharacterEllipsis" ToolTip="{Binding VerificationMessage}">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding VerificationMessage}" Value="{x:Null}">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding VerificationMessage}" Value="">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding HasVerificationError}" Value="True">
+                                                                <Setter Property="Foreground" Value="#DC2626"/>
+                                                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
+
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SupplierFieldLabelStyle}"><Run Text="Número de RUC"/><Run Text=" *" Foreground="#DC2626" FontWeight="Bold"/></TextBlock>
+                                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="10"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <Border Style="{StaticResource SupplierFormFieldBorderStyle}">
+                                        <Grid>
+                                            <TextBox x:Name="RucInput" Text="{Binding NumeroRuc, UpdateSourceTrigger=PropertyChanged}"
+                                                     Style="{StaticResource SupplierUpperTextBoxStyle}" Padding="13,10,44,10"
+                                                     IsEnabled="{Binding CanEditRuc}" MaxLength="13" PreviewTextInput="RucInput_PreviewTextInput">
+                                                <TextBox.InputBindings><KeyBinding Key="Enter" Command="{Binding VerificarCommand}"/></TextBox.InputBindings>
+                                            </TextBox>
+                                            <Button HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,7,0" Panel.ZIndex="2"
+                                                    Style="{StaticResource SupplierIdentificationClearButtonStyle}" IsEnabled="{Binding CanEditRuc}"
+                                                    Visibility="{Binding NumeroRuc, Converter={StaticResource StringToVisibilityConverter}}"
+                                                    Command="{Binding LimpiarRucCommand}" ToolTip="Borrar número de RUC">
+                                                <materialDesign:PackIcon Kind="Close" Width="17" Height="17" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                    <Button Grid.Column="2" Height="48" Style="{StaticResource PrimaryButtonStyle}" Command="{Binding VerificarCommand}" IsEnabled="{Binding CanVerify}" ToolTip="Reintentar la consulta oficial">
+                                        <StackPanel Orientation="Horizontal"><materialDesign:PackIcon Kind="AccountSearch" Width="18" Height="18" Foreground="White"/><TextBlock Text="Verificar" Margin="7,0,0,0" Foreground="White"/></StackPanel>
+                                    </Button>
+                                    <Button Grid.Column="4" Width="48" Height="48" Padding="0"
+                                            Style="{StaticResource DangerButtonStyle}"
+                                            Command="{Binding CancelarVerificacionCommand}"
+                                            Visibility="{Binding IsVerifying, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                            ToolTip="Cancelar consulta">
+                                        <materialDesign:PackIcon Kind="StopCircleOutline" Width="18" Height="18" Foreground="White"/>
+                                    </Button>
+                                </Grid>
+                                <TextBlock Text="El RUC debe contener 13 dígitos y superar la validación ecuatoriana." Style="{StaticResource SupplierFieldHelpStyle}"/>
+                            </StackPanel>
+
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SupplierFieldLabelStyle}"><Run Text="Razón social"/><Run Text=" *" Foreground="#DC2626" FontWeight="Bold"/></TextBlock>
+                                <Border Style="{StaticResource SupplierFormFieldBorderStyle}">
+                                    <Grid>
+                                        <TextBox x:Name="BusinessNameInput" Text="{Binding RazonSocial, UpdateSourceTrigger=PropertyChanged}"
+                                                 Style="{StaticResource SupplierUpperTextBoxStyle}" MaxLength="256" Padding="13,10,42,10"
+                                                 IsReadOnly="{Binding CanEditBusinessName, Converter={StaticResource BooleanInverterConverter}}"/>
+                                        <materialDesign:PackIcon Kind="LockOutline" Width="18" Height="18" Margin="0,0,14,0"
+                                                                 HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="{DynamicResource MutedTextBrush}"
+                                                                 Visibility="{Binding CanEditBusinessName, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
+                                    </Grid>
+                                </Border>
+                                <TextBlock Text="Se completará automáticamente desde la fuente oficial." Style="{StaticResource SupplierFieldHelpStyle}" Visibility="{Binding CanEditBusinessName, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
+                                <TextBlock Text="Modo offline habilitado: ingresa la razón social manualmente." Style="{StaticResource SupplierFieldHelpStyle}" Foreground="{DynamicResource WarningTextBrush}" Visibility="{Binding IsOfflineMode, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                            </StackPanel>
+                        </controls:AdaptiveGrid>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource SupplierFormSectionStyle}" controls:AdaptiveGrid.Span="2">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                            <materialDesign:PackIcon Kind="CardAccountPhoneOutline" Width="20" Height="20" Foreground="{DynamicResource BrandProBrush}" Margin="0,0,8,0"/>
+                            <TextBlock Text="Datos de contacto" Style="{StaticResource SupplierSectionTitleStyle}"/>
+                        </StackPanel>
+                        <controls:AdaptiveGrid Columns="3" CompactBreakpoint="900" ColumnSpacing="14" RowSpacing="14">
+                            <StackPanel>
+                                <TextBlock Text="Dirección" Style="{StaticResource SupplierFieldLabelStyle}"/>
+                                <Border Style="{StaticResource SupplierFormFieldBorderStyle}"><TextBox x:Name="AddressInput" Text="{Binding Direccion, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource SupplierModernTextBoxStyle}" MaxLength="500"/></Border>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="Correo electrónico" Style="{StaticResource SupplierFieldLabelStyle}"/>
+                                <Border Style="{StaticResource SupplierFormFieldBorderStyle}"><TextBox Text="{Binding Correo, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource SupplierModernTextBoxStyle}" CharacterCasing="Lower" MaxLength="254" behaviors:EmailAutocompleteBehavior.IsEnabled="True"/></Border>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="Teléfono / WhatsApp" Style="{StaticResource SupplierFieldLabelStyle}"/>
+                                <Border Style="{StaticResource SupplierFormFieldBorderStyle}"><TextBox Text="{Binding Telefono, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource SupplierModernTextBoxStyle}" MaxLength="24" InputScope="TelephoneNumber" behaviors:PhoneInputBehavior.IsEnabled="True"/></Border>
+                                <TextBlock Text="Ej.: 099 999 9999 o +593 99 999 9999. Se guardará con código de país." Style="{StaticResource SupplierFieldHelpStyle}" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </controls:AdaptiveGrid>
+                    </StackPanel>
+                </Border>
+            </controls:AdaptiveGrid>
+        </ScrollViewer>
+
+        <Border Grid.Row="2" Background="{DynamicResource ElevatedSurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="22,14">
+            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="12"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <Grid Grid.Column="0" VerticalAlignment="Center">
+                    <ProgressBar Width="130" Height="4" HorizontalAlignment="Left" VerticalAlignment="Center" IsIndeterminate="True" Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    <TextBlock Text="La información del proveedor estará disponible para todas las empresas." Foreground="{DynamicResource SecondaryTextBrush}" VerticalAlignment="Center">
+                        <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Visible"/><Style.Triggers><DataTrigger Binding="{Binding IsBusy}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                    </TextBlock>
+                </Grid>
+                <Button Grid.Column="1" Width="190" Style="{StaticResource DangerButtonStyle}" Command="{Binding CancelarCommand}">
+                    <StackPanel Orientation="Horizontal"><materialDesign:PackIcon Kind="Close" Foreground="White" VerticalAlignment="Center"/><TextBlock Text="Cancelar" Margin="8,0,0,0" Foreground="White" FontWeight="SemiBold" VerticalAlignment="Center"/></StackPanel>
+                </Button>
+                <Button Grid.Column="3" Width="190" Style="{StaticResource PrimaryButtonStyle}" Command="{Binding GuardarCommand}" IsEnabled="{Binding IsBusy, Converter={StaticResource BooleanInverterConverter}}">
+                    <StackPanel Orientation="Horizontal"><materialDesign:PackIcon Kind="ContentSaveOutline" Foreground="White" VerticalAlignment="Center"/><TextBlock Text="{Binding SaveText}" Margin="8,0,0,0" Foreground="White" FontWeight="SemiBold" VerticalAlignment="Center"/></StackPanel>
+                </Button>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

@@ -83,6 +83,16 @@ public class ProductoListadoDto
 public sealed class ProductoPrecioBaseListaDto
 {
     public string ListaCodigo { get; init; } = string.Empty;
+    public string ListaNombre { get; init; } = string.Empty;
     public int Orden { get; init; }
     public decimal? Precio { get; init; }
+    public string ClasificacionPrecio =>
+        ListaCodigo.Trim().ToUpperInvariant() switch
+        {
+            "B" => "B",
+            "C" => "C",
+            "D" => "D",
+            "E" => "E",
+            _ => "A"
+        };
 }

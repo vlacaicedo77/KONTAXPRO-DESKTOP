@@ -352,7 +352,8 @@ namespace KONTAXPRO.Desktop.ViewModels
                 new MenuItemModel
                 {
                     Titulo = "Proveedores",
-                    Icono = "Truck"
+                    Icono = "Truck",
+                    ComandoNavegacion = "Proveedores"
                 },
 
                 new MenuItemModel
@@ -420,7 +421,8 @@ namespace KONTAXPRO.Desktop.ViewModels
                 new MenuItemModel
                 {
                     Titulo = "Clientes",
-                    Icono = "AccountGroup"
+                    Icono = "AccountGroup",
+                    ComandoNavegacion = "Clientes"
                 },
 
                 new MenuItemModel

@@ -3003,14 +3003,6 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("empresa_id");
 
-                    b.Property<bool>("EsCliente")
-                        .HasColumnType("boolean")
-                        .HasColumnName("es_cliente");
-
-                    b.Property<bool>("EsProveedor")
-                        .HasColumnType("boolean")
-                        .HasColumnName("es_proveedor");
-
                     b.Property<int>("Estado")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -3059,8 +3051,6 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_empresas_terceros_dias_credito", "dias_credito IS NULL OR dias_credito >= 0");
 
                             t.HasCheckConstraint("ck_empresas_terceros_estado", "estado IN (0, 1)");
-
-                            t.HasCheckConstraint("ck_empresas_terceros_tipo", "es_cliente OR es_proveedor");
                         });
                 });
 
@@ -3072,6 +3062,12 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                         .HasColumnName("id");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ClaveIdentidad")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("clave_identidad");
 
                     b.Property<string>("Correo")
                         .HasMaxLength(254)
@@ -3089,11 +3085,35 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("direccion");
 
+                    b.Property<bool>("EsCliente")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("es_cliente");
+
+                    b.Property<bool>("EsProveedor")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("es_proveedor");
+
                     b.Property<int>("Estado")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(1)
                         .HasColumnName("estado");
+
+                    b.Property<int>("EstadoCliente")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("estado_cliente");
+
+                    b.Property<int>("EstadoProveedor")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("estado_proveedor");
 
                     b.Property<string>("EstadoVerificacion")
                         .IsRequired()
@@ -3148,19 +3168,113 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ClaveIdentidad")
+                        .IsUnique()
+                        .HasDatabaseName("ux_terceros_clave_identidad");
+
                     b.HasIndex("TipoIdentificacionId", "NumeroIdentificacion")
                         .IsUnique()
                         .HasDatabaseName("ux_terceros_tipo_identificacion_numero");
 
                     b.ToTable("terceros", "s_comercial", t =>
                         {
-                            t.HasCheckConstraint("ck_terceros_consumidor_final_protegido", "numero_identificacion <> '9999999999999' OR (razon_social = 'CONSUMIDOR FINAL' AND estado = 1)");
+                            t.HasCheckConstraint("ck_terceros_consumidor_final_protegido", "numero_identificacion <> '9999999999999' OR (razon_social = 'CONSUMIDOR FINAL' AND es_cliente AND estado_cliente = 1 AND estado = 1)");
 
                             t.HasCheckConstraint("ck_terceros_estado", "estado IN (0, 1)");
+
+                            t.HasCheckConstraint("ck_terceros_estado_cliente", "estado_cliente IN (0, 1)");
+
+                            t.HasCheckConstraint("ck_terceros_estado_proveedor", "estado_proveedor IN (0, 1)");
 
                             t.HasCheckConstraint("ck_terceros_estado_verificacion", "estado_verificacion IN ('PENDIENTE', 'VERIFICADO')");
 
                             t.HasCheckConstraint("ck_terceros_origen_registro", "origen_registro IN ('OFICIAL', 'OFFLINE')");
+                        });
+                });
+
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Comercial.TerceroIdentificacion", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<bool>("EsPrincipal")
+                        .HasColumnType("boolean")
+                        .HasColumnName("es_principal");
+
+                    b.Property<int>("Estado")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("estado");
+
+                    b.Property<string>("EstadoVerificacion")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("estado_verificacion");
+
+                    b.Property<string>("FuenteVerificacion")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("fuente_verificacion");
+
+                    b.Property<string>("NumeroIdentificacion")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("numero_identificacion");
+
+                    b.Property<string>("NumeroNormalizado")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("numero_normalizado");
+
+                    b.Property<long>("TerceroId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("tercero_id");
+
+                    b.Property<long>("TipoIdentificacionId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("tipo_identificacion_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<DateTime?>("VerificadoAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("verificado_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TerceroId")
+                        .HasDatabaseName("ix_terceros_identificaciones_tercero");
+
+                    b.HasIndex("TerceroId", "EsPrincipal")
+                        .IsUnique()
+                        .HasDatabaseName("ux_terceros_identificaciones_principal")
+                        .HasFilter("es_principal");
+
+                    b.HasIndex("TipoIdentificacionId", "NumeroNormalizado")
+                        .IsUnique()
+                        .HasDatabaseName("ux_terceros_identificaciones_tipo_numero");
+
+                    b.ToTable("terceros_identificaciones", "s_comercial", t =>
+                        {
+                            t.HasCheckConstraint("ck_terceros_identificaciones_estado", "estado IN (0, 1)");
+
+                            t.HasCheckConstraint("ck_terceros_identificaciones_verificacion", "estado_verificacion IN ('PENDIENTE', 'VERIFICADO')");
                         });
                 });
 
@@ -10907,6 +11021,25 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                     b.Navigation("TipoIdentificacion");
                 });
 
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Comercial.TerceroIdentificacion", b =>
+                {
+                    b.HasOne("KONTAXPRO.Domain.Entities.Comercial.Tercero", "Tercero")
+                        .WithMany("Identificaciones")
+                        .HasForeignKey("TerceroId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Catalogos.TipoIdentificacion", "TipoIdentificacion")
+                        .WithMany()
+                        .HasForeignKey("TipoIdentificacionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Tercero");
+
+                    b.Navigation("TipoIdentificacion");
+                });
+
             modelBuilder.Entity("KONTAXPRO.Domain.Entities.Compras.AjusteCompra", b =>
                 {
                     b.HasOne("KONTAXPRO.Domain.Entities.Configuracion.Empresa", "Empresa")
@@ -13639,6 +13772,8 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("KONTAXPRO.Domain.Entities.Comercial.Tercero", b =>
                 {
                     b.Navigation("EmpresasTerceros");
+
+                    b.Navigation("Identificaciones");
                 });
 
             modelBuilder.Entity("KONTAXPRO.Domain.Entities.Compras.AjusteCompra", b =>

@@ -3,13 +3,20 @@ using KONTAXPRO.Application.Session;
 using KONTAXPRO.Desktop.Services;
 using KONTAXPRO.Desktop.ViewModels;
 using KONTAXPRO.Desktop.ViewModels.Products;
+using KONTAXPRO.Desktop.ViewModels.Clientes;
+using KONTAXPRO.Desktop.ViewModels.Proveedores;
 using KONTAXPRO.Desktop.Views;
 using KONTAXPRO.Desktop.Views.Products;
+using KONTAXPRO.Desktop.Views.Clientes;
+using KONTAXPRO.Desktop.Views.Proveedores;
 using KONTAXPRO.Infrastructure.Inventory;
 using KONTAXPRO.Infrastructure.Persistence;
 using KONTAXPRO.Infrastructure.Products;
 using KONTAXPRO.Infrastructure.Security;
 using KONTAXPRO.Infrastructure.FacturacionElectronica;
+using KONTAXPRO.Infrastructure.Clientes;
+using KONTAXPRO.Infrastructure.Proveedores;
+using KONTAXPRO.Infrastructure.Interoperabilidad;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,6 +39,10 @@ namespace KONTAXPRO.Desktop
                     "appsettings.json",
                     optional: false,
                     reloadOnChange: true)
+                .AddJsonFile(
+                    "appsettings.Local.json",
+                    optional: true,
+                    reloadOnChange: true)
                 .Build();
 
             var services = new ServiceCollection();
@@ -40,9 +51,11 @@ namespace KONTAXPRO.Desktop
             services.AddSingleton(_configuration);
 
             // Registrar conexión a PostgreSQL mediante DbContextFactory
+            var connectionString = Environment.GetEnvironmentVariable(
+                "KONTAXPRO_CONNECTION_STRING") ??
+                _configuration.GetConnectionString("DefaultConnection");
             services.AddDbContextFactory<KontaxDbContext>(options =>
-                options.UseNpgsql(
-                    _configuration.GetConnectionString("DefaultConnection")));
+                options.UseNpgsql(connectionString));
 
             // Servicios
             services.AddSingleton<ThemeService>();
@@ -54,10 +67,48 @@ namespace KONTAXPRO.Desktop
             services.AddTransient<IInventoryService, InventoryService>();
             services.AddTransient<IProductService, ProductService>();
             services.AddTransient<IProductCatalogService, ProductCatalogService>();
+            services.AddTransient<IClienteService, ClienteService>();
+            services.AddTransient<IProveedorService, ProveedorService>();
             services.AddTransient<IEstadoComprobanteElectronicoService,
                 EstadoComprobanteElectronicoService>();
             services.AddTransient<ProductsViewModel>();
             services.AddTransient<ProductFormViewModel>();
+            services.AddTransient<ClienteFormViewModel>();
+            services.AddTransient<ClientesViewModel>();
+            services.AddTransient<ClientesView>();
+            services.AddTransient<ProveedorFormViewModel>();
+            services.AddTransient<ProveedoresViewModel>();
+            services.AddTransient<ProveedoresView>();
+
+            var interoperabilidadOptions =
+                CreateInteroperabilidadOptions(_configuration);
+            services.AddSingleton(interoperabilidadOptions);
+            services.AddSingleton(TimeProvider.System);
+            services.AddHttpClient(
+                InteroperabilidadHttpClients.GuiaToken,
+                client => client.Timeout = TimeSpan.FromSeconds(
+                    interoperabilidadOptions.Guia.TimeoutSeconds));
+            services.AddHttpClient(
+                InteroperabilidadHttpClients.GuiaServicio,
+                client => client.Timeout = TimeSpan.FromSeconds(
+                    interoperabilidadOptions.Guia.TimeoutSeconds));
+            services.AddHttpClient(
+                InteroperabilidadHttpClients.Sifae,
+                client => client.Timeout = TimeSpan.FromSeconds(
+                    interoperabilidadOptions.Sifae.TimeoutSeconds));
+            services.AddSingleton<GuiaTokenClient>();
+            services.AddSingleton<GuiaIdentificacionProvider>();
+            services.AddSingleton<SifaeIdentificacionProvider>();
+            services.AddSingleton<IProveedorConsultaIdentificacion>(provider =>
+                provider.GetRequiredService<GuiaIdentificacionProvider>());
+            services.AddSingleton<IProveedorConsultaIdentificacion>(provider =>
+                provider.GetRequiredService<SifaeIdentificacionProvider>());
+            services.AddSingleton<ConstanciaVerificacionIdentificacionStore>();
+            services.AddSingleton<IConstanciaVerificacionIdentificacionStore>(
+                provider => provider.GetRequiredService<
+                    ConstanciaVerificacionIdentificacionStore>());
+            services.AddSingleton<IConsultaIdentificacionService,
+                ConsultaIdentificacionService>();
 
             // ViewModels
             services.AddSingleton<DashboardViewModel>();
@@ -85,6 +136,46 @@ namespace KONTAXPRO.Desktop
 
             _serviceProvider = services.BuildServiceProvider();
         }
+
+        private static InteroperabilidadOptions CreateInteroperabilidadOptions(
+            IConfiguration configuration)
+        {
+            var guia = new GuiaOptions
+            {
+                TokenUrl = configuration["Interoperabilidad:Guia:TokenUrl"] ??
+                    string.Empty,
+                ServicioUrl =
+                    configuration["Interoperabilidad:Guia:ServicioUrl"] ??
+                    string.Empty,
+                ClientId = Environment.GetEnvironmentVariable(
+                    "KONTAXPRO_GUIA_CLIENT_ID") ??
+                    configuration["Interoperabilidad:Guia:ClientId"] ??
+                    string.Empty,
+                ClientSecret = Environment.GetEnvironmentVariable(
+                    "KONTAXPRO_GUIA_CLIENT_SECRET") ??
+                    configuration["Interoperabilidad:Guia:ClientSecret"] ??
+                    string.Empty,
+                TimeoutSeconds = ParseTimeout(
+                    configuration["Interoperabilidad:Guia:TimeoutSeconds"])
+            };
+            var sifae = new SifaeOptions
+            {
+                BaseUrl = configuration["Interoperabilidad:Sifae:BaseUrl"] ??
+                    string.Empty,
+                TimeoutSeconds = ParseTimeout(
+                    configuration["Interoperabilidad:Sifae:TimeoutSeconds"])
+            };
+            return new InteroperabilidadOptions
+            {
+                Guia = guia,
+                Sifae = sifae
+            };
+        }
+
+        private static int ParseTimeout(string? value) =>
+            int.TryParse(value, out var seconds)
+                ? Math.Clamp(seconds, 5, 60)
+                : 15;
 
         protected override async void OnStartup(
     StartupEventArgs e)
