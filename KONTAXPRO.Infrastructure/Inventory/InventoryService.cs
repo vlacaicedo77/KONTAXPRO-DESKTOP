@@ -980,12 +980,16 @@ public sealed class InventoryService(
         }
     }
 
-    internal static async Task AddInitialDetailAsync(
+    internal static async Task<MovimientoInventarioDetalle> AddInitialDetailAsync(
         KontaxDbContext context,
         MovimientoInventario movement,
         IngresoInventarioDetalleRequest request,
         DateTime now,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool esBonificacion = false,
+        decimal? ultimoPrecioCompraUnitarioBase = null,
+        decimal? factorConversionHistorico = null,
+        IReadOnlyDictionary<string, long>? seriesReutilizables = null)
     {
         if (request.Cantidad <= 0)
             throw new InvalidOperationException(
@@ -1015,9 +1019,13 @@ public sealed class InventoryService(
             throw new InvalidOperationException(
                 $"La presentación '{presentation.Nombre}' no permite ingresos.");
 
+        var factorAplicado = factorConversionHistorico ??
+            presentation.FactorConversion;
+        if (factorAplicado <= 0)
+            throw new InvalidOperationException(
+                "El factor histórico de conversión debe ser mayor que cero.");
         var baseQuantity = ProductoNuevoRules.CalcularCantidadBase(
-            request.Cantidad,
-            presentation.FactorConversion);
+            request.Cantidad, factorAplicado);
         var unitCost = ProductoNuevoRules.CalcularCostoUnitarioBase(
             request.CostoTotal,
             baseQuantity);
@@ -1073,6 +1081,8 @@ public sealed class InventoryService(
         existence.StockActual += baseQuantity;
         existence.UpdatedAt = now;
         cost.UltimoCostoEfectivo = unitCost;
+        if (ultimoPrecioCompraUnitarioBase.HasValue)
+            cost.UltimoPrecioCompra = ultimoPrecioCompraUnitarioBase.Value;
         cost.CostoPromedio = averageAfter;
         cost.UpdatedAt = now;
 
@@ -1082,7 +1092,7 @@ public sealed class InventoryService(
             ProductoId = product.Id,
             ProductoPresentacionId = presentation.Id,
             CantidadPresentacion = request.Cantidad,
-            FactorConversion = presentation.FactorConversion,
+            FactorConversion = factorAplicado,
             CantidadBase = baseQuantity,
             CostoUnitarioBase = unitCost,
             CostoTotal = request.CostoTotal,
@@ -1090,7 +1100,7 @@ public sealed class InventoryService(
             StockNuevo = existence.StockActual,
             CostoPromedioAnterior = averageBefore,
             CostoPromedioNuevo = averageAfter,
-            EsBonificacion = false,
+            EsBonificacion = esBonificacion,
             Observacion = Normalize(request.Observacion),
             CreatedAt = now,
             UpdatedAt = now
@@ -1262,25 +1272,40 @@ public sealed class InventoryService(
                         throw new InvalidOperationException(
                             $"Debe asociar la serie '{serialNumber}' a un lote válido.");
                 }
-                if (await context.ProductosSeries.AnyAsync(
-                        x => x.ProductoId == product.Id &&
-                             x.NumeroSerie == serialNumber,
-                        cancellationToken))
-                    throw new InvalidOperationException(
-                        $"La serie '{serialNumber}' ya existe.");
-
-                var serial = new ProductoSerie
+                var existingSerial = await context.ProductosSeries
+                    .SingleOrDefaultAsync(x => x.ProductoId == product.Id &&
+                        x.NumeroSerie == serialNumber, cancellationToken);
+                ProductoSerie serial;
+                var reuseKey = $"{product.Id}|{serialNumber}";
+                if (existingSerial is not null)
                 {
-                    ProductoId = product.Id,
-                    ProductoLote = serialLot,
-                    BodegaId = movement.BodegaId,
-                    NumeroSerie = serialNumber,
-                    EstadoSerieId = availableState.Id,
-                    Observacion = Normalize(request.Observacion),
-                    CreatedAt = now,
-                    UpdatedAt = now
-                };
-                context.ProductosSeries.Add(serial);
+                    if (seriesReutilizables is null ||
+                        !seriesReutilizables.TryGetValue(reuseKey, out var reusableId) ||
+                        reusableId != existingSerial.Id)
+                        throw new InvalidOperationException(
+                            $"La serie '{serialNumber}' ya existe.");
+                    serial = existingSerial;
+                    serial.ProductoLote = serialLot;
+                    serial.BodegaId = movement.BodegaId;
+                    serial.EstadoSerieId = availableState.Id;
+                    serial.Observacion = Normalize(request.Observacion);
+                    serial.UpdatedAt = now;
+                }
+                else
+                {
+                    serial = new ProductoSerie
+                    {
+                        ProductoId = product.Id,
+                        ProductoLote = serialLot,
+                        BodegaId = movement.BodegaId,
+                        NumeroSerie = serialNumber,
+                        EstadoSerieId = availableState.Id,
+                        Observacion = Normalize(request.Observacion),
+                        CreatedAt = now,
+                        UpdatedAt = now
+                    };
+                    context.ProductosSeries.Add(serial);
+                }
                 detail.Series.Add(new MovimientoInventarioDetalleSerie
                 {
                     ProductoSerie = serial,
@@ -1294,6 +1319,7 @@ public sealed class InventoryService(
             throw new InvalidOperationException(
                 $"'{product.Nombre}' no maneja series.");
         }
+        return detail;
     }
 
     private static async Task<ProductoPresentacion>

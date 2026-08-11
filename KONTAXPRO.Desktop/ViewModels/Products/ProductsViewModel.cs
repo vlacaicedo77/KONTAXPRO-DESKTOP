@@ -118,9 +118,6 @@ public partial class ProductsViewModel : ObservableObject
         TotalPaginas > 0 && PaginaActual < TotalPaginas;
     public bool HayResultados => Productos.Count > 0;
     public bool MostrarEstadoVacio => !IsLoading && !HayResultados;
-    public string MensajeEstadoVacio => string.IsNullOrWhiteSpace(TextoBusqueda)
-        ? "No se encontraron productos con los filtros seleccionados."
-        : $"No encontramos productos para “{TextoBusqueda.Trim()}”.";
     public string TextoPaginacion
     {
         get
@@ -479,7 +476,6 @@ public partial class ProductsViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(HayResultados));
         OnPropertyChanged(nameof(MostrarEstadoVacio));
-        OnPropertyChanged(nameof(MensajeEstadoVacio));
     }
 
     private string Indicador(ProductoCatalogoOrden orden) =>

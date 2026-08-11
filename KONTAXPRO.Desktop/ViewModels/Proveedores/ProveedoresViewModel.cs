@@ -20,6 +20,7 @@ public partial class ProveedoresViewModel : ObservableObject, IDisposable
     private CancellationTokenSource? _searchCancellation;
     private long _loadSequence;
     private bool _synchronizingFilters;
+    private bool _suppressReload;
     private bool _disposed;
 
     public ProveedorFormViewModel ProveedorForm { get; }
@@ -53,7 +54,9 @@ public partial class ProveedoresViewModel : ObservableObject, IDisposable
     [ObservableProperty] private int totalPendientesVerificar;
     [ObservableProperty] private int totalSinCorreo;
     [ObservableProperty] private int totalSinContactoDigital;
-    [ObservableProperty] private string? mensajeEstado;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TituloEstadoVacio))]
+    private string? mensajeEstado;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(EsKpiActivos))]
     [NotifyPropertyChangedFor(nameof(EsKpiPendientes))]
@@ -71,6 +74,9 @@ public partial class ProveedoresViewModel : ObservableObject, IDisposable
         _session.HasPermission(TercerosPermissions.Gestionar);
     public bool HayResultados => Proveedores.Count > 0;
     public bool MostrarEstadoVacio => !IsLoading && !HayResultados;
+    public string TituloEstadoVacio => string.IsNullOrWhiteSpace(MensajeEstado)
+        ? "No se encontraron proveedores"
+        : MensajeEstado;
     public int TotalPaginas => TotalItems == 0
         ? 0
         : (int)Math.Ceiling((double)TotalItems / TamanoPagina);
@@ -105,6 +111,29 @@ public partial class ProveedoresViewModel : ObservableObject, IDisposable
 
     [RelayCommand] private Task RecargarAsync() => LoadAsync();
     [RelayCommand] private void LimpiarBusqueda() => TextoBusqueda = string.Empty;
+
+    [RelayCommand]
+    private async Task LimpiarFiltrosAsync()
+    {
+        _searchCancellation?.Cancel();
+        _searchCancellation?.Dispose();
+        _searchCancellation = null;
+        _suppressReload = true;
+        try
+        {
+            TextoBusqueda = string.Empty;
+            EstadoSeleccionado = Estados[2];
+            VerificacionSeleccionada = Verificaciones[0];
+            KpiActivo = ProveedorCatalogoKpi.Todos;
+            PaginaActual = 1;
+        }
+        finally
+        {
+            _suppressReload = false;
+        }
+
+        await LoadAsync();
+    }
 
     [RelayCommand]
     private void SeleccionarKpi(ProveedorCatalogoKpi kpi)
@@ -193,13 +222,20 @@ public partial class ProveedoresViewModel : ObservableObject, IDisposable
 
     partial void OnTextoBusquedaChanged(string value)
     {
+        if (_suppressReload) return;
         PaginaActual = 1;
         _ = SearchDelayedAsync();
     }
     partial void OnEstadoSeleccionadoChanged(
-        ProveedorFiltroItem<ProveedorEstadoFiltro> value) => AdvancedReload();
+        ProveedorFiltroItem<ProveedorEstadoFiltro> value)
+    {
+        if (!_suppressReload) AdvancedReload();
+    }
     partial void OnVerificacionSeleccionadaChanged(
-        ProveedorFiltroItem<ProveedorVerificacionFiltro> value) => AdvancedReload();
+        ProveedorFiltroItem<ProveedorVerificacionFiltro> value)
+    {
+        if (!_suppressReload) AdvancedReload();
+    }
     partial void OnTamanoPaginaChanged(int value) => Reload();
     partial void OnIsLoadingChanged(bool value) => NotifyState();
 

@@ -148,6 +148,9 @@
         <Style x:Key="ModernComboBoxStyle"
                TargetType="ComboBox">
 
+            <Setter Property="behaviors:ComboBoxMouseWheelBehavior.RouteToParentWhenClosed"
+                    Value="True" />
+
             <Setter Property="Tag"
                     Value="-----Seleccione una opción-----" />
 
@@ -503,10 +506,17 @@
                   Converter={StaticResource BooleanToVisibilityConverter}}">
             <StackPanel>
                 <StackPanel Orientation="Horizontal">
-                    <materialDesign:PackIcon Kind="TagPlusOutline" Width="21" Height="21"
-                                             Margin="0,0,8,0"
-                                             Foreground="{DynamicResource BrandProBrush}" />
-                    <TextBlock Text="Nuevo motivo" Style="{StaticResource SectionTitleStyle}" />
+                    <Border Width="38" Height="38" CornerRadius="10"
+                            Margin="0,0,10,0"
+                            Background="{DynamicResource PrimaryDarkBrush}">
+                        <materialDesign:PackIcon Kind="TagPlusOutline" Width="21" Height="21"
+                                                 Foreground="White"
+                                                 HorizontalAlignment="Center"
+                                                 VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock Text="Nuevo motivo"
+                               VerticalAlignment="Center"
+                               Style="{StaticResource SectionTitleStyle}" />
                 </StackPanel>
                 <TextBlock Style="{StaticResource FieldLabelStyle}" Margin="1,16,0,6">
                     <Run Text="Nombre" />
@@ -549,15 +559,15 @@
                 </Grid.ColumnDefinitions>
 
 
-                <Border Width="48"
-                        Height="48"
-                        CornerRadius="14"
-                        Background="{DynamicResource SuccessSoftBrush}">
+                 <Border Width="48"
+                         Height="48"
+                         CornerRadius="14"
+                         Background="{DynamicResource PrimaryDarkBrush}">
 
                     <materialDesign:PackIcon Kind="PackageVariantClosed"
                                              Width="25"
                                              Height="25"
-                                             Foreground="{DynamicResource BrandProBrush}"
+                                              Foreground="White"
                                              HorizontalAlignment="Center"
                                              VerticalAlignment="Center" />
 
@@ -1417,6 +1427,45 @@
                             </DataGrid.Columns>
                         </DataGrid>
 
+                        <Border Margin="0,14,0,0"
+                                Padding="14,12"
+                                CornerRadius="10"
+                                Background="{DynamicResource InfoSoftBrush}"
+                                BorderBrush="{DynamicResource BrandProBrush}"
+                                BorderThickness="1"
+                                Visibility="{Binding MostrarResumenPresentacionCompraXml,
+                                  Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Width="36" Height="36"
+                                        CornerRadius="9"
+                                        Margin="0,0,12,0"
+                                        Background="{DynamicResource BrandProBrush}">
+                                    <materialDesign:PackIcon Kind="PackageVariantClosed"
+                                                             Width="20" Height="20"
+                                                             HorizontalAlignment="Center"
+                                                             VerticalAlignment="Center"
+                                                             Foreground="White" />
+                                </Border>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="Conversión detectada en la factura"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource PrimaryTextBrush}" />
+                                    <TextBlock Text="{Binding ResumenPresentacionCompraXml}"
+                                               Margin="0,3,0,0"
+                                               TextWrapping="Wrap"
+                                               Foreground="{DynamicResource SecondaryTextBrush}" />
+                                    <TextBlock Text="Confirma el factor antes de guardar; puedes corregirlo en la tabla superior."
+                                               Margin="0,3,0,0"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource BrandProBrush}" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
                     </StackPanel>
 
                 </Border>
@@ -1425,7 +1474,7 @@
                 <Border Grid.Row="10"
                         Grid.ColumnSpan="3"
                         Style="{StaticResource FormSectionStyle}"
-                        Visibility="{Binding RegistrarInventarioInicial,
+                        Visibility="{Binding MostrarSeccionPrecios,
                           Converter={StaticResource BooleanToVisibilityConverter}}">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
@@ -1436,10 +1485,24 @@
                             <StackPanel>
                                 <TextBlock Text="Precios por lista"
                                            Style="{StaticResource SectionTitleStyle}" />
-                                <TextBlock Text="Configura cada lista para la presentación seleccionada."
+                                <TextBlock Text="{Binding AyudaSeccionPrecios}"
                                            Style="{StaticResource FieldHelpStyle}" />
                             </StackPanel>
                         </StackPanel>
+                        <Border Margin="0,0,0,14" Padding="12,9" CornerRadius="9"
+                                Background="{DynamicResource InfoSoftBrush}"
+                                BorderBrush="#3B82F6" BorderThickness="1"
+                                Visibility="{Binding MostrarAvisoCreacionDesdeCompra,
+                                  Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="InformationOutline"
+                                                         Width="18" Height="18" Margin="0,1,9,0"
+                                                         Foreground="#2563EB" />
+                                <TextBlock Text="{Binding AvisoCostoCreacionContextual}"
+                                           TextWrapping="Wrap"
+                                           Foreground="{DynamicResource SecondaryTextBrush}" />
+                            </StackPanel>
+                        </Border>
                         <StackPanel Margin="0,0,0,14">
                             <TextBlock Text="Presentación que estás configurando"
                                        Style="{StaticResource FieldLabelStyle}" />
@@ -1471,14 +1534,14 @@
                                                                  VerticalAlignment="Center"
                                                                  Foreground="{DynamicResource BrandProBrush}" />
                                         <StackPanel Grid.Column="1">
-                                            <TextBlock Text="Costo unitario base"
+                                            <TextBlock Text="{Binding EtiquetaCostoReferencia}"
                                                        FontWeight="SemiBold"
                                                        Foreground="{DynamicResource PrimaryTextBrush}" />
-                                            <TextBlock Text="Costo de una unidad base"
+                                            <TextBlock Text="{Binding AyudaCostoReferencia}"
                                                        Style="{StaticResource FieldHelpStyle}" />
                                         </StackPanel>
                                         <TextBlock Grid.Column="2"
-                                                   Text="{Binding CostoBaseInventarioInicial,
+                                                   Text="{Binding CostoBaseReferenciaPrecios,
                                                        StringFormat={}{0:0.00####}}"
                                                    Margin="12,0,0,0"
                                                    FontSize="16"
@@ -1545,17 +1608,35 @@
                                                     <ColumnDefinition Width="Auto" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
-                                                <Border Width="34"
-                                                        Height="34"
-                                                        CornerRadius="9"
-                                                        Background="{DynamicResource PurpleSoftBrush}"
-                                                        Margin="0,0,10,0">
-                                                    <materialDesign:PackIcon Kind="TagOutline"
-                                                                             Width="18"
-                                                                             Height="18"
-                                                                             Foreground="#9333EA"
-                                                                             HorizontalAlignment="Center"
-                                                                             VerticalAlignment="Center" />
+                                                 <Border Width="34"
+                                                         Height="34"
+                                                         CornerRadius="9"
+                                                         Margin="0,0,10,0">
+                                                     <Border.Style>
+                                                         <Style TargetType="Border">
+                                                             <Setter Property="Background" Value="#2563EB" />
+                                                             <Style.Triggers>
+                                                                 <DataTrigger Binding="{Binding ListaCodigo}" Value="B">
+                                                                     <Setter Property="Background" Value="#16A34A" />
+                                                                 </DataTrigger>
+                                                                 <DataTrigger Binding="{Binding ListaCodigo}" Value="C">
+                                                                     <Setter Property="Background" Value="#9333EA" />
+                                                                 </DataTrigger>
+                                                                 <DataTrigger Binding="{Binding ListaCodigo}" Value="D">
+                                                                     <Setter Property="Background" Value="#D97706" />
+                                                                 </DataTrigger>
+                                                                 <DataTrigger Binding="{Binding ListaCodigo}" Value="E">
+                                                                     <Setter Property="Background" Value="#DB2777" />
+                                                                 </DataTrigger>
+                                                             </Style.Triggers>
+                                                         </Style>
+                                                     </Border.Style>
+                                                     <materialDesign:PackIcon Kind="TagOutline"
+                                                                              Width="18"
+                                                                              Height="18"
+                                                                              Foreground="White"
+                                                                              HorizontalAlignment="Center"
+                                                                              VerticalAlignment="Center" />
                                                 </Border>
                                                 <StackPanel Grid.Column="1"
                                                             VerticalAlignment="Center">
@@ -2035,14 +2116,28 @@
                             <StackPanel>
                                 <CheckBox Content="Registrar inventario inicial"
                                           IsChecked="{Binding RegistrarInventarioInicial}"
-                                          Visibility="{Binding IsEditing,
-                                            Converter={StaticResource InverseBooleanToVisibilityConverter}}"
+                                          Visibility="{Binding MostrarOpcionInventarioInicial,
+                                            Converter={StaticResource BooleanToVisibilityConverter}}"
                                           Style="{StaticResource KontaxCheckBoxStyle}"
                                           FontWeight="SemiBold" />
                                 <TextBlock Text="Crea una entrada real, actualiza existencias y genera Kardex."
                                            Style="{StaticResource FieldHelpStyle}"
-                                           Visibility="{Binding IsEditing,
-                                             Converter={StaticResource InverseBooleanToVisibilityConverter}}" />
+                                           Visibility="{Binding MostrarOpcionInventarioInicial,
+                                             Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                <Border Margin="0,0,0,2" Padding="12,9" CornerRadius="9"
+                                        Background="{DynamicResource InfoSoftBrush}"
+                                        BorderBrush="#3B82F6" BorderThickness="1"
+                                        Visibility="{Binding MostrarAvisoCreacionDesdeCompra,
+                                          Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="TruckCheckOutline"
+                                                                 Width="19" Height="19" Margin="0,1,9,0"
+                                                                 Foreground="#2563EB" />
+                                        <TextBlock Text="{Binding AvisoInventarioCreacionContextual}"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource SecondaryTextBrush}" />
+                                    </StackPanel>
+                                </Border>
                                 <TextBlock Text="Operaciones de inventario"
                                            FontWeight="SemiBold"
                                            Foreground="{DynamicResource PrimaryTextBrush}"
@@ -2736,11 +2831,15 @@
                 </Grid.RowDefinitions>
                 <StackPanel Margin="0,0,50,0">
                     <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="DatabaseEditOutline"
-                                                 Width="22" Height="22"
-                                                 Margin="0,0,9,0"
-                                                 VerticalAlignment="Center"
-                                                 Foreground="{DynamicResource BrandProBrush}" />
+                        <Border Width="38" Height="38" CornerRadius="10"
+                                Margin="0,0,10,0"
+                                Background="{DynamicResource PrimaryDarkBrush}">
+                            <materialDesign:PackIcon Kind="DatabaseEditOutline"
+                                                     Width="22" Height="22"
+                                                     Foreground="White"
+                                                     HorizontalAlignment="Center"
+                                                     VerticalAlignment="Center" />
+                        </Border>
                         <TextBlock Text="Corrección controlada de lotes y series"
                                    VerticalAlignment="Center"
                                    Style="{StaticResource SectionTitleStyle}" />
@@ -2905,11 +3004,15 @@
                 </Grid.RowDefinitions>
                 <StackPanel>
                     <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="SwapHorizontal"
-                                                 Width="22" Height="22"
-                                                 Margin="0,0,9,0"
-                                                 VerticalAlignment="Center"
-                                                 Foreground="{DynamicResource BrandProBrush}" />
+                        <Border Width="38" Height="38" CornerRadius="10"
+                                Margin="0,0,10,0"
+                                Background="{DynamicResource PrimaryDarkBrush}">
+                            <materialDesign:PackIcon Kind="SwapHorizontal"
+                                                     Width="22" Height="22"
+                                                     Foreground="White"
+                                                     HorizontalAlignment="Center"
+                                                     VerticalAlignment="Center" />
+                        </Border>
                         <TextBlock Text="Convertir control de inventario"
                                    VerticalAlignment="Center"
                                    Style="{StaticResource SectionTitleStyle}" />
@@ -3270,11 +3373,15 @@
                 </Grid.RowDefinitions>
                 <StackPanel>
                     <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="ClipboardEditOutline"
-                                                 Width="22" Height="22"
-                                                 Margin="0,0,9,0"
-                                                 VerticalAlignment="Center"
-                                                 Foreground="{DynamicResource BrandProBrush}" />
+                        <Border Width="38" Height="38" CornerRadius="10"
+                                Margin="0,0,10,0"
+                                Background="{DynamicResource PrimaryDarkBrush}">
+                            <materialDesign:PackIcon Kind="ClipboardEditOutline"
+                                                     Width="22" Height="22"
+                                                     Foreground="White"
+                                                     HorizontalAlignment="Center"
+                                                     VerticalAlignment="Center" />
+                        </Border>
                         <TextBlock Text="Registrar ajuste de inventario"
                                    VerticalAlignment="Center"
                                    Style="{StaticResource SectionTitleStyle}" />
@@ -3840,11 +3947,15 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel>
                         <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="History"
-                                                     Width="22" Height="22"
-                                                     Margin="0,0,9,0"
-                                                     VerticalAlignment="Center"
-                                                     Foreground="{DynamicResource BrandProBrush}" />
+                            <Border Width="38" Height="38" CornerRadius="10"
+                                    Margin="0,0,10,0"
+                                    Background="{DynamicResource PrimaryDarkBrush}">
+                                <materialDesign:PackIcon Kind="History"
+                                                         Width="22" Height="22"
+                                                         Foreground="White"
+                                                         HorizontalAlignment="Center"
+                                                         VerticalAlignment="Center" />
+                            </Border>
                             <TextBlock Text="Kardex del producto"
                                        VerticalAlignment="Center"
                                        Style="{StaticResource SectionTitleStyle}" />
@@ -4087,15 +4198,15 @@
                     </Grid.ColumnDefinitions>
 
 
-                    <Border Width="42"
-                            Height="42"
-                            CornerRadius="11"
-                            Background="{DynamicResource SuccessSoftBrush}">
+                     <Border Width="42"
+                             Height="42"
+                             CornerRadius="11"
+                             Background="{DynamicResource PrimaryDarkBrush}">
 
                         <materialDesign:PackIcon Kind="{Binding QuickCatalogIcon}"
                                                  Width="21"
                                                  Height="21"
-                                                 Foreground="{DynamicResource BrandProBrush}"
+                                                  Foreground="White"
                                                  HorizontalAlignment="Center"
                                                  VerticalAlignment="Center" />
 

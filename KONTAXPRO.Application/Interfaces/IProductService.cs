@@ -19,6 +19,11 @@ public interface IProductService
         short nuevoEstado,
         CancellationToken cancellationToken = default);
 
+    Task<ProductOperationResult> EliminarBorradorContextualAsync(
+        long productoId,
+        long empresaId,
+        CancellationToken cancellationToken = default);
+
     Task<ProductoCodigoBarrasDto?> BuscarPorCodigoBarrasAsync(
         long empresaId,
         string codigoBarras,

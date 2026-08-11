@@ -1,0 +1,155 @@
+<UserControl x:Class="KONTAXPRO.Desktop.Views.Tesoreria.OperacionesSinSustentoView"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+ xmlns:local="clr-namespace:KONTAXPRO.Desktop.Views.Tesoreria"
+ Background="{DynamicResource PageBackgroundBrush}">
+ <UserControl.Resources>
+  <Style x:Key="KontaxSecondaryButtonStyle"
+         TargetType="Button"
+         BasedOn="{StaticResource NeutralButtonStyle}"/>
+  <Style x:Key="KontaxPrimaryButtonStyle"
+         TargetType="Button"
+         BasedOn="{StaticResource PrimaryButtonStyle}"/>
+  <Style x:Key="OperationKpiButtonStyle" TargetType="Button">
+   <Setter Property="Padding" Value="18"/><Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}"/>
+   <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/><Setter Property="BorderThickness" Value="1"/>
+   <Setter Property="Cursor" Value="Hand"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+   <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
+    <Border x:Name="Card" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}"
+            BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="16">
+     <ContentPresenter/>
+    </Border>
+    <ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Card" Property="Opacity" Value="0.90"/></Trigger><Trigger Property="Tag" Value="True"><Setter Property="BorderThickness" Value="2"/></Trigger></ControlTemplate.Triggers>
+   </ControlTemplate></Setter.Value></Setter>
+  </Style>
+  <Style x:Key="OperationKpiAllStyle" TargetType="Button" BasedOn="{StaticResource OperationKpiButtonStyle}"><Style.Triggers><Trigger Property="Tag" Value="True"><Setter Property="Background" Value="{DynamicResource InfoSoftBrush}"/><Setter Property="BorderBrush" Value="#3B82F6"/></Trigger></Style.Triggers></Style>
+  <Style x:Key="OperationKpiExpenseStyle" TargetType="Button" BasedOn="{StaticResource OperationKpiButtonStyle}"><Style.Triggers><Trigger Property="Tag" Value="True"><Setter Property="Background" Value="{DynamicResource WarningSoftBrush}"/><Setter Property="BorderBrush" Value="#F59E0B"/></Trigger></Style.Triggers></Style>
+  <Style x:Key="OperationKpiInventoryStyle" TargetType="Button" BasedOn="{StaticResource OperationKpiButtonStyle}"><Style.Triggers><Trigger Property="Tag" Value="True"><Setter Property="Background" Value="{DynamicResource PurpleSoftBrush}"/><Setter Property="BorderBrush" Value="#A855F7"/></Trigger></Style.Triggers></Style>
+  <Style x:Key="OperationKpiCancelledStyle" TargetType="Button" BasedOn="{StaticResource OperationKpiButtonStyle}"><Style.Triggers><Trigger Property="Tag" Value="True"><Setter Property="Background" Value="{DynamicResource DangerSoftBrush}"/><Setter Property="BorderBrush" Value="#EF4444"/></Trigger></Style.Triggers></Style>
+  <Style x:Key="OperationSearchClearStyle" TargetType="Button">
+   <Setter Property="Width" Value="30"/><Setter Property="Height" Value="30"/><Setter Property="Padding" Value="0"/>
+   <Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+   <Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/><Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border x:Name="ClearBackground" Background="{TemplateBinding Background}" CornerRadius="7"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ClearBackground" Property="Background" Value="{DynamicResource SuccessSoftBrush}"/><Setter Property="Foreground" Value="{DynamicResource BrandProBrush}"/></Trigger><Trigger Property="IsPressed" Value="True"><Setter Property="Opacity" Value="0.7"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+  </Style>
+  <Style x:Key="OperationSquareButtonStyle" TargetType="Button" BasedOn="{StaticResource KontaxPrimaryButtonStyle}"><Setter Property="Width" Value="46"/><Setter Property="Height" Value="46"/><Setter Property="Padding" Value="0"/></Style>
+  <Style x:Key="OperationColumnHeaderStyle" TargetType="DataGridColumnHeader" BasedOn="{StaticResource KontaxDataGridColumnHeaderStyle}">
+   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="DataGridColumnHeader"><Border x:Name="HeaderBorder" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"><ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="HeaderBorder" Property="Background" Value="{DynamicResource TableAlternateRowBrush}"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+  </Style>
+  <Style x:Key="OperationActionBaseStyle" TargetType="Button" BasedOn="{StaticResource KontaxBaseButtonStyle}"><Setter Property="Width" Value="34"/><Setter Property="Height" Value="34"/><Setter Property="Padding" Value="0"/><Setter Property="Foreground" Value="White"/><Setter Property="BorderThickness" Value="1"/></Style>
+  <Style x:Key="OperationViewActionStyle" TargetType="Button" BasedOn="{StaticResource OperationActionBaseStyle}"><Setter Property="Background" Value="#0F766E"/><Setter Property="BorderBrush" Value="#0F766E"/></Style>
+  <Style x:Key="OperationCorrectActionStyle" TargetType="Button" BasedOn="{StaticResource OperationActionBaseStyle}"><Setter Property="Background" Value="#2563EB"/><Setter Property="BorderBrush" Value="#2563EB"/><Style.Triggers><DataTrigger Binding="{Binding Estado}" Value="ANULADO"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style>
+  <Style x:Key="OperationCancelActionStyle" TargetType="Button" BasedOn="{StaticResource DangerButtonStyle}"><Setter Property="Width" Value="34"/><Setter Property="Height" Value="34"/><Setter Property="Padding" Value="0"/><Style.Triggers><DataTrigger Binding="{Binding Estado}" Value="ANULADO"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style>
+  <Style x:Key="OperationStatusBadge" TargetType="Border"><Setter Property="CornerRadius" Value="10"/><Setter Property="Padding" Value="10,5"/><Setter Property="Background" Value="#16A34A"/><Style.Triggers><DataTrigger Binding="{Binding Estado}" Value="ANULADO"><Setter Property="Background" Value="#DC2626"/></DataTrigger></Style.Triggers></Style>
+   <Style x:Key="OperationLoadingBarStyle" TargetType="ProgressBar"><Setter Property="Height" Value="6"/><Setter Property="Background" Value="{DynamicResource SuccessSoftBrush}"/><Setter Property="Foreground" Value="{DynamicResource BrandProBrush}"/><Setter Property="BorderThickness" Value="0"/><Setter Property="IsIndeterminate" Value="True"/></Style>
+   <Style x:Key="CatalogPageButtonStyle" TargetType="Button" BasedOn="{StaticResource NeutralButtonStyle}"><Setter Property="MinWidth" Value="34"/><Setter Property="Width" Value="Auto"/><Setter Property="Height" Value="34"/><Setter Property="Padding" Value="9,0"/></Style>
+  <Style x:Key="OperationWorkspaceStyle" TargetType="Border"><Setter Property="Margin" Value="18"/><Setter Property="Padding" Value="24"/><Setter Property="CornerRadius" Value="18"/><Setter Property="Background" Value="{DynamicResource ElevatedSurfaceBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="Effect"><Setter.Value><DropShadowEffect BlurRadius="35" ShadowDepth="0" Opacity="0.32"/></Setter.Value></Setter></Style>
+ </UserControl.Resources>
+ <Grid Margin="24">
+  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="18"/><RowDefinition Height="Auto"/>
+   <RowDefinition Height="14"/><RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+  <Grid>
+   <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+   <StackPanel Orientation="Horizontal">
+    <Border Width="46" Height="46" CornerRadius="13" Background="{DynamicResource PrimaryDarkBrush}" Margin="0,0,14,0">
+     <materialDesign:PackIcon Kind="ReceiptTextRemoveOutline" Width="24" Height="24" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+    </Border>
+    <StackPanel VerticalAlignment="Center">
+     <TextBlock Text="Operaciones sin comprobante" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/>
+     <TextBlock Text="Controla salidas reales sin mezclarlas con compras ni sustento tributario" Margin="0,3,0,0" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/>
+    </StackPanel>
+   </StackPanel>
+   <Button Grid.Column="1" Command="{Binding NewCommand}" IsEnabled="{Binding CanRegister}" Style="{StaticResource KontaxPrimaryButtonStyle}">
+    <StackPanel Orientation="Horizontal"><materialDesign:PackIcon Kind="Plus" Width="19" Height="19"/><TextBlock Text="Nueva operación" Margin="8,0,0,0" VerticalAlignment="Center"/></StackPanel>
+   </Button>
+  </Grid>
+
+  <Grid Grid.Row="2">
+   <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+   <Button Grid.Column="0" Style="{StaticResource OperationKpiAllStyle}" Tag="{Binding IsAllKpi}" Command="{Binding SelectKpiCommand}" CommandParameter="TODAS" ToolTip="Mostrar todas las operaciones">
+    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Width="52" Height="52" CornerRadius="14" Background="#3B82F6"><materialDesign:PackIcon Kind="ReceiptTextCheckOutline" Width="25" Height="25" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><StackPanel Grid.Column="2" VerticalAlignment="Center"><TextBlock Text="{Binding OperationCount}" FontSize="25" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/><TextBlock Text="OPERACIONES" Foreground="{DynamicResource SecondaryTextBrush}"/></StackPanel></Grid>
+   </Button>
+   <Button Grid.Column="2" Style="{StaticResource OperationKpiExpenseStyle}" Tag="{Binding IsExpenseKpi}" Command="{Binding SelectKpiCommand}" CommandParameter="GASTO" ToolTip="Mostrar gastos confirmados">
+    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Width="52" Height="52" CornerRadius="14" Background="#F59E0B"><materialDesign:PackIcon Kind="CashMinus" Width="25" Height="25" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><StackPanel Grid.Column="2" VerticalAlignment="Center"><TextBlock Text="{Binding ExpenseCount}" FontSize="25" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/><TextBlock Text="GASTOS" Foreground="{DynamicResource SecondaryTextBrush}"/></StackPanel></Grid>
+   </Button>
+   <Button Grid.Column="4" Style="{StaticResource OperationKpiInventoryStyle}" Tag="{Binding IsInventoryKpi}" Command="{Binding SelectKpiCommand}" CommandParameter="INVENTARIO" ToolTip="Mostrar ingresos de inventario confirmados">
+    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Width="52" Height="52" CornerRadius="14" Background="#A855F7"><materialDesign:PackIcon Kind="PackageVariantPlus" Width="25" Height="25" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><StackPanel Grid.Column="2" VerticalAlignment="Center"><TextBlock Text="{Binding InventoryCount}" FontSize="25" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/><TextBlock Text="INVENTARIO" Foreground="{DynamicResource SecondaryTextBrush}"/></StackPanel></Grid>
+   </Button>
+   <Button Grid.Column="6" Style="{StaticResource OperationKpiCancelledStyle}" Tag="{Binding IsCancelledKpi}" Command="{Binding SelectKpiCommand}" CommandParameter="ANULADO" ToolTip="Mostrar operaciones anuladas">
+    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Width="52" Height="52" CornerRadius="14" Background="#EF4444"><materialDesign:PackIcon Kind="CloseCircleOutline" Width="25" Height="25" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><StackPanel Grid.Column="2" VerticalAlignment="Center"><TextBlock Text="{Binding CancelledCount}" FontSize="25" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/><TextBlock Text="ANULADAS" Foreground="{DynamicResource SecondaryTextBrush}"/></StackPanel></Grid>
+   </Button>
+   <Border Grid.Column="8" Padding="18" CornerRadius="16" Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Width="52" Height="52" CornerRadius="14" Background="#0F766E"><materialDesign:PackIcon Kind="CashMultiple" Width="25" Height="25" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><StackPanel Grid.Column="2" VerticalAlignment="Center"><TextBlock Text="{Binding ConfirmedTotal, StringFormat={}{0:C2}}" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/><TextBlock Text="SALIDAS CONFIRMADAS" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}"/></StackPanel></Grid>
+   </Border>
+  </Grid>
+
+  <Border Grid.Row="4" Padding="14" CornerRadius="14" Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+   <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="190"/><ColumnDefinition Width="14"/><ColumnDefinition Width="190"/><ColumnDefinition Width="14"/><ColumnDefinition Width="46"/></Grid.ColumnDefinitions>
+    <Border Height="46" Background="{DynamicResource InputSecondaryBackgroundBrush}" BorderBrush="{DynamicResource InputBorderBrush}" BorderThickness="1" CornerRadius="10">
+     <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="44"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+      <materialDesign:PackIcon Kind="Magnify" Width="19" Height="19" Foreground="{DynamicResource SecondaryTextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+      <Grid Grid.Column="1">
+       <TextBox x:Name="OperationSearchInput" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" BorderThickness="0" Background="Transparent" Foreground="{DynamicResource PrimaryTextBrush}" CaretBrush="{DynamicResource BrandProBrush}" Padding="0,0,38,0" VerticalContentAlignment="Center" FontSize="13"/>
+       <TextBlock Text="Buscar por número, beneficiario, motivo o referencia..." IsHitTestVisible="False" VerticalAlignment="Center" Foreground="{DynamicResource MutedTextBrush}" FontSize="12"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Text, ElementName=OperationSearchInput}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger><DataTrigger Binding="{Binding Text, ElementName=OperationSearchInput}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
+       <Button HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,6,0" Panel.ZIndex="2" Style="{StaticResource OperationSearchClearStyle}" Command="{Binding ClearSearchCommand}" ToolTip="Limpiar búsqueda" Visibility="{Binding SearchText, Converter={StaticResource StringToVisibilityConverter}}"><materialDesign:PackIcon Kind="Close" Width="17" Height="17" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/></Button>
+      </Grid>
+     </Grid>
+    </Border>
+    <ComboBox Grid.Column="2" SelectedValue="{Binding SelectedType}" SelectedValuePath="Tag" Style="{StaticResource ModernComboBoxStyle}"><ComboBoxItem Content="Todos los tipos" Tag="TODOS"/><ComboBoxItem Content="Gasto" Tag="GASTO"/><ComboBoxItem Content="Inventario" Tag="INVENTARIO"/></ComboBox>
+    <ComboBox Grid.Column="4" SelectedValue="{Binding SelectedState}" SelectedValuePath="Tag" Style="{StaticResource ModernComboBoxStyle}"><ComboBoxItem Content="Todos los estados" Tag="TODAS"/><ComboBoxItem Content="Confirmado" Tag="CONFIRMADO"/><ComboBoxItem Content="Anulado" Tag="ANULADO"/></ComboBox>
+    <Button Grid.Column="6" Style="{StaticResource OperationSquareButtonStyle}" Command="{Binding LoadCommand}" ToolTip="Actualizar operaciones"><materialDesign:PackIcon Kind="Refresh" Width="20" Height="20" Foreground="White"/></Button>
+   </Grid>
+  </Border>
+
+  <Border Grid.Row="6" CornerRadius="14" Background="{DynamicResource TableBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" ClipToBounds="True">
+   <Grid>
+    <Grid.RowDefinitions><RowDefinition Height="10"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <ProgressBar Grid.Row="0" Margin="12,2" Style="{StaticResource OperationLoadingBarStyle}" Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+    <DataGrid Grid.Row="1" ItemsSource="{Binding Operations}" SelectedItem="{Binding SelectedOperation}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource KontaxDataGridStyle}" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" MinRowHeight="58" ColumnHeaderHeight="46" ColumnHeaderStyle="{StaticResource OperationColumnHeaderStyle}" SelectionMode="Single" SelectionUnit="FullRow" BorderThickness="0">
+     <DataGrid.Columns>
+      <DataGridTextColumn Header="FECHA" Binding="{Binding Fecha, StringFormat=dd/MM/yyyy}" Width="100"/>
+      <DataGridTemplateColumn Header="OPERACIÓN" Width="175"><DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel VerticalAlignment="Center"><TextBlock Text="{Binding Numero}" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/><TextBlock Text="{Binding Tipo}" Margin="0,3,0,0" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource BrandProBrush}"/></StackPanel></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+      <DataGridTemplateColumn Header="BENEFICIARIO / MOTIVO" Width="*" MinWidth="290"><DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel VerticalAlignment="Center"><TextBlock Text="{Binding Beneficiario}" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Beneficiario}"/><TextBlock Text="{Binding Motivo}" Margin="0,3,0,0" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Motivo}"/></StackPanel></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+      <DataGridTemplateColumn Header="FONDO" Width="95"><DataGridTemplateColumn.CellTemplate><DataTemplate><Border Padding="8,4" CornerRadius="8" Background="{DynamicResource InfoSoftBrush}" HorizontalAlignment="Left"><TextBlock Text="{Binding MedioSalida}" FontSize="10" FontWeight="Bold" Foreground="#2563EB"/></Border></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+      <DataGridTemplateColumn Header="TOTAL" Width="120"><DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Total, StringFormat={}{0:C2}}" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource BrandProBrush}" VerticalAlignment="Center"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+      <DataGridTemplateColumn Header="ESTADO" Width="120"><DataGridTemplateColumn.CellTemplate><DataTemplate><Border Style="{StaticResource OperationStatusBadge}" HorizontalAlignment="Left"><TextBlock Text="{Binding Estado}" Foreground="White" FontSize="10" FontWeight="Bold"/></Border></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+      <DataGridTemplateColumn Header="ACCIONES" Width="130"><DataGridTemplateColumn.CellTemplate><DataTemplate>
+       <StackPanel Orientation="Horizontal">
+        <Button Style="{StaticResource OperationViewActionStyle}" Command="{Binding DataContext.ViewCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" ToolTip="Ver detalle"><materialDesign:PackIcon Kind="EyeOutline" Width="17" Height="17" Foreground="White"/></Button>
+        <Button Margin="6,0,0,0" IsEnabled="{Binding DataContext.CanCorrect, RelativeSource={RelativeSource AncestorType=DataGrid}}" Style="{StaticResource OperationCorrectActionStyle}" Command="{Binding DataContext.CorrectCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" ToolTip="Corregir mediante sustitución"><materialDesign:PackIcon Kind="FileReplaceOutline" Width="17" Height="17" Foreground="White"/></Button>
+        <Button Margin="6,0,0,0" IsEnabled="{Binding DataContext.CanCancel, RelativeSource={RelativeSource AncestorType=DataGrid}}" Style="{StaticResource OperationCancelActionStyle}" Command="{Binding DataContext.PrepareCancelCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" ToolTip="Anular"><materialDesign:PackIcon Kind="Cancel" Width="17" Height="17" Foreground="White"/></Button>
+       </StackPanel>
+      </DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+     </DataGrid.Columns>
+    </DataGrid>
+    <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding HasItems, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+     <Border Width="70" Height="70" CornerRadius="20" Background="{DynamicResource SuccessSoftBrush}"><materialDesign:PackIcon Kind="ReceiptTextRemoveOutline" Width="34" Height="34" Foreground="{DynamicResource BrandProBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+     <TextBlock Text="No hay operaciones con los filtros seleccionados" Margin="0,14,0,0" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" TextAlignment="Center"/>
+     <Button Content="Limpiar filtros" Command="{Binding ClearFiltersCommand}" Margin="0,14,0,0" Style="{StaticResource NeutralButtonStyle}"/>
+    </StackPanel>
+    <Grid Grid.Row="2" Margin="14,10" MinHeight="38"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="18"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding PaginationText}" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/><StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="POR PÁGINA" Margin="0,0,7,0" VerticalAlignment="Center" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource MutedTextBrush}"/><ComboBox Width="82" ItemsSource="{Binding PageSizes}" Style="{StaticResource ModernComboBoxStyle}" SelectedItem="{Binding PageSize}"/></StackPanel><StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center"><Button Style="{StaticResource CatalogPageButtonStyle}" Command="{Binding PreviousPageCommand}" IsEnabled="{Binding CanGoPrevious}" ToolTip="Página anterior"><materialDesign:PackIcon Kind="ChevronLeft" Width="17" Height="17"/></Button><ItemsControl ItemsSource="{Binding VisiblePages}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate><DataTemplate><Button Content="{Binding Text}" Margin="4,0,0,0" Command="{Binding DataContext.GoToPageCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}"><Button.Style><Style TargetType="Button" BasedOn="{StaticResource CatalogPageButtonStyle}"><Style.Triggers><DataTrigger Binding="{Binding IsCurrent}" Value="True"><Setter Property="Background" Value="{DynamicResource PrimaryButtonBackgroundBrush}"/><Setter Property="Foreground" Value="White"/><Setter Property="BorderBrush" Value="{DynamicResource PrimaryButtonBackgroundBrush}"/></DataTrigger><DataTrigger Binding="{Binding IsSeparator}" Value="True"><Setter Property="IsEnabled" Value="False"/><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/></DataTrigger></Style.Triggers></Style></Button.Style></Button></DataTemplate></ItemsControl.ItemTemplate></ItemsControl><Button Style="{StaticResource CatalogPageButtonStyle}" Margin="4,0,0,0" Command="{Binding NextPageCommand}" IsEnabled="{Binding CanGoNext}" ToolTip="Página siguiente"><materialDesign:PackIcon Kind="ChevronRight" Width="17" Height="17"/></Button></StackPanel></Grid>
+   </Grid>
+  </Border>
+
+  <Border Grid.RowSpan="7" Panel.ZIndex="20" Background="#99000000" Visibility="{Binding IsFormOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+   <Border Style="{StaticResource OperationWorkspaceStyle}" Padding="4"><local:OperacionSinSustentoWindow DataContext="{Binding Form}"/></Border>
+  </Border>
+  <Border Grid.RowSpan="7" Panel.ZIndex="21" Background="#99000000" Visibility="{Binding IsDetailOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+   <Border Width="780" MaxHeight="670" Style="{StaticResource OperationWorkspaceStyle}" HorizontalAlignment="Center" VerticalAlignment="Center">
+     <StackPanel><Grid><TextBlock Text="{Binding SelectedDetail.Numero}" FontSize="23" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/><StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button Command="{Binding ExportEvidenceCommand}" Visibility="{Binding SelectedDetail.TieneEvidencia, Converter={StaticResource BooleanToVisibilityConverter}}" Style="{StaticResource KontaxSecondaryButtonStyle}" Margin="0,0,8,0"><StackPanel Orientation="Horizontal"><materialDesign:PackIcon Kind="FileDownloadOutline" Margin="0,0,6,0"/><TextBlock Text="Evidencia"/></StackPanel></Button><Button Command="{Binding ClosePanelsCommand}" Background="Transparent" BorderThickness="0"><materialDesign:PackIcon Kind="Close"/></Button></StackPanel></Grid>
+     <TextBlock Text="Operación no deducible y sin crédito tributario" Foreground="{DynamicResource WarningTextBrush}" Margin="0,4,0,18"/>
+     <UniformGrid Columns="3"><StackPanel><TextBlock Text="FECHA" Foreground="{DynamicResource SecondaryTextBrush}"/><TextBlock Text="{Binding SelectedDetail.Fecha, StringFormat=dd/MM/yyyy}" FontWeight="SemiBold"/></StackPanel><StackPanel><TextBlock Text="TIPO / FONDO" Foreground="{DynamicResource SecondaryTextBrush}"/><TextBlock Text="{Binding SelectedDetail.Tipo}" FontWeight="SemiBold"/><TextBlock Text="{Binding SelectedDetail.MedioSalida}"/></StackPanel><StackPanel><TextBlock Text="TOTAL" Foreground="{DynamicResource SecondaryTextBrush}"/><TextBlock Text="{Binding SelectedDetail.Total, StringFormat={}{0:C2}}" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource PrimaryDarkBrush}"/></StackPanel></UniformGrid>
+     <TextBlock Text="{Binding SelectedDetail.Beneficiario}" FontSize="17" FontWeight="Bold" Margin="0,18,0,4"/><TextBlock Text="{Binding SelectedDetail.Motivo}" TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}"/>
+     <Border Margin="0,18,0,0" CornerRadius="12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" ClipToBounds="True"><DataGrid ItemsSource="{Binding SelectedDetail.Lineas}" AutoGenerateColumns="False" IsReadOnly="True" Height="260" Style="{StaticResource KontaxDataGridStyle}" ColumnHeaderStyle="{StaticResource OperationColumnHeaderStyle}" ColumnHeaderHeight="42" BorderThickness="0"><DataGrid.Columns><DataGridTextColumn Header="PRODUCTO" Binding="{Binding Producto}" Width="*"/><DataGridTextColumn Header="CUENTA" Binding="{Binding Cuenta}" Width="*"/><DataGridTextColumn Header="DESCRIPCIÓN" Binding="{Binding Descripcion}" Width="1.2*"/><DataGridTextColumn Header="CANT." Binding="{Binding Cantidad}" Width="70"/><DataGridTextColumn Header="TOTAL" Binding="{Binding Total, StringFormat={}{0:C2}}" Width="95"/></DataGrid.Columns></DataGrid></Border>
+    </StackPanel>
+   </Border>
+  </Border>
+  <Border Grid.RowSpan="7" Panel.ZIndex="22" Background="#99000000" Visibility="{Binding IsCancelOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+   <Border Width="540" Style="{StaticResource OperationWorkspaceStyle}" HorizontalAlignment="Center" VerticalAlignment="Center">
+    <StackPanel><StackPanel Orientation="Horizontal"><Border Width="44" Height="44" CornerRadius="12" Background="{DynamicResource DangerButtonBackgroundBrush}" Margin="0,0,12,0"><materialDesign:PackIcon Kind="Cancel" Width="22" Height="22" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><StackPanel><TextBlock Text="Anular operación" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/><TextBlock Text="Reversión segura y auditable" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}"/></StackPanel></StackPanel><TextBlock Text="La anulación generará reversos de caja/banco, contabilidad e inventario cuando corresponda." TextWrapping="Wrap" Margin="0,16,0,18" Foreground="{DynamicResource SecondaryTextBrush}"/><TextBlock Text="MOTIVO *" FontWeight="SemiBold" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}"/><TextBox Text="{Binding CancelReason, UpdateSourceTrigger=PropertyChanged}" MinHeight="76" AcceptsReturn="True" Margin="0,6,0,18"/><StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button Content="Volver" Command="{Binding ClosePanelsCommand}" Style="{StaticResource KontaxSecondaryButtonStyle}" Margin="0,0,8,0"/><Button Content="Anular operación" Command="{Binding ConfirmCancelCommand}" Style="{StaticResource DangerButtonStyle}"/></StackPanel></StackPanel>
+   </Border>
+  </Border>
+ </Grid>
+</UserControl>

@@ -9,7 +9,11 @@
              xmlns:clientViews="clr-namespace:KONTAXPRO.Desktop.Views.Clientes"
              xmlns:clientViewModels="clr-namespace:KONTAXPRO.Desktop.ViewModels.Clientes"
              xmlns:supplierViews="clr-namespace:KONTAXPRO.Desktop.Views.Proveedores"
-             xmlns:supplierViewModels="clr-namespace:KONTAXPRO.Desktop.ViewModels.Proveedores">
+             xmlns:supplierViewModels="clr-namespace:KONTAXPRO.Desktop.ViewModels.Proveedores"
+             xmlns:purchaseViews="clr-namespace:KONTAXPRO.Desktop.Views.Compras"
+             xmlns:purchaseViewModels="clr-namespace:KONTAXPRO.Desktop.ViewModels.Compras"
+             xmlns:treasuryViews="clr-namespace:KONTAXPRO.Desktop.Views.Tesoreria"
+             xmlns:treasuryViewModels="clr-namespace:KONTAXPRO.Desktop.ViewModels.Tesoreria">
 
     <Application.Resources>
         
@@ -58,6 +62,14 @@
 
             <DataTemplate DataType="{x:Type supplierViewModels:ProveedoresViewModel}">
                 <supplierViews:ProveedoresView/>
+            </DataTemplate>
+
+            <DataTemplate DataType="{x:Type purchaseViewModels:ComprasViewModel}">
+                <purchaseViews:ComprasView/>
+            </DataTemplate>
+
+            <DataTemplate DataType="{x:Type treasuryViewModels:OperacionesSinSustentoViewModel}">
+                <treasuryViews:OperacionesSinSustentoView/>
             </DataTemplate>
 
         </ResourceDictionary>

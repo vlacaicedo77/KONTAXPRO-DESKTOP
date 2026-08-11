@@ -174,8 +174,8 @@
             <Grid Grid.Row="0">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal">
-                    <Border Width="46" Height="46" CornerRadius="13" Background="{DynamicResource SuccessSoftBrush}" Margin="0,0,14,0">
-                        <materialDesign:PackIcon Kind="Truck" Width="24" Height="24" Foreground="{DynamicResource BrandProBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <Border Width="46" Height="46" CornerRadius="13" Background="{DynamicResource PrimaryDarkBrush}" Margin="0,0,14,0">
+                        <materialDesign:PackIcon Kind="Truck" Width="24" Height="24" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <StackPanel>
                         <TextBlock Text="Proveedores" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/>
@@ -315,8 +315,8 @@
                     </DataGrid>
                     <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding MostrarEstadoVacio, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <Border Width="70" Height="70" CornerRadius="20" Background="{DynamicResource SuccessSoftBrush}"><materialDesign:PackIcon Kind="TruckOutline" Width="34" Height="34" Foreground="{DynamicResource BrandProBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
-                        <TextBlock Text="No se encontraron proveedores" Margin="0,14,0,0" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" TextAlignment="Center"/>
-                        <TextBlock Text="{Binding MensajeEstado}" Margin="0,5,0,0" Foreground="{DynamicResource MutedTextBrush}" TextAlignment="Center"/>
+                        <TextBlock Text="{Binding TituloEstadoVacio}" Margin="0,14,0,0" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" TextAlignment="Center"/>
+                        <Button Content="Limpiar filtros" Margin="0,14,0,0" Style="{StaticResource NeutralButtonStyle}" Command="{Binding LimpiarFiltrosCommand}"/>
                     </StackPanel>
                     <Grid Grid.Row="2" Margin="14,10" MinHeight="38">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="18"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>

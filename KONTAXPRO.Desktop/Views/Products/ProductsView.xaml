@@ -97,16 +97,16 @@
 
                     <!-- Icono -->
 
-                    <Border Width="46"
-                            Height="46"
-                            CornerRadius="13"
-                            Background="{DynamicResource SuccessSoftBrush}"
-                            Margin="0,0,13,0">
+                     <Border Width="46"
+                             Height="46"
+                             CornerRadius="13"
+                             Background="{DynamicResource PrimaryDarkBrush}"
+                             Margin="0,0,13,0">
 
                         <materialDesign:PackIcon Kind="BarcodeScan"
                                                  Width="24"
                                                  Height="24"
-                                                 Foreground="{DynamicResource BrandProBrush}"
+                                                  Foreground="White"
                                                  HorizontalAlignment="Center"
                                                  VerticalAlignment="Center" />
 

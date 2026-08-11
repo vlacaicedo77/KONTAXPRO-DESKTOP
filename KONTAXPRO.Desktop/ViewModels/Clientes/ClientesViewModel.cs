@@ -20,6 +20,7 @@ public partial class ClientesViewModel : ObservableObject, IDisposable
     private CancellationTokenSource? _searchCancellation;
     private long _loadSequence;
     private bool _isSynchronizingQuickFilters;
+    private bool _suppressReload;
     private bool _isDisposed;
     private Task _companyChangeTask = Task.CompletedTask;
 
@@ -68,7 +69,9 @@ public partial class ClientesViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(EsKpiSinCredito))]
     [NotifyPropertyChangedFor(nameof(EsKpiSinContactoDigital))]
     private ClienteCatalogoKpi kpiActivo = ClienteCatalogoKpi.Todos;
-    [ObservableProperty] private string? mensajeEstado;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TituloEstadoVacio))]
+    private string? mensajeEstado;
 
     public bool EsKpiClientes => KpiActivo == ClienteCatalogoKpi.Todos;
     public bool EsKpiPendientesVerificar =>
@@ -81,6 +84,9 @@ public partial class ClientesViewModel : ObservableObject, IDisposable
         _currentSession.HasPermission(TercerosPermissions.Gestionar);
     public bool HayResultados => Clientes.Count > 0;
     public bool MostrarEstadoVacio => !IsLoading && !HayResultados;
+    public string TituloEstadoVacio => string.IsNullOrWhiteSpace(MensajeEstado)
+        ? "No se encontraron clientes"
+        : MensajeEstado;
     public int TotalPaginas => TotalItems == 0
         ? 0
         : (int)Math.Ceiling((double)TotalItems / TamanoPagina);
@@ -128,6 +134,30 @@ public partial class ClientesViewModel : ObservableObject, IDisposable
 
     [RelayCommand]
     private void LimpiarBusqueda() => TextoBusqueda = string.Empty;
+
+    [RelayCommand]
+    private async Task LimpiarFiltrosAsync()
+    {
+        _searchCancellation?.Cancel();
+        _searchCancellation?.Dispose();
+        _searchCancellation = null;
+        _suppressReload = true;
+        try
+        {
+            TextoBusqueda = string.Empty;
+            EstadoSeleccionado = Estados[0];
+            VerificacionSeleccionada = Verificaciones[0];
+            CreditoSeleccionado = Creditos[0];
+            KpiActivo = ClienteCatalogoKpi.Todos;
+            PaginaActual = 1;
+        }
+        finally
+        {
+            _suppressReload = false;
+        }
+
+        await LoadAsync();
+    }
 
     [RelayCommand]
     private void SeleccionarKpi(ClienteCatalogoKpi kpi)
@@ -221,18 +251,30 @@ public partial class ClientesViewModel : ObservableObject, IDisposable
 
     partial void OnTextoBusquedaChanged(string value)
     {
+        if (_suppressReload)
+            return;
         PaginaActual = 1;
         _ = SearchWithDelayAsync();
     }
 
     partial void OnEstadoSeleccionadoChanged(
-        ClienteFiltroItem<ClienteEstadoFiltro> value) => ReloadFromFilter();
+        ClienteFiltroItem<ClienteEstadoFiltro> value)
+    {
+        if (!_suppressReload)
+            ReloadFromFilter();
+    }
     partial void OnVerificacionSeleccionadaChanged(
-        ClienteFiltroItem<ClienteVerificacionFiltro> value) =>
-        ReloadFromAdvancedFilter();
+        ClienteFiltroItem<ClienteVerificacionFiltro> value)
+    {
+        if (!_suppressReload)
+            ReloadFromAdvancedFilter();
+    }
     partial void OnCreditoSeleccionadoChanged(
-        ClienteFiltroItem<ClienteCreditoFiltro> value) =>
-        ReloadFromAdvancedFilter();
+        ClienteFiltroItem<ClienteCreditoFiltro> value)
+    {
+        if (!_suppressReload)
+            ReloadFromAdvancedFilter();
+    }
     partial void OnTamanoPaginaChanged(int value) => ReloadFromFilter();
     partial void OnIsLoadingChanged(bool value) => NotifyListState();
 

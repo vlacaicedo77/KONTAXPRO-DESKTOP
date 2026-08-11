@@ -332,11 +332,11 @@
             </Grid.ColumnDefinitions>
             <StackPanel Orientation="Horizontal">
                 <Border Width="46" Height="46" CornerRadius="13"
-                        Background="{DynamicResource SuccessSoftBrush}"
+                        Background="{DynamicResource PrimaryDarkBrush}"
                         Margin="0,0,14,0">
                     <materialDesign:PackIcon Kind="PackageVariantClosed"
                                              Width="24" Height="24"
-                                             Foreground="{DynamicResource BrandProBrush}"
+                                             Foreground="White"
                                              HorizontalAlignment="Center"
                                              VerticalAlignment="Center"/>
                 </Border>
@@ -674,12 +674,12 @@
                                                                     <DataTrigger Binding="{Binding ClasificacionPrecio}" Value="B">
                                                                         <Setter Property="Background" Value="#16A34A"/>
                                                                     </DataTrigger>
-                                                                    <DataTrigger Binding="{Binding ClasificacionPrecio}" Value="C">
-                                                                        <Setter Property="Background" Value="#D97706"/>
-                                                                    </DataTrigger>
-                                                                    <DataTrigger Binding="{Binding ClasificacionPrecio}" Value="D">
-                                                                        <Setter Property="Background" Value="#9333EA"/>
-                                                                    </DataTrigger>
+                                                                     <DataTrigger Binding="{Binding ClasificacionPrecio}" Value="C">
+                                                                         <Setter Property="Background" Value="#9333EA"/>
+                                                                     </DataTrigger>
+                                                                     <DataTrigger Binding="{Binding ClasificacionPrecio}" Value="D">
+                                                                         <Setter Property="Background" Value="#D97706"/>
+                                                                     </DataTrigger>
                                                                     <DataTrigger Binding="{Binding ClasificacionPrecio}" Value="E">
                                                                         <Setter Property="Background" Value="#DB2777"/>
                                                                     </DataTrigger>
@@ -753,7 +753,6 @@
                         <materialDesign:PackIcon Kind="PackageVariant" Width="34" Height="34" Foreground="{DynamicResource BrandProBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <TextBlock Text="No se encontraron productos" Margin="0,14,0,0" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" TextAlignment="Center"/>
-                    <TextBlock Text="{Binding MensajeEstadoVacio}" Margin="0,5,0,0" Foreground="{DynamicResource MutedTextBrush}" TextAlignment="Center"/>
                     <Button Content="Limpiar filtros" Margin="0,14,0,0" Style="{StaticResource NeutralButtonStyle}" Command="{Binding LimpiarFiltrosCommand}"/>
                 </StackPanel>
 

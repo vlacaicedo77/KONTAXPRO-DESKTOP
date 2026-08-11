@@ -4,6 +4,7 @@
 
     <SolidColorBrush x:Key="KontaxDialogInfoBrush" Color="#2563EB"/>
     <SolidColorBrush x:Key="KontaxDialogWarningBrush" Color="#D97706"/>
+    <SolidColorBrush x:Key="KontaxDialogQuestionBrush" Color="#7C3AED"/>
 
     <Style x:Key="KontaxDialogCardStyle" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource ElevatedSurfaceBrush}"/>

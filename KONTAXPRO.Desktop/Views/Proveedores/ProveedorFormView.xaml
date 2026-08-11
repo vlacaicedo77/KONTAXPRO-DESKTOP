@@ -93,8 +93,8 @@
                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="26,18">
             <Grid>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="13"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <Border Width="48" Height="48" CornerRadius="14" Background="{DynamicResource SuccessSoftBrush}">
-                    <materialDesign:PackIcon Kind="TruckCheck" Width="25" Height="25" Foreground="{DynamicResource BrandProBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <Border Width="48" Height="48" CornerRadius="14" Background="{DynamicResource PrimaryDarkBrush}">
+                    <materialDesign:PackIcon Kind="TruckCheck" Width="25" Height="25" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
                 <StackPanel Grid.Column="2" VerticalAlignment="Center">
                     <TextBlock Text="{Binding FormTitle}" FontSize="23" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/>

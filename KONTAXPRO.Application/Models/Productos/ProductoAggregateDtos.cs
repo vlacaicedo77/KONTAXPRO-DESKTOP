@@ -25,6 +25,16 @@ public sealed class ProductoPrecioDto
     public int Estado { get; set; } = 1;
 }
 
+public sealed class ProductoPrecioPendienteDto
+{
+    public string PresentacionCodigo { get; set; } = string.Empty;
+    public long ListaPrecioId { get; set; }
+    public string MetodoCalculo { get; set; } = "PRECIO_FIJO";
+    public decimal? Porcentaje { get; set; }
+    public decimal? Precio { get; set; }
+    public int Estado { get; set; } = 1;
+}
+
 public sealed class ProductoImpuestoDto
 {
     public long TarifaImpuestoId { get; set; }

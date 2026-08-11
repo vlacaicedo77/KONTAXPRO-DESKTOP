@@ -298,6 +298,19 @@ public class KontaxDbContext : DbContext
     public DbSet<CompraDetalle> ComprasDetalles => Set<CompraDetalle>();
     public DbSet<CompraDetalleImpuesto> ComprasDetallesImpuestos
         => Set<CompraDetalleImpuesto>();
+    public DbSet<DocumentoRecibidoSriPago> DocumentosRecibidosSriPagos
+        => Set<DocumentoRecibidoSriPago>();
+    public DbSet<ProveedorProductoEquivalencia>
+        ProveedoresProductosEquivalencias
+        => Set<ProveedorProductoEquivalencia>();
+    public DbSet<CompraRecepcion> ComprasRecepciones
+        => Set<CompraRecepcion>();
+    public DbSet<CompraRecepcionDetalle> ComprasRecepcionesDetalles
+        => Set<CompraRecepcionDetalle>();
+    public DbSet<CompraRecepcionDetalleLote> ComprasRecepcionesDetallesLotes
+        => Set<CompraRecepcionDetalleLote>();
+    public DbSet<CompraRecepcionDetalleSerie> ComprasRecepcionesDetallesSeries
+        => Set<CompraRecepcionDetalleSerie>();
     public DbSet<LiquidacionCompra> LiquidacionesCompra
         => Set<LiquidacionCompra>();
     public DbSet<LiquidacionCompraDetalle> LiquidacionesCompraDetalles
@@ -339,6 +352,10 @@ public class KontaxDbContext : DbContext
     public DbSet<Caja> Cajas => Set<Caja>();
     public DbSet<CajaSesion> CajasSesiones => Set<CajaSesion>();
     public DbSet<MovimientoCaja> MovimientosCaja => Set<MovimientoCaja>();
+    public DbSet<OperacionSinSustento> OperacionesSinSustento
+        => Set<OperacionSinSustento>();
+    public DbSet<OperacionSinSustentoDetalle> OperacionesSinSustentoDetalles
+        => Set<OperacionSinSustentoDetalle>();
     public DbSet<DepositoCajaBanco> DepositosCajaBanco
         => Set<DepositoCajaBanco>();
     public DbSet<CuentaBancaria> CuentasBancarias => Set<CuentaBancaria>();

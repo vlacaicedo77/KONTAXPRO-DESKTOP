@@ -3,6 +3,8 @@ using KONTAXPRO.Desktop.ViewModels;
 using KONTAXPRO.Desktop.ViewModels.Products;
 using KONTAXPRO.Desktop.ViewModels.Clientes;
 using KONTAXPRO.Desktop.ViewModels.Proveedores;
+using KONTAXPRO.Desktop.ViewModels.Compras;
+using KONTAXPRO.Desktop.ViewModels.Tesoreria;
 
 namespace KONTAXPRO.Desktop.Services
 {
@@ -42,6 +44,14 @@ namespace KONTAXPRO.Desktop.Services
                 "Proveedores" => _serviceProvider.GetService(
                                       typeof(ProveedoresViewModel))
                                   as ObservableObject,
+
+                "Compras" => _serviceProvider.GetService(
+                                  typeof(ComprasViewModel))
+                              as ObservableObject,
+
+                "OperacionesSinComprobante" => _serviceProvider.GetService(
+                                  typeof(OperacionesSinSustentoViewModel))
+                              as ObservableObject,
 
                 _ => CurrentViewModel
             };

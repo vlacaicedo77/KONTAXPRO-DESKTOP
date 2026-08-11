@@ -26,12 +26,20 @@
                     CornerRadius="3"
                     Background="{Binding AccentBrush}"/>
 
-            <materialDesign:PackIcon Grid.Column="1"
-                                     Kind="{Binding IconKind}"
-                                     Width="23"
-                                     Height="23"
-                                     Margin="0,1,13,0"
-                                     Foreground="{Binding AccentBrush}"/>
+            <Border Grid.Column="1"
+                    Width="38"
+                    Height="38"
+                    Margin="0,0,13,0"
+                    CornerRadius="10"
+                    Background="{Binding AccentBrush}"
+                    VerticalAlignment="Center">
+                <materialDesign:PackIcon Kind="{Binding IconKind}"
+                                         Width="21"
+                                         Height="21"
+                                         Foreground="White"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center"/>
+            </Border>
 
             <StackPanel Grid.Column="2">
                 <TextBlock Text="{Binding NotificationTitle}"

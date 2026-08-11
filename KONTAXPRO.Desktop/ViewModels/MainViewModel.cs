@@ -328,25 +328,37 @@ namespace KONTAXPRO.Desktop.ViewModels
                 new MenuItemModel
                 {
                     Titulo = "Nueva compra",
-                    Icono = "CartPlus"
+                    Icono = "CartPlus",
+                    ComandoNavegacion = "Compras"
                 },
 
                 new MenuItemModel
                 {
                     Titulo = "Recepción de mercadería",
-                    Icono = "PackageDown"
+                    Icono = "PackageDown",
+                    ComandoNavegacion = "Compras"
                 },
 
                 new MenuItemModel
                 {
                     Titulo = "Importar XML",
-                    Icono = "FileXmlBox"
+                    Icono = "FileXmlBox",
+                    ComandoNavegacion = "Compras"
                 },
 
                 new MenuItemModel
                 {
                     Titulo = "Compras registradas",
-                    Icono = "ClipboardTextClockOutline"
+                    Icono = "ClipboardTextClockOutline",
+                    ComandoNavegacion = "Compras"
+                },
+
+                new MenuItemModel
+                {
+                    Titulo = "Operaciones sin comprobante",
+                    Icono = "ReceiptTextRemoveOutline",
+                    Permiso = "TESORERIA_REGISTRAR_SIN_SUSTENTO",
+                    ComandoNavegacion = "OperacionesSinComprobante"
                 },
 
                 new MenuItemModel

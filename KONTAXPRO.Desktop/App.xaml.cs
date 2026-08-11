@@ -5,6 +5,8 @@ using KONTAXPRO.Desktop.ViewModels;
 using KONTAXPRO.Desktop.ViewModels.Products;
 using KONTAXPRO.Desktop.ViewModels.Clientes;
 using KONTAXPRO.Desktop.ViewModels.Proveedores;
+using KONTAXPRO.Desktop.ViewModels.Compras;
+using KONTAXPRO.Desktop.ViewModels.Tesoreria;
 using KONTAXPRO.Desktop.Views;
 using KONTAXPRO.Desktop.Views.Products;
 using KONTAXPRO.Desktop.Views.Clientes;
@@ -17,6 +19,8 @@ using KONTAXPRO.Infrastructure.FacturacionElectronica;
 using KONTAXPRO.Infrastructure.Clientes;
 using KONTAXPRO.Infrastructure.Proveedores;
 using KONTAXPRO.Infrastructure.Interoperabilidad;
+using KONTAXPRO.Infrastructure.Compras;
+using KONTAXPRO.Infrastructure.Tesoreria;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -69,6 +73,69 @@ namespace KONTAXPRO.Desktop
             services.AddTransient<IProductCatalogService, ProductCatalogService>();
             services.AddTransient<IClienteService, ClienteService>();
             services.AddTransient<IProveedorService, ProveedorService>();
+            var documentsPath = Environment.GetEnvironmentVariable(
+                "KONTAXPRO_DOCUMENTS_PATH") ??
+                _configuration["DocumentStorage:ComprasRoot"] ??
+                "data/documentos";
+            if (!System.IO.Path.IsPathRooted(documentsPath))
+                documentsPath = System.IO.Path.Combine(
+                    AppContext.BaseDirectory, documentsPath);
+            services.AddSingleton(new CompraStorageOptions
+            {
+                DirectorioBase = documentsPath
+            });
+            services.AddSingleton<IArchivoCompraStorage,
+                ArchivoCompraFileStorage>();
+            services.AddSingleton<ISoporteSinSustentoStorage,
+                SoporteSinSustentoFileStorage>();
+            services.AddSingleton<ImportacionCompraStore>();
+            services.AddSingleton<IComprobanteCompraXmlReader,
+                ComprobanteCompraXmlReader>();
+            var sriValidationOptions = new ConsultaAutorizacionSriOptions
+            {
+                UrlPruebas = _configuration[
+                    "Sri:ConsultaComprobante:UrlPruebas"] ??
+                    new ConsultaAutorizacionSriOptions().UrlPruebas,
+                UrlProduccion = _configuration[
+                    "Sri:ConsultaComprobante:UrlProduccion"] ??
+                    new ConsultaAutorizacionSriOptions().UrlProduccion,
+                UrlAutorizacionPruebas = _configuration[
+                    "Sri:ConsultaComprobante:UrlAutorizacionPruebas"] ??
+                    new ConsultaAutorizacionSriOptions().UrlAutorizacionPruebas,
+                UrlAutorizacionProduccion = _configuration[
+                    "Sri:ConsultaComprobante:UrlAutorizacionProduccion"] ??
+                    new ConsultaAutorizacionSriOptions().UrlAutorizacionProduccion,
+                TimeoutSegundos = int.TryParse(_configuration[
+                        "Sri:ConsultaComprobante:TimeoutSegundos"],
+                    out var sriTimeout)
+                    ? Math.Clamp(sriTimeout, 3, 60)
+                    : 12
+            };
+            services.AddSingleton(sriValidationOptions);
+            services.AddHttpClient<IConsultaAutorizacionComprobanteSri,
+                ConsultaAutorizacionComprobanteSri>(client =>
+                client.Timeout = TimeSpan.FromSeconds(
+                    sriValidationOptions.TimeoutSegundos));
+            var environmentName =
+                Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
+                ?? Environment.GetEnvironmentVariable(
+                    "ASPNETCORE_ENVIRONMENT");
+            services.AddSingleton(new ComprasRuntimeOptions
+            {
+                EsDevelopment = string.Equals(
+                    environmentName,
+                    "Development",
+                    StringComparison.OrdinalIgnoreCase)
+            });
+            services.AddTransient<ICompraImportacionService,
+                CompraImportacionService>();
+            services.AddTransient<ICompraProductoResolverService,
+                CompraProductoResolverService>();
+            services.AddTransient<ICompraService, CompraService>();
+            services.AddTransient<ICompraRecepcionService,
+                CompraRecepcionService>();
+            services.AddTransient<IOperacionSinSustentoService,
+                OperacionSinSustentoService>();
             services.AddTransient<IEstadoComprobanteElectronicoService,
                 EstadoComprobanteElectronicoService>();
             services.AddTransient<ProductsViewModel>();
@@ -79,6 +146,9 @@ namespace KONTAXPRO.Desktop
             services.AddTransient<ProveedorFormViewModel>();
             services.AddTransient<ProveedoresViewModel>();
             services.AddTransient<ProveedoresView>();
+            services.AddTransient<ComprasViewModel>();
+            services.AddTransient<OperacionSinSustentoViewModel>();
+            services.AddTransient<OperacionesSinSustentoViewModel>();
 
             var interoperabilidadOptions =
                 CreateInteroperabilidadOptions(_configuration);

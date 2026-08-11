@@ -90,12 +90,31 @@ public sealed class DocumentoRecibidoSriConfiguration
                 "('INVENTARIO', 'GASTO', 'ACTIVO', 'OTRO')");
             t.HasCheckConstraint("ck_documentos_recibidos_sri_estado",
                 "estado_procesamiento IN ('PENDIENTE', 'PROCESADO', 'NO_APLICA')");
+            t.HasCheckConstraint("ck_documentos_recibidos_sri_validacion",
+                "estado_validacion IN ('AUTORIZADO_SRI', 'VALIDADO_LOCALMENTE', 'ADVERTENCIA', 'RECHAZADO')");
+            t.HasCheckConstraint("ck_documentos_recibidos_sri_archivo",
+                "archivo_tamano > 0 AND length(archivo_sha256) = 64");
         });
         b.HasAlternateKey(x => new { x.Id, x.EmpresaId })
             .HasName("ak_documentos_recibidos_sri_id_empresa");
         b.Property(x => x.NumeroDocumento).HasMaxLength(64).IsRequired();
         b.Property(x => x.ClaveAcceso).HasMaxLength(49).IsRequired();
+        b.Property(x => x.Ambiente).HasMaxLength(16).IsRequired();
+        b.Property(x => x.TipoEmision).HasMaxLength(16).IsRequired();
+        b.Property(x => x.RucEmisor).HasMaxLength(20).IsRequired();
+        b.Property(x => x.RazonSocialEmisor).HasMaxLength(256).IsRequired();
+        b.Property(x => x.NombreComercialEmisor).HasMaxLength(256);
+        b.Property(x => x.DireccionMatriz).HasMaxLength(500);
+        b.Property(x => x.DireccionEstablecimiento).HasMaxLength(500);
+        b.Property(x => x.EstablecimientoCodigo).HasMaxLength(3).IsRequired();
+        b.Property(x => x.PuntoEmisionCodigo).HasMaxLength(3).IsRequired();
+        b.Property(x => x.Secuencial).HasMaxLength(9).IsRequired();
         b.Property(x => x.IdentificacionReceptor).HasMaxLength(20).IsRequired();
+        b.Property(x => x.RazonSocialReceptor).HasMaxLength(256).IsRequired();
+        b.Property(x => x.Moneda).HasMaxLength(16);
+        b.Property(x => x.EstadoValidacion).HasMaxLength(24).IsRequired();
+        b.Property(x => x.ArchivoRutaRelativa).HasMaxLength(500).IsRequired();
+        b.Property(x => x.ArchivoSha256).HasMaxLength(64).IsRequired();
         b.Property(x => x.NumeroDocumentoModificado).HasMaxLength(64);
         b.Property(x => x.Clasificacion).HasMaxLength(16);
         b.Property(x => x.EstadoProcesamiento).HasMaxLength(16).IsRequired();
@@ -104,9 +123,12 @@ public sealed class DocumentoRecibidoSriConfiguration
             .HasColumnType("timestamp with time zone");
         b.Property(x => x.XmlObtenidoAt)
             .HasColumnType("timestamp with time zone");
-        ComprasEf.Money(b, "ValorSinImpuestos", "Iva", "ImporteTotal");
+        ComprasEf.Money(b, "ValorSinImpuestos", "Iva", "Propina",
+            "ImporteTotal");
         b.HasIndex(x => x.ClaveAcceso).IsUnique()
             .HasDatabaseName("ux_documentos_recibidos_sri_clave_acceso");
+        b.HasIndex(x => x.ArchivoSha256).IsUnique()
+            .HasDatabaseName("ux_documentos_recibidos_sri_archivo_sha256");
         b.HasOne(x => x.Empresa).WithMany().HasForeignKey(x => x.EmpresaId)
             .OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.Tercero).WithMany().HasForeignKey(x => x.TerceroId)
@@ -125,30 +147,46 @@ public sealed class CompraConfiguration : IEntityTypeConfiguration<Compra>
         b.ToTable("compras", "s_compras", t =>
         {
             t.HasCheckConstraint("ck_compras_tipo",
-                "tipo_compra IN ('FACTURADA', 'SIN_FACTURA')");
+                "tipo_compra = 'FACTURADA'");
             t.HasCheckConstraint("ck_compras_documento",
                 "(tipo_compra = 'FACTURADA' AND tipo_comprobante_id IS NOT NULL " +
-                "AND numero_documento IS NOT NULL) OR " +
-                "(tipo_compra = 'SIN_FACTURA')");
+                "AND numero_documento IS NOT NULL)");
+            t.HasCheckConstraint("ck_compras_estado",
+                "estado IN ('BORRADOR', 'PENDIENTE_RECEPCION', " +
+                "'PARCIALMENTE_RECIBIDA', 'RECIBIDA', 'ANULADA')");
         });
         b.HasAlternateKey(x => new { x.Id, x.EmpresaId })
             .HasName("ak_compras_id_empresa");
         b.Property(x => x.TipoCompra).HasMaxLength(16).IsRequired();
         b.Property(x => x.NumeroDocumento).HasMaxLength(64);
+        b.Property(x => x.ProveedorIdentificacion).HasMaxLength(20).IsRequired();
+        b.Property(x => x.ProveedorRazonSocial).HasMaxLength(256).IsRequired();
         b.Property(x => x.Estado).HasMaxLength(24).IsRequired();
         b.Property(x => x.MotivoAnulacion).HasMaxLength(500);
         b.Property(x => x.Observacion).HasMaxLength(1000);
         b.Property(x => x.FechaEmision).HasColumnType("date");
         b.Property(x => x.FechaIngreso).HasColumnType("timestamp with time zone");
         b.Property(x => x.AnuladaAt).HasColumnType("timestamp with time zone");
+        b.Property(x => x.FechaVencimiento).HasColumnType("date");
+        b.Property(x => x.Version).HasColumnName("xmin").IsRowVersion();
         ComprasEf.Money(b, "SubtotalSinImpuestos", "DescuentoTotal",
             "Subtotal", "ImpuestoTotal", "Total");
         b.HasIndex(x => x.DocumentoRecibidoSriId).IsUnique()
             .HasFilter("documento_recibido_sri_id IS NOT NULL")
             .HasDatabaseName("ux_compras_documento_recibido_sri");
-        b.HasIndex(x => new { x.EmpresaId, x.NumeroDocumento })
-            .HasFilter("numero_documento IS NOT NULL")
-            .HasDatabaseName("ix_compras_empresa_numero");
+        b.HasIndex(x => x.CompraSustituidaId).IsUnique()
+            .HasFilter("compra_sustituida_id IS NOT NULL")
+            .HasDatabaseName("ux_compras_compra_sustituida");
+        b.HasIndex(x => new
+            {
+                x.EmpresaId,
+                x.EmpresaTerceroId,
+                x.TipoComprobanteId,
+                x.NumeroDocumento
+            })
+            .IsUnique()
+            .HasFilter("numero_documento IS NOT NULL AND estado <> 'ANULADA'")
+            .HasDatabaseName("ux_compras_empresa_proveedor_tipo_numero");
         b.HasOne(x => x.Empresa).WithMany().HasForeignKey(x => x.EmpresaId)
             .OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.Establecimiento).WithMany()
@@ -164,6 +202,12 @@ public sealed class CompraConfiguration : IEntityTypeConfiguration<Compra>
         b.HasOne(x => x.DocumentoRecibidoSri).WithMany()
             .HasForeignKey(x => new { x.DocumentoRecibidoSriId, x.EmpresaId })
             .HasPrincipalKey(x => new { x.Id, x.EmpresaId })
+            .OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(x => x.CompraSustituida)
+            .WithOne(x => x.CompraSustituta)
+            .HasForeignKey<Compra>(x =>
+                new { x.CompraSustituidaId, x.EmpresaId })
+            .HasPrincipalKey<Compra>(x => new { x.Id, x.EmpresaId })
             .OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.TipoComprobante).WithMany()
             .HasForeignKey(x => x.TipoComprobanteId)
@@ -186,22 +230,84 @@ public sealed class CompraDetalleConfiguration
                 "cantidad_presentacion > 0 AND factor_conversion > 0 " +
                 "AND cantidad_base > 0");
             t.HasCheckConstraint("ck_compras_detalles_producto",
-                "(producto_presentacion_id IS NULL OR producto_id IS NOT NULL) " +
-                "AND (bodega_id IS NULL OR producto_id IS NOT NULL)");
+                "(es_inventariable AND producto_id IS NOT NULL AND " +
+                "producto_presentacion_id IS NOT NULL AND " +
+                "estado_reconocimiento = 'RECONOCIDA') OR " +
+                "(NOT es_inventariable AND producto_id IS NULL AND " +
+                "producto_presentacion_id IS NULL AND " +
+                "estado_reconocimiento = 'NO_INVENTARIABLE') OR " +
+                "(estado_reconocimiento IN ('SUGERIDA', 'NO_RECONOCIDA'))");
+            t.HasCheckConstraint("ck_compras_detalles_reconocimiento",
+                "estado_reconocimiento IN ('RECONOCIDA', 'SUGERIDA', " +
+                "'NO_RECONOCIDA', 'NO_INVENTARIABLE')");
+            t.HasCheckConstraint("ck_compras_detalles_clasificacion_contable",
+                "clasificacion_contable IN ('INVENTARIO', 'GASTO', " +
+                "'ACTIVO', 'OTRO')");
+            t.HasCheckConstraint("ck_compras_detalles_clasificacion_producto",
+                "(es_inventariable AND clasificacion_contable = 'INVENTARIO') " +
+                "OR (NOT es_inventariable AND " +
+                "clasificacion_contable <> 'INVENTARIO')");
+            t.HasCheckConstraint("ck_compras_detalles_orden",
+                "orden > 0");
         });
+        b.HasAlternateKey(x => new { x.Id, x.EmpresaId })
+            .HasName("ak_compras_detalles_id_empresa");
+        b.HasAlternateKey(x => new { x.Id, x.CompraId, x.EmpresaId })
+            .HasName("ak_compras_detalles_id_compra_empresa");
         b.Property(x => x.Descripcion).HasMaxLength(500).IsRequired();
+        b.Property(x => x.CodigoPrincipalProveedor).HasMaxLength(100);
+        b.Property(x => x.CodigoAuxiliarProveedor).HasMaxLength(100);
+        b.Property(x => x.EstadoReconocimiento).HasMaxLength(24).IsRequired();
+        b.Property(x => x.ClasificacionContable).HasMaxLength(16).IsRequired();
         ComprasEf.Quantity(b, "CantidadPresentacion", "FactorConversion",
             "CantidadBase", "PrecioUnitarioCompra", "DescuentoPorcentaje",
             "CostoUnitarioBase");
-        ComprasEf.Money(b, "DescuentoValor", "CostoTotalLinea");
+        ComprasEf.Money(b, "DescuentoValor", "PrecioTotalSinImpuesto",
+            "CostoTotalLinea");
+        b.HasIndex(x => new { x.CompraId, x.Orden }).IsUnique()
+            .HasDatabaseName("ux_compras_detalles_compra_orden");
         b.HasOne(x => x.Compra).WithMany(x => x.Detalles)
-            .HasForeignKey(x => x.CompraId).OnDelete(DeleteBehavior.Restrict);
-        b.HasOne(x => x.Producto).WithMany().HasForeignKey(x => x.ProductoId)
+            .HasForeignKey(x => new { x.CompraId, x.EmpresaId })
+            .HasPrincipalKey(x => new { x.Id, x.EmpresaId })
+            .OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(x => x.CuentaContable).WithMany()
+            .HasForeignKey(x => new { x.CuentaContableId, x.EmpresaId })
+            .HasPrincipalKey(x => new { x.Id, x.EmpresaId })
+            .OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(x => x.Producto).WithMany()
+            .HasForeignKey(x => new { x.ProductoId, x.EmpresaId })
+            .HasPrincipalKey(x => new { x.Id, x.EmpresaId })
             .OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.ProductoPresentacion).WithMany()
-            .HasForeignKey(x => x.ProductoPresentacionId)
+            .HasForeignKey(x => new
+            {
+                x.ProductoPresentacionId,
+                x.ProductoId,
+                x.EmpresaId
+            })
+            .HasPrincipalKey(x => new { x.Id, x.ProductoId, x.EmpresaId })
             .OnDelete(DeleteBehavior.Restrict);
-        b.HasOne(x => x.Bodega).WithMany().HasForeignKey(x => x.BodegaId)
+    }
+}
+
+public sealed class DocumentoRecibidoSriPagoConfiguration
+    : IEntityTypeConfiguration<DocumentoRecibidoSriPago>
+{
+    public void Configure(EntityTypeBuilder<DocumentoRecibidoSriPago> b)
+    {
+        ComprasEf.Base(b, "documentos_recibidos_sri_pagos", false);
+        b.ToTable("documentos_recibidos_sri_pagos", "s_compras", t =>
+        {
+            t.HasCheckConstraint("ck_documentos_sri_pagos_valor", "valor > 0");
+            t.HasCheckConstraint("ck_documentos_sri_pagos_plazo",
+                "plazo IS NULL OR plazo >= 0");
+        });
+        b.Property(x => x.CodigoFormaPagoSri).HasMaxLength(8).IsRequired();
+        b.Property(x => x.UnidadTiempo).HasMaxLength(32);
+        ComprasEf.Money(b, "Valor");
+        b.HasOne(x => x.DocumentoRecibidoSri)
+            .WithMany(x => x.PagosDeclarados)
+            .HasForeignKey(x => x.DocumentoRecibidoSriId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

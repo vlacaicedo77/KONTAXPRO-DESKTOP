@@ -17,6 +17,8 @@ public sealed class ProductoLoteConfiguration
                 "fecha_caducidad >= fecha_elaboracion");
         });
         b.HasKey(x => x.Id); InventarioEf.Id(b);
+        b.HasAlternateKey(x => new { x.Id, x.ProductoId })
+            .HasName("ak_productos_lotes_id_producto");
         b.Property(x => x.ProductoId).HasColumnName("producto_id").IsRequired();
         b.Property(x => x.NumeroLote).HasColumnName("numero_lote")
             .HasMaxLength(128).IsRequired();
@@ -67,6 +69,8 @@ public sealed class ProductoSerieConfiguration
     {
         b.ToTable("productos_series", "s_inventario");
         b.HasKey(x => x.Id); InventarioEf.Id(b);
+        b.HasAlternateKey(x => new { x.Id, x.ProductoId, x.BodegaId })
+            .HasName("ak_productos_series_id_producto_bodega");
         b.Property(x => x.ProductoId).HasColumnName("producto_id").IsRequired();
         b.Property(x => x.ProductoLoteId).HasColumnName("producto_lote_id");
         b.Property(x => x.BodegaId).HasColumnName("bodega_id").IsRequired();
@@ -83,7 +87,8 @@ public sealed class ProductoSerieConfiguration
         b.HasOne(x => x.Producto).WithMany(x => x.Series)
             .HasForeignKey(x => x.ProductoId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.ProductoLote).WithMany(x => x.Series)
-            .HasForeignKey(x => x.ProductoLoteId)
+            .HasForeignKey(x => new { x.ProductoLoteId, x.ProductoId })
+            .HasPrincipalKey(x => new { x.Id, x.ProductoId })
             .OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.Bodega).WithMany()
             .HasForeignKey(x => x.BodegaId).OnDelete(DeleteBehavior.Restrict);

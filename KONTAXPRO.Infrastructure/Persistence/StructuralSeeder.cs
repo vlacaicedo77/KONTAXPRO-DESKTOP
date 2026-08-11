@@ -77,7 +77,8 @@ public sealed class StructuralSeeder
                 ("TRANSFERENCIA_ENTRADA", "ENTRADA"),
                 ("AJUSTE_ENTRADA", "ENTRADA"),
                 ("AJUSTE_SALIDA", "SALIDA"),
-                ("INVENTARIO_INICIAL", "ENTRADA")
+                ("INVENTARIO_INICIAL", "ENTRADA"),
+                ("ADQUISICION_SIN_SUSTENTO", "ENTRADA")
             ],
             now,
             cancellationToken);
@@ -88,7 +89,8 @@ public sealed class StructuralSeeder
             [
                 "COMPRA", "LIQUIDACION_COMPRA", "FACTURA", "NOTA_ENTREGA",
                 "VENTA_XF", "DEVOLUCION_COMPRA", "DEVOLUCION_VENTA",
-                "TRANSFERENCIA", "AJUSTE", "INVENTARIO_INICIAL"
+                "TRANSFERENCIA", "AJUSTE", "INVENTARIO_INICIAL",
+                "OPERACION_SIN_SUSTENTO"
             ],
             now,
             cancellationToken);
@@ -112,6 +114,7 @@ public sealed class StructuralSeeder
             context.TiposMovimientoCuentasPorPagar,
             [
                 ("ORIGEN_DEUDA", "DEBITO"),
+                ("ANULACION_DEUDA", "CREDITO"),
                 ("PAGO", "CREDITO"),
                 ("REVERSO_PAGO", "DEBITO"),
                 ("NOTA_CREDITO_PROVEEDOR", "CREDITO"),
@@ -129,7 +132,7 @@ public sealed class StructuralSeeder
                 "IVA_POR_PAGAR", "RETENCIONES_RENTA_POR_PAGAR",
                 "RETENCIONES_IVA_POR_PAGAR",
                 "RETENCIONES_RENTA_POR_COBRAR",
-                "RETENCIONES_IVA_POR_COBRAR"
+                "RETENCIONES_IVA_POR_COBRAR", "GASTOS_NO_DEDUCIBLES"
             ],
             now,
             cancellationToken);
@@ -144,7 +147,7 @@ public sealed class StructuralSeeder
                 "NOTA_CREDITO", "NOTA_DEBITO", "RETENCION_EMITIDA",
                 "RETENCION_RECIBIDA", "DEPOSITO_CAJA_BANCO",
                 "TRANSFERENCIA_BANCARIA", "MOVIMIENTO_INVENTARIO",
-                "AJUSTE_MANUAL"
+                "AJUSTE_MANUAL", "OPERACION_SIN_SUSTENTO"
             ],
             now,
             cancellationToken);
@@ -353,6 +356,18 @@ public sealed class StructuralSeeder
             ("INVENTARIO_CORREGIR_SERIE", "INVENTARIO"),
             ("INVENTARIO_CREAR_MOTIVO", "INVENTARIO"),
             ("TERCEROS_GESTIONAR", "COMERCIAL"),
+            ("COMPRAS_VER", "COMPRAS"),
+            ("COMPRAS_CREAR", "COMPRAS"),
+            ("COMPRAS_EDITAR", "COMPRAS"),
+            ("COMPRAS_IMPORTAR_XML", "COMPRAS"),
+            ("COMPRAS_RECIBIR", "COMPRAS"),
+            ("COMPRAS_ANULAR", "COMPRAS"),
+            ("COMPRAS_VER_COSTOS", "COMPRAS"),
+            ("TESORERIA_VER_SIN_SUSTENTO", "TESORERIA"),
+            ("TESORERIA_REGISTRAR_SIN_SUSTENTO", "TESORERIA"),
+            ("TESORERIA_CORREGIR_SIN_SUSTENTO", "TESORERIA"),
+            ("TESORERIA_ANULAR_SIN_SUSTENTO", "TESORERIA"),
+            ("PRODUCTOS_CONFIGURAR_PRECIOS", "INVENTARIO"),
             ("CARTERA_ANULAR_COBRO", "CARTERA"),
             ("CONTABILIDAD_REABRIR_PERIODO", "CONTABILIDAD"),
             ("CONTABILIDAD_CREAR_ASIENTO_MANUAL", "CONTABILIDAD"),
@@ -413,7 +428,9 @@ public sealed class StructuralSeeder
 
         var asignaciones = permisosSeeds
             .Select(x => ("ADMINISTRADOR", x.Codigo))
-            .Append(("GUARDALMACEN", "INVENTARIO_VER_COSTO"));
+            .Append(("GUARDALMACEN", "INVENTARIO_VER_COSTO"))
+            .Append(("GUARDALMACEN", "COMPRAS_VER"))
+            .Append(("GUARDALMACEN", "COMPRAS_RECIBIR"));
 
         foreach (var (codigoRol, codigoPermiso) in asignaciones)
         {
@@ -791,7 +808,8 @@ public sealed class StructuralSeeder
             ("DEVOLUCION_COMPRA", "DC"),
             ("DEVOLUCION_VENTA", "DV"),
             ("DEPOSITO_CAJA_BANCO", "DEP"),
-            ("TRANSFERENCIA_BANCARIA", "TB")
+            ("TRANSFERENCIA_BANCARIA", "TB"),
+            ("OPERACION_SIN_SUSTENTO", "OSS")
         ];
         var existentes = await context.TiposDocumentoInterno
             .ToDictionaryAsync(x => x.Codigo, cancellationToken);

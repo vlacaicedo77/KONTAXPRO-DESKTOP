@@ -43,8 +43,8 @@ public partial class MessageDialogWindow : Window
         MessageDialogType.Error => "DangerButtonBackgroundBrush",
         MessageDialogType.Warning => "KontaxDialogWarningBrush",
         MessageDialogType.Info => "KontaxDialogInfoBrush",
-        MessageDialogType.Success => "BrandProBrush",
-        _ => "BrandProBrush"
+        MessageDialogType.Success => "PrimaryDarkBrush",
+        _ => "KontaxDialogQuestionBrush"
     });
 
     public Brush AccentSoftBrush => FindBrush(Type switch

@@ -3166,6 +3166,12 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("verificado_at");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ClaveIdentidad")
@@ -3517,6 +3523,10 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("anulado_por_usuario_id");
 
+                    b.Property<long?>("CompraSustituidaId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("compra_sustituida_id");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -3562,6 +3572,10 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("fecha_ingreso");
 
+                    b.Property<DateOnly?>("FechaVencimiento")
+                        .HasColumnType("date")
+                        .HasColumnName("fecha_vencimiento");
+
                     b.Property<decimal>("ImpuestoTotal")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
@@ -3581,6 +3595,18 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("observacion");
+
+                    b.Property<string>("ProveedorIdentificacion")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("proveedor_identificacion");
+
+                    b.Property<string>("ProveedorRazonSocial")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("proveedor_razon_social");
 
                     b.Property<decimal>("Subtotal")
                         .HasPrecision(18, 2)
@@ -3615,12 +3641,23 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("usuario_id");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
                     b.HasAlternateKey("Id", "EmpresaId")
                         .HasName("ak_compras_id_empresa");
 
                     b.HasIndex("AnuladoPorUsuarioId");
+
+                    b.HasIndex("CompraSustituidaId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_compras_compra_sustituida")
+                        .HasFilter("compra_sustituida_id IS NOT NULL");
 
                     b.HasIndex("DocumentoRecibidoSriId")
                         .IsUnique()
@@ -3631,21 +3668,27 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("UsuarioId");
 
-                    b.HasIndex("DocumentoRecibidoSriId", "EmpresaId");
+                    b.HasIndex("CompraSustituidaId", "EmpresaId")
+                        .IsUnique();
 
-                    b.HasIndex("EmpresaId", "NumeroDocumento")
-                        .HasDatabaseName("ix_compras_empresa_numero")
-                        .HasFilter("numero_documento IS NOT NULL");
+                    b.HasIndex("DocumentoRecibidoSriId", "EmpresaId");
 
                     b.HasIndex("EmpresaTerceroId", "EmpresaId");
 
                     b.HasIndex("EstablecimientoId", "EmpresaId");
 
+                    b.HasIndex("EmpresaId", "EmpresaTerceroId", "TipoComprobanteId", "NumeroDocumento")
+                        .IsUnique()
+                        .HasDatabaseName("ux_compras_empresa_proveedor_tipo_numero")
+                        .HasFilter("numero_documento IS NOT NULL AND estado <> 'ANULADA'");
+
                     b.ToTable("compras", "s_compras", t =>
                         {
-                            t.HasCheckConstraint("ck_compras_documento", "(tipo_compra = 'FACTURADA' AND tipo_comprobante_id IS NOT NULL AND numero_documento IS NOT NULL) OR (tipo_compra = 'SIN_FACTURA')");
+                            t.HasCheckConstraint("ck_compras_documento", "(tipo_compra = 'FACTURADA' AND tipo_comprobante_id IS NOT NULL AND numero_documento IS NOT NULL)");
 
-                            t.HasCheckConstraint("ck_compras_tipo", "tipo_compra IN ('FACTURADA', 'SIN_FACTURA')");
+                            t.HasCheckConstraint("ck_compras_estado", "estado IN ('BORRADOR', 'PENDIENTE_RECEPCION', 'PARCIALMENTE_RECIBIDA', 'RECIBIDA', 'ANULADA')");
+
+                            t.HasCheckConstraint("ck_compras_tipo", "tipo_compra = 'FACTURADA'");
                         });
                 });
 
@@ -3658,10 +3701,6 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
-                    b.Property<long?>("BodegaId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("bodega_id");
-
                     b.Property<decimal>("CantidadBase")
                         .HasPrecision(18, 6)
                         .HasColumnType("numeric(18,6)")
@@ -3671,6 +3710,22 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                         .HasPrecision(18, 6)
                         .HasColumnType("numeric(18,6)")
                         .HasColumnName("cantidad_presentacion");
+
+                    b.Property<string>("ClasificacionContable")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("clasificacion_contable");
+
+                    b.Property<string>("CodigoAuxiliarProveedor")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("codigo_auxiliar_proveedor");
+
+                    b.Property<string>("CodigoPrincipalProveedor")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("codigo_principal_proveedor");
 
                     b.Property<long>("CompraId")
                         .HasColumnType("bigint")
@@ -3692,6 +3747,10 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                    b.Property<long>("CuentaContableId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("cuenta_contable_id");
+
                     b.Property<string>("Descripcion")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -3708,14 +3767,37 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("descuento_valor");
 
+                    b.Property<long>("EmpresaId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("empresa_id");
+
                     b.Property<bool>("EsBonificacion")
                         .HasColumnType("boolean")
                         .HasColumnName("es_bonificacion");
+
+                    b.Property<bool>("EsInventariable")
+                        .HasColumnType("boolean")
+                        .HasColumnName("es_inventariable");
+
+                    b.Property<string>("EstadoReconocimiento")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("estado_reconocimiento");
 
                     b.Property<decimal>("FactorConversion")
                         .HasPrecision(18, 6)
                         .HasColumnType("numeric(18,6)")
                         .HasColumnName("factor_conversion");
+
+                    b.Property<int>("Orden")
+                        .HasColumnType("integer")
+                        .HasColumnName("orden");
+
+                    b.Property<decimal>("PrecioTotalSinImpuesto")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("precio_total_sin_impuesto");
 
                     b.Property<decimal>("PrecioUnitarioCompra")
                         .HasPrecision(18, 6)
@@ -3736,19 +3818,37 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BodegaId");
+                    b.HasAlternateKey("Id", "EmpresaId")
+                        .HasName("ak_compras_detalles_id_empresa");
 
-                    b.HasIndex("CompraId");
+                    b.HasAlternateKey("Id", "CompraId", "EmpresaId")
+                        .HasName("ak_compras_detalles_id_compra_empresa");
 
-                    b.HasIndex("ProductoId");
+                    b.HasIndex("CompraId", "EmpresaId");
 
-                    b.HasIndex("ProductoPresentacionId");
+                    b.HasIndex("CompraId", "Orden")
+                        .IsUnique()
+                        .HasDatabaseName("ux_compras_detalles_compra_orden");
+
+                    b.HasIndex("CuentaContableId", "EmpresaId");
+
+                    b.HasIndex("ProductoId", "EmpresaId");
+
+                    b.HasIndex("ProductoPresentacionId", "ProductoId", "EmpresaId");
 
                     b.ToTable("compras_detalles", "s_compras", t =>
                         {
                             t.HasCheckConstraint("ck_compras_detalles_cantidades", "cantidad_presentacion > 0 AND factor_conversion > 0 AND cantidad_base > 0");
 
-                            t.HasCheckConstraint("ck_compras_detalles_producto", "(producto_presentacion_id IS NULL OR producto_id IS NOT NULL) AND (bodega_id IS NULL OR producto_id IS NOT NULL)");
+                            t.HasCheckConstraint("ck_compras_detalles_clasificacion_contable", "clasificacion_contable IN ('INVENTARIO', 'GASTO', 'ACTIVO', 'OTRO')");
+
+                            t.HasCheckConstraint("ck_compras_detalles_clasificacion_producto", "(es_inventariable AND clasificacion_contable = 'INVENTARIO') OR (NOT es_inventariable AND clasificacion_contable <> 'INVENTARIO')");
+
+                            t.HasCheckConstraint("ck_compras_detalles_orden", "orden > 0");
+
+                            t.HasCheckConstraint("ck_compras_detalles_producto", "(es_inventariable AND producto_id IS NOT NULL AND producto_presentacion_id IS NOT NULL AND estado_reconocimiento = 'RECONOCIDA') OR (NOT es_inventariable AND producto_id IS NULL AND producto_presentacion_id IS NULL AND estado_reconocimiento = 'NO_INVENTARIABLE') OR (estado_reconocimiento IN ('SUGERIDA', 'NO_RECONOCIDA'))");
+
+                            t.HasCheckConstraint("ck_compras_detalles_reconocimiento", "estado_reconocimiento IN ('RECONOCIDA', 'SUGERIDA', 'NO_RECONOCIDA', 'NO_INVENTARIABLE')");
                         });
                 });
 
@@ -3826,6 +3926,373 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                     b.HasIndex("TarifaImpuestoId");
 
                     b.ToTable("compras_detalles_impuestos", "s_compras");
+                });
+
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Compras.CompraRecepcion", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime?>("AnuladaAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("anulada_at");
+
+                    b.Property<long?>("AnuladaPorUsuarioId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("anulada_por_usuario_id");
+
+                    b.Property<long>("BodegaId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("bodega_id");
+
+                    b.Property<long>("CompraId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("compra_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<long>("EmpresaId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("empresa_id");
+
+                    b.Property<long>("EstablecimientoId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("establecimiento_id");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("estado");
+
+                    b.Property<DateTime>("FechaRecepcion")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_recepcion");
+
+                    b.Property<string>("MotivoAnulacion")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("motivo_anulacion");
+
+                    b.Property<long?>("MovimientoInventarioId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("movimiento_inventario_id");
+
+                    b.Property<string>("NumeroRecepcion")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("numero_recepcion");
+
+                    b.Property<string>("Observacion")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("observacion");
+
+                    b.Property<Guid>("OperacionUuid")
+                        .HasColumnType("uuid")
+                        .HasColumnName("operacion_uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<long>("UsuarioId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("usuario_id");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Id", "EmpresaId")
+                        .HasName("ak_compras_recepciones_id_empresa");
+
+                    b.HasAlternateKey("Id", "CompraId", "EmpresaId")
+                        .HasName("ak_compras_recepciones_id_compra_empresa");
+
+                    b.HasAlternateKey("Id", "CompraId", "BodegaId", "EmpresaId")
+                        .HasName("ak_compras_recepciones_id_compra_bodega_empresa");
+
+                    b.HasIndex("AnuladaPorUsuarioId");
+
+                    b.HasIndex("MovimientoInventarioId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_compras_recepciones_movimiento")
+                        .HasFilter("movimiento_inventario_id IS NOT NULL");
+
+                    b.HasIndex("OperacionUuid")
+                        .IsUnique()
+                        .HasDatabaseName("ux_compras_recepciones_operacion_uuid");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.HasIndex("BodegaId", "EstablecimientoId");
+
+                    b.HasIndex("CompraId", "EmpresaId");
+
+                    b.HasIndex("EmpresaId", "NumeroRecepcion")
+                        .IsUnique()
+                        .HasDatabaseName("ux_compras_recepciones_empresa_numero");
+
+                    b.HasIndex("EstablecimientoId", "EmpresaId");
+
+                    b.ToTable("compras_recepciones", "s_compras", t =>
+                        {
+                            t.HasCheckConstraint("ck_compras_recepciones_estado", "estado IN ('CONFIRMADA', 'ANULADA')");
+                        });
+                });
+
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Compras.CompraRecepcionDetalle", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("BodegaId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("bodega_id");
+
+                    b.Property<decimal>("CantidadBase")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)")
+                        .HasColumnName("cantidad_base");
+
+                    b.Property<decimal>("CantidadPresentacion")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)")
+                        .HasColumnName("cantidad_presentacion");
+
+                    b.Property<long>("CompraDetalleId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("compra_detalle_id");
+
+                    b.Property<long>("CompraId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("compra_id");
+
+                    b.Property<long>("CompraRecepcionId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("compra_recepcion_id");
+
+                    b.Property<decimal>("CostoTotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("costo_total");
+
+                    b.Property<decimal>("CostoUnitarioBase")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)")
+                        .HasColumnName("costo_unitario_base");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<long>("EmpresaId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("empresa_id");
+
+                    b.Property<bool>("EsBonificacion")
+                        .HasColumnType("boolean")
+                        .HasColumnName("es_bonificacion");
+
+                    b.Property<decimal>("FactorConversion")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)")
+                        .HasColumnName("factor_conversion");
+
+                    b.Property<long?>("MovimientoInventarioDetalleId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("movimiento_inventario_detalle_id");
+
+                    b.Property<long>("ProductoId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("producto_id");
+
+                    b.Property<long>("ProductoPresentacionId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("producto_presentacion_id");
+
+                    b.Property<decimal?>("UltimoCostoEfectivoAnterior")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)")
+                        .HasColumnName("ultimo_costo_efectivo_anterior");
+
+                    b.Property<decimal?>("UltimoPrecioCompraAnterior")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)")
+                        .HasColumnName("ultimo_precio_compra_anterior");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Id", "EmpresaId")
+                        .HasName("ak_compras_recepciones_detalles_id_empresa");
+
+                    b.HasAlternateKey("Id", "ProductoId", "EmpresaId")
+                        .HasName("ak_compras_recepciones_detalles_id_producto_empresa");
+
+                    b.HasAlternateKey("Id", "ProductoId", "BodegaId", "EmpresaId")
+                        .HasName("ak_compras_recepciones_detalles_id_producto_bodega_empresa");
+
+                    b.HasIndex("MovimientoInventarioDetalleId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_compras_recepciones_detalles_movimiento")
+                        .HasFilter("movimiento_inventario_detalle_id IS NOT NULL");
+
+                    b.HasIndex("CompraRecepcionId", "CompraDetalleId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_compras_recepciones_detalles_compra_detalle");
+
+                    b.HasIndex("ProductoId", "EmpresaId");
+
+                    b.HasIndex("CompraDetalleId", "CompraId", "EmpresaId");
+
+                    b.HasIndex("ProductoPresentacionId", "ProductoId", "EmpresaId");
+
+                    b.HasIndex("CompraRecepcionId", "CompraId", "BodegaId", "EmpresaId");
+
+                    b.ToTable("compras_recepciones_detalles", "s_compras", t =>
+                        {
+                            t.HasCheckConstraint("ck_compras_recepciones_detalles_cantidad", "cantidad_presentacion > 0 AND factor_conversion > 0 AND cantidad_base > 0 AND costo_unitario_base >= 0 AND costo_total >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Compras.CompraRecepcionDetalleLote", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("CantidadBase")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)")
+                        .HasColumnName("cantidad_base");
+
+                    b.Property<long>("CompraRecepcionDetalleId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("compra_recepcion_detalle_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<long>("EmpresaId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("empresa_id");
+
+                    b.Property<DateOnly?>("FechaCaducidad")
+                        .HasColumnType("date")
+                        .HasColumnName("fecha_caducidad");
+
+                    b.Property<DateOnly?>("FechaElaboracion")
+                        .HasColumnType("date")
+                        .HasColumnName("fecha_elaboracion");
+
+                    b.Property<string>("NumeroLote")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("numero_lote");
+
+                    b.Property<long>("ProductoId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("producto_id");
+
+                    b.Property<long>("ProductoLoteId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("producto_lote_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompraRecepcionDetalleId", "ProductoLoteId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_compras_recepciones_detalles_lotes_lote");
+
+                    b.HasIndex("ProductoLoteId", "ProductoId");
+
+                    b.HasIndex("CompraRecepcionDetalleId", "ProductoId", "EmpresaId");
+
+                    b.ToTable("compras_recepciones_detalles_lotes", "s_compras", t =>
+                        {
+                            t.HasCheckConstraint("ck_compras_recepciones_detalles_lotes_cantidad", "cantidad_base > 0");
+                        });
+                });
+
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Compras.CompraRecepcionDetalleSerie", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("BodegaId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("bodega_id");
+
+                    b.Property<long>("CompraRecepcionDetalleId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("compra_recepcion_detalle_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<long>("EmpresaId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("empresa_id");
+
+                    b.Property<string>("NumeroSerie")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("numero_serie");
+
+                    b.Property<long>("ProductoId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("producto_id");
+
+                    b.Property<long>("ProductoSerieId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("producto_serie_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompraRecepcionDetalleId", "ProductoSerieId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_compras_recepciones_detalles_series_serie");
+
+                    b.HasIndex("ProductoSerieId", "ProductoId", "BodegaId");
+
+                    b.HasIndex("CompraRecepcionDetalleId", "ProductoId", "BodegaId", "EmpresaId");
+
+                    b.ToTable("compras_recepciones_detalles_series", "s_compras");
                 });
 
             modelBuilder.Entity("KONTAXPRO.Domain.Entities.Compras.DevolucionCompra", b =>
@@ -4029,6 +4496,28 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<string>("Ambiente")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("ambiente");
+
+                    b.Property<string>("ArchivoRutaRelativa")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("archivo_ruta_relativa");
+
+                    b.Property<string>("ArchivoSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("archivo_sha256");
+
+                    b.Property<long>("ArchivoTamano")
+                        .HasColumnType("bigint")
+                        .HasColumnName("archivo_tamano");
+
                     b.Property<string>("Clasificacion")
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)")
@@ -4046,9 +4535,25 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                    b.Property<string>("DireccionEstablecimiento")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("direccion_establecimiento");
+
+                    b.Property<string>("DireccionMatriz")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("direccion_matriz");
+
                     b.Property<long>("EmpresaId")
                         .HasColumnType("bigint")
                         .HasColumnName("empresa_id");
+
+                    b.Property<string>("EstablecimientoCodigo")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("establecimiento_codigo");
 
                     b.Property<string>("EstadoProcesamiento")
                         .IsRequired()
@@ -4056,13 +4561,23 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(16)")
                         .HasColumnName("estado_procesamiento");
 
-                    b.Property<DateTime>("FechaAutorizacion")
+                    b.Property<string>("EstadoValidacion")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("estado_validacion");
+
+                    b.Property<DateTime?>("FechaAutorizacion")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("fecha_autorizacion");
 
                     b.Property<DateOnly>("FechaEmision")
                         .HasColumnType("date")
                         .HasColumnName("fecha_emision");
+
+                    b.Property<bool>("FirmaPresente")
+                        .HasColumnType("boolean")
+                        .HasColumnName("firma_presente");
 
                     b.Property<string>("IdentificacionReceptor")
                         .IsRequired()
@@ -4080,6 +4595,16 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("iva");
 
+                    b.Property<string>("Moneda")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("moneda");
+
+                    b.Property<string>("NombreComercialEmisor")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("nombre_comercial_emisor");
+
                     b.Property<string>("NumeroDocumento")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -4091,6 +4616,41 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("numero_documento_modificado");
 
+                    b.Property<decimal>("Propina")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("propina");
+
+                    b.Property<string>("PuntoEmisionCodigo")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("punto_emision_codigo");
+
+                    b.Property<string>("RazonSocialEmisor")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("razon_social_emisor");
+
+                    b.Property<string>("RazonSocialReceptor")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("razon_social_receptor");
+
+                    b.Property<string>("RucEmisor")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("ruc_emisor");
+
+                    b.Property<string>("Secuencial")
+                        .IsRequired()
+                        .HasMaxLength(9)
+                        .HasColumnType("character varying(9)")
+                        .HasColumnName("secuencial");
+
                     b.Property<long?>("TerceroId")
                         .HasColumnType("bigint")
                         .HasColumnName("tercero_id");
@@ -4098,6 +4658,12 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                     b.Property<long>("TipoComprobanteId")
                         .HasColumnType("bigint")
                         .HasColumnName("tipo_comprobante_id");
+
+                    b.Property<string>("TipoEmision")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("tipo_emision");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -4117,6 +4683,10 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                     b.HasAlternateKey("Id", "EmpresaId")
                         .HasName("ak_documentos_recibidos_sri_id_empresa");
 
+                    b.HasIndex("ArchivoSha256")
+                        .IsUnique()
+                        .HasDatabaseName("ux_documentos_recibidos_sri_archivo_sha256");
+
                     b.HasIndex("ClaveAcceso")
                         .IsUnique()
                         .HasDatabaseName("ux_documentos_recibidos_sri_clave_acceso");
@@ -4129,9 +4699,64 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
 
                     b.ToTable("documentos_recibidos_sri", "s_compras", t =>
                         {
+                            t.HasCheckConstraint("ck_documentos_recibidos_sri_archivo", "archivo_tamano > 0 AND length(archivo_sha256) = 64");
+
                             t.HasCheckConstraint("ck_documentos_recibidos_sri_clasificacion", "clasificacion IS NULL OR clasificacion IN ('INVENTARIO', 'GASTO', 'ACTIVO', 'OTRO')");
 
                             t.HasCheckConstraint("ck_documentos_recibidos_sri_estado", "estado_procesamiento IN ('PENDIENTE', 'PROCESADO', 'NO_APLICA')");
+
+                            t.HasCheckConstraint("ck_documentos_recibidos_sri_validacion", "estado_validacion IN ('AUTORIZADO_SRI', 'VALIDADO_LOCALMENTE', 'ADVERTENCIA', 'RECHAZADO')");
+                        });
+                });
+
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Compras.DocumentoRecibidoSriPago", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("CodigoFormaPagoSri")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("codigo_forma_pago_sri");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<long>("DocumentoRecibidoSriId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("documento_recibido_sri_id");
+
+                    b.Property<int?>("Plazo")
+                        .HasColumnType("integer")
+                        .HasColumnName("plazo");
+
+                    b.Property<string>("UnidadTiempo")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("unidad_tiempo");
+
+                    b.Property<decimal>("Valor")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("valor");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentoRecibidoSriId");
+
+                    b.ToTable("documentos_recibidos_sri_pagos", "s_compras", t =>
+                        {
+                            t.HasCheckConstraint("ck_documentos_sri_pagos_plazo", "plazo IS NULL OR plazo >= 0");
+
+                            t.HasCheckConstraint("ck_documentos_sri_pagos_valor", "valor > 0");
                         });
                 });
 
@@ -4444,6 +5069,82 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                     b.HasIndex("TarifaImpuestoId");
 
                     b.ToTable("liquidaciones_compra_detalles_impuestos", "s_compras");
+                });
+
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Compras.ProveedorProductoEquivalencia", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("CodigoProveedor")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("codigo_proveedor");
+
+                    b.Property<string>("CodigoProveedorNormalizado")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("codigo_proveedor_normalizado");
+
+                    b.Property<long>("CreadoPorUsuarioId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("creado_por_usuario_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("DescripcionOriginal")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("descripcion_original");
+
+                    b.Property<long>("EmpresaId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("empresa_id");
+
+                    b.Property<long>("ProductoPresentacionId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("producto_presentacion_id");
+
+                    b.Property<long>("TerceroId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("tercero_id");
+
+                    b.Property<string>("TipoCodigo")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("tipo_codigo");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreadoPorUsuarioId");
+
+                    b.HasIndex("TerceroId");
+
+                    b.HasIndex("ProductoPresentacionId", "EmpresaId");
+
+                    b.HasIndex("EmpresaId", "TerceroId", "TipoCodigo", "CodigoProveedorNormalizado")
+                        .IsUnique()
+                        .HasDatabaseName("ux_proveedor_producto_equivalencia_codigo");
+
+                    b.ToTable("proveedores_productos_equivalencias", "s_compras", t =>
+                        {
+                            t.HasCheckConstraint("ck_proveedores_productos_equivalencias_tipo", "tipo_codigo IN ('PRINCIPAL', 'AUXILIAR')");
+                        });
                 });
 
             modelBuilder.Entity("KONTAXPRO.Domain.Entities.Configuracion.Empresa", b =>
@@ -4969,6 +5670,9 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasAlternateKey("Id", "EmpresaId")
+                        .HasName("ak_asientos_id_empresa");
+
                     b.HasIndex("AnuladoPorUsuarioId");
 
                     b.HasIndex("AsientoOrigenReversadoId")
@@ -4987,7 +5691,8 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                     b.HasIndex("PeriodoId", "EmpresaId");
 
                     b.HasIndex("EmpresaId", "TipoOrigenAsientoId", "OrigenId")
-                        .HasDatabaseName("ix_asientos_origen")
+                        .IsUnique()
+                        .HasDatabaseName("ux_asientos_origen")
                         .HasFilter("origen_id IS NOT NULL");
 
                     b.ToTable("asientos", "s_contabilidad", t =>
@@ -5033,6 +5738,10 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("descripcion");
 
+                    b.Property<long>("EmpresaId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("empresa_id");
+
                     b.Property<long?>("EmpresaTerceroId")
                         .HasColumnType("bigint")
                         .HasColumnName("empresa_tercero_id");
@@ -5048,13 +5757,15 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CuentaContableId");
-
-                    b.HasIndex("EmpresaTerceroId");
+                    b.HasIndex("AsientoId", "EmpresaId");
 
                     b.HasIndex("AsientoId", "Orden")
                         .IsUnique()
                         .HasDatabaseName("ux_asientos_detalles_asiento_orden");
+
+                    b.HasIndex("CuentaContableId", "EmpresaId");
+
+                    b.HasIndex("EmpresaTerceroId", "EmpresaId");
 
                     b.ToTable("asientos_detalles", "s_contabilidad", t =>
                         {
@@ -6668,6 +7379,9 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasAlternateKey("Id", "ProductoId")
+                        .HasName("ak_productos_lotes_id_producto");
+
                     b.HasIndex("ProductoId", "NumeroLote")
                         .IsUnique()
                         .HasDatabaseName("ux_productos_lotes_producto_numero");
@@ -6808,6 +7522,9 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                         .HasColumnName("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasAlternateKey("Id", "ProductoId", "EmpresaId")
+                        .HasName("ak_productos_presentaciones_id_producto_empresa");
 
                     b.HasIndex("ProductoId")
                         .IsUnique()
@@ -6961,15 +7678,18 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasAlternateKey("Id", "ProductoId", "BodegaId")
+                        .HasName("ak_productos_series_id_producto_bodega");
+
                     b.HasIndex("BodegaId");
 
                     b.HasIndex("EstadoSerieId");
 
-                    b.HasIndex("ProductoLoteId");
-
                     b.HasIndex("ProductoId", "NumeroSerie")
                         .IsUnique()
                         .HasDatabaseName("ux_productos_series_producto_numero");
+
+                    b.HasIndex("ProductoLoteId", "ProductoId");
 
                     b.ToTable("productos_series", "s_inventario");
                 });
@@ -7896,6 +8616,299 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_movimientos_caja_medio", "NOT (cobro_medio_id IS NOT NULL AND pago_medio_id IS NOT NULL)");
 
                             t.HasCheckConstraint("ck_movimientos_caja_valor", "valor > 0");
+                        });
+                });
+
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Tesoreria.OperacionSinSustento", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime?>("AnuladaAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("anulada_at");
+
+                    b.Property<long?>("AnuladoPorUsuarioId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("anulado_por_usuario_id");
+
+                    b.Property<long?>("AsientoId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("asiento_id");
+
+                    b.Property<string>("Beneficiario")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)")
+                        .HasColumnName("beneficiario");
+
+                    b.Property<long?>("BodegaId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("bodega_id");
+
+                    b.Property<long?>("CajaSesionId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("caja_sesion_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<long?>("CuentaBancariaId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("cuenta_bancaria_id");
+
+                    b.Property<long>("EmpresaId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("empresa_id");
+
+                    b.Property<bool>("EsDeducible")
+                        .HasColumnType("boolean")
+                        .HasColumnName("es_deducible");
+
+                    b.Property<long>("EstablecimientoId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("establecimiento_id");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("estado");
+
+                    b.Property<string>("EvidenciaNombre")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("evidencia_nombre");
+
+                    b.Property<string>("EvidenciaRutaRelativa")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("evidencia_ruta_relativa");
+
+                    b.Property<string>("EvidenciaSha256")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("evidencia_sha256");
+
+                    b.Property<long?>("EvidenciaTamano")
+                        .HasColumnType("bigint")
+                        .HasColumnName("evidencia_tamano");
+
+                    b.Property<DateOnly>("Fecha")
+                        .HasColumnType("date")
+                        .HasColumnName("fecha");
+
+                    b.Property<string>("MedioSalida")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("medio_salida");
+
+                    b.Property<string>("Motivo")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("motivo");
+
+                    b.Property<string>("MotivoAnulacion")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("motivo_anulacion");
+
+                    b.Property<long?>("MovimientoBancarioId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("movimiento_bancario_id");
+
+                    b.Property<long?>("MovimientoCajaId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("movimiento_caja_id");
+
+                    b.Property<long?>("MovimientoInventarioId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("movimiento_inventario_id");
+
+                    b.Property<string>("NumeroOperacion")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("numero_operacion");
+
+                    b.Property<long?>("OperacionSustituidaId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("operacion_sustituida_id");
+
+                    b.Property<string>("Referencia")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("referencia");
+
+                    b.Property<string>("TipoOperacion")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("tipo_operacion");
+
+                    b.Property<decimal>("Total")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("total");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<long>("UsuarioId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("usuario_id");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Id", "EmpresaId")
+                        .HasName("ak_operaciones_sin_sustento_id_empresa");
+
+                    b.HasIndex("AnuladoPorUsuarioId");
+
+                    b.HasIndex("AsientoId")
+                        .IsUnique();
+
+                    b.HasIndex("BodegaId");
+
+                    b.HasIndex("CajaSesionId");
+
+                    b.HasIndex("CuentaBancariaId");
+
+                    b.HasIndex("MovimientoBancarioId")
+                        .IsUnique()
+                        .HasFilter("movimiento_bancario_id IS NOT NULL");
+
+                    b.HasIndex("MovimientoCajaId")
+                        .IsUnique()
+                        .HasFilter("movimiento_caja_id IS NOT NULL");
+
+                    b.HasIndex("MovimientoInventarioId")
+                        .IsUnique()
+                        .HasFilter("movimiento_inventario_id IS NOT NULL");
+
+                    b.HasIndex("OperacionSustituidaId")
+                        .IsUnique()
+                        .HasFilter("operacion_sustituida_id IS NOT NULL");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.HasIndex("EmpresaId", "NumeroOperacion")
+                        .IsUnique()
+                        .HasDatabaseName("ux_operaciones_sin_sustento_empresa_numero");
+
+                    b.HasIndex("EstablecimientoId", "EmpresaId");
+
+                    b.ToTable("operaciones_sin_sustento", "s_tesoreria", t =>
+                        {
+                            t.HasCheckConstraint("ck_operaciones_sin_sustento_estado", "estado IN ('CONFIRMADO','ANULADO')");
+
+                            t.HasCheckConstraint("ck_operaciones_sin_sustento_evidencia", "(evidencia_ruta_relativa IS NULL AND evidencia_sha256 IS NULL AND evidencia_tamano IS NULL) OR (evidencia_ruta_relativa IS NOT NULL AND evidencia_sha256 IS NOT NULL AND evidencia_tamano > 0)");
+
+                            t.HasCheckConstraint("ck_operaciones_sin_sustento_fondo", "(medio_salida = 'CAJA' AND caja_sesion_id IS NOT NULL AND cuenta_bancaria_id IS NULL) OR (medio_salida = 'BANCO' AND cuenta_bancaria_id IS NOT NULL AND caja_sesion_id IS NULL)");
+
+                            t.HasCheckConstraint("ck_operaciones_sin_sustento_inventario", "(tipo_operacion = 'GASTO' AND bodega_id IS NULL AND movimiento_inventario_id IS NULL) OR (tipo_operacion = 'INVENTARIO' AND bodega_id IS NOT NULL AND movimiento_inventario_id IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_operaciones_sin_sustento_medio", "medio_salida IN ('CAJA','BANCO')");
+
+                            t.HasCheckConstraint("ck_operaciones_sin_sustento_no_deducible", "es_deducible = FALSE");
+
+                            t.HasCheckConstraint("ck_operaciones_sin_sustento_tipo", "tipo_operacion IN ('GASTO','INVENTARIO')");
+
+                            t.HasCheckConstraint("ck_operaciones_sin_sustento_total", "total > 0");
+                        });
+                });
+
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Tesoreria.OperacionSinSustentoDetalle", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("CantidadBase")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)")
+                        .HasColumnName("cantidad_base");
+
+                    b.Property<decimal>("CantidadPresentacion")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)")
+                        .HasColumnName("cantidad_presentacion");
+
+                    b.Property<decimal>("CostoTotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("costo_total");
+
+                    b.Property<decimal>("CostoUnitarioBase")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)")
+                        .HasColumnName("costo_unitario_base");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<long?>("CuentaContableId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("cuenta_contable_id");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<long>("EmpresaId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("empresa_id");
+
+                    b.Property<decimal>("FactorConversion")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)")
+                        .HasColumnName("factor_conversion");
+
+                    b.Property<long>("OperacionSinSustentoId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("operacion_sin_sustento_id");
+
+                    b.Property<long?>("ProductoId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("producto_id");
+
+                    b.Property<long?>("ProductoPresentacionId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("producto_presentacion_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CuentaContableId", "EmpresaId");
+
+                    b.HasIndex("OperacionSinSustentoId", "EmpresaId");
+
+                    b.HasIndex("ProductoId", "EmpresaId");
+
+                    b.HasIndex("ProductoPresentacionId", "EmpresaId");
+
+                    b.ToTable("operaciones_sin_sustento_detalles", "s_tesoreria", t =>
+                        {
+                            t.HasCheckConstraint("ck_operaciones_sin_sustento_detalle_costo", "costo_total > 0 AND cantidad_presentacion > 0 AND factor_conversion > 0 AND cantidad_base > 0 AND costo_unitario_base >= 0");
+
+                            t.HasCheckConstraint("ck_operaciones_sin_sustento_detalle_destino", "(cuenta_contable_id IS NOT NULL AND producto_id IS NULL AND producto_presentacion_id IS NULL) OR (cuenta_contable_id IS NULL AND producto_id IS NOT NULL AND producto_presentacion_id IS NOT NULL)");
                         });
                 });
 
@@ -11146,6 +12159,12 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("KONTAXPRO.Domain.Entities.Compras.Compra", "CompraSustituida")
+                        .WithOne("CompraSustituta")
+                        .HasForeignKey("KONTAXPRO.Domain.Entities.Compras.Compra", "CompraSustituidaId", "EmpresaId")
+                        .HasPrincipalKey("KONTAXPRO.Domain.Entities.Compras.Compra", "Id", "EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("KONTAXPRO.Domain.Entities.Compras.DocumentoRecibidoSri", "DocumentoRecibidoSri")
                         .WithMany()
                         .HasForeignKey("DocumentoRecibidoSriId", "EmpresaId")
@@ -11168,6 +12187,8 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
 
                     b.Navigation("AnuladoPorUsuario");
 
+                    b.Navigation("CompraSustituida");
+
                     b.Navigation("DocumentoRecibidoSri");
 
                     b.Navigation("Empresa");
@@ -11183,30 +12204,35 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("KONTAXPRO.Domain.Entities.Compras.CompraDetalle", b =>
                 {
-                    b.HasOne("KONTAXPRO.Domain.Entities.Inventario.Bodega", "Bodega")
-                        .WithMany()
-                        .HasForeignKey("BodegaId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("KONTAXPRO.Domain.Entities.Compras.Compra", "Compra")
                         .WithMany("Detalles")
-                        .HasForeignKey("CompraId")
+                        .HasForeignKey("CompraId", "EmpresaId")
+                        .HasPrincipalKey("Id", "EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Contabilidad.PlanCuenta", "CuentaContable")
+                        .WithMany()
+                        .HasForeignKey("CuentaContableId", "EmpresaId")
+                        .HasPrincipalKey("Id", "EmpresaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("KONTAXPRO.Domain.Entities.Inventario.Producto", "Producto")
                         .WithMany()
-                        .HasForeignKey("ProductoId")
+                        .HasForeignKey("ProductoId", "EmpresaId")
+                        .HasPrincipalKey("Id", "EmpresaId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("KONTAXPRO.Domain.Entities.Inventario.ProductoPresentacion", "ProductoPresentacion")
                         .WithMany()
-                        .HasForeignKey("ProductoPresentacionId")
+                        .HasForeignKey("ProductoPresentacionId", "ProductoId", "EmpresaId")
+                        .HasPrincipalKey("Id", "ProductoId", "EmpresaId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.Navigation("Bodega");
-
                     b.Navigation("Compra");
+
+                    b.Navigation("CuentaContable");
 
                     b.Navigation("Producto");
 
@@ -11229,6 +12255,154 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                     b.Navigation("CompraDetalle");
 
                     b.Navigation("TarifaImpuesto");
+                });
+
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Compras.CompraRecepcion", b =>
+                {
+                    b.HasOne("KONTAXPRO.Domain.Entities.Seguridad.Usuario", "AnuladaPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("AnuladaPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Configuracion.Empresa", "Empresa")
+                        .WithMany()
+                        .HasForeignKey("EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Inventario.MovimientoInventario", "MovimientoInventario")
+                        .WithMany()
+                        .HasForeignKey("MovimientoInventarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Seguridad.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Inventario.Bodega", "Bodega")
+                        .WithMany()
+                        .HasForeignKey("BodegaId", "EstablecimientoId")
+                        .HasPrincipalKey("Id", "EstablecimientoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Compras.Compra", "Compra")
+                        .WithMany("Recepciones")
+                        .HasForeignKey("CompraId", "EmpresaId")
+                        .HasPrincipalKey("Id", "EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Configuracion.Establecimiento", "Establecimiento")
+                        .WithMany()
+                        .HasForeignKey("EstablecimientoId", "EmpresaId")
+                        .HasPrincipalKey("Id", "EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AnuladaPorUsuario");
+
+                    b.Navigation("Bodega");
+
+                    b.Navigation("Compra");
+
+                    b.Navigation("Empresa");
+
+                    b.Navigation("Establecimiento");
+
+                    b.Navigation("MovimientoInventario");
+
+                    b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Compras.CompraRecepcionDetalle", b =>
+                {
+                    b.HasOne("KONTAXPRO.Domain.Entities.Inventario.MovimientoInventarioDetalle", "MovimientoInventarioDetalle")
+                        .WithMany()
+                        .HasForeignKey("MovimientoInventarioDetalleId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Inventario.Producto", "Producto")
+                        .WithMany()
+                        .HasForeignKey("ProductoId", "EmpresaId")
+                        .HasPrincipalKey("Id", "EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Compras.CompraDetalle", "CompraDetalle")
+                        .WithMany("RecepcionesDetalles")
+                        .HasForeignKey("CompraDetalleId", "CompraId", "EmpresaId")
+                        .HasPrincipalKey("Id", "CompraId", "EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Inventario.ProductoPresentacion", "ProductoPresentacion")
+                        .WithMany()
+                        .HasForeignKey("ProductoPresentacionId", "ProductoId", "EmpresaId")
+                        .HasPrincipalKey("Id", "ProductoId", "EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Compras.CompraRecepcion", "CompraRecepcion")
+                        .WithMany("Detalles")
+                        .HasForeignKey("CompraRecepcionId", "CompraId", "BodegaId", "EmpresaId")
+                        .HasPrincipalKey("Id", "CompraId", "BodegaId", "EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CompraDetalle");
+
+                    b.Navigation("CompraRecepcion");
+
+                    b.Navigation("MovimientoInventarioDetalle");
+
+                    b.Navigation("Producto");
+
+                    b.Navigation("ProductoPresentacion");
+                });
+
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Compras.CompraRecepcionDetalleLote", b =>
+                {
+                    b.HasOne("KONTAXPRO.Domain.Entities.Inventario.ProductoLote", "ProductoLote")
+                        .WithMany()
+                        .HasForeignKey("ProductoLoteId", "ProductoId")
+                        .HasPrincipalKey("Id", "ProductoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Compras.CompraRecepcionDetalle", "CompraRecepcionDetalle")
+                        .WithMany("Lotes")
+                        .HasForeignKey("CompraRecepcionDetalleId", "ProductoId", "EmpresaId")
+                        .HasPrincipalKey("Id", "ProductoId", "EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CompraRecepcionDetalle");
+
+                    b.Navigation("ProductoLote");
+                });
+
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Compras.CompraRecepcionDetalleSerie", b =>
+                {
+                    b.HasOne("KONTAXPRO.Domain.Entities.Inventario.ProductoSerie", "ProductoSerie")
+                        .WithMany()
+                        .HasForeignKey("ProductoSerieId", "ProductoId", "BodegaId")
+                        .HasPrincipalKey("Id", "ProductoId", "BodegaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Compras.CompraRecepcionDetalle", "CompraRecepcionDetalle")
+                        .WithMany("Series")
+                        .HasForeignKey("CompraRecepcionDetalleId", "ProductoId", "BodegaId", "EmpresaId")
+                        .HasPrincipalKey("Id", "ProductoId", "BodegaId", "EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CompraRecepcionDetalle");
+
+                    b.Navigation("ProductoSerie");
                 });
 
             modelBuilder.Entity("KONTAXPRO.Domain.Entities.Compras.DevolucionCompra", b =>
@@ -11344,6 +12518,17 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                     b.Navigation("TipoComprobante");
                 });
 
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Compras.DocumentoRecibidoSriPago", b =>
+                {
+                    b.HasOne("KONTAXPRO.Domain.Entities.Compras.DocumentoRecibidoSri", "DocumentoRecibidoSri")
+                        .WithMany("PagosDeclarados")
+                        .HasForeignKey("DocumentoRecibidoSriId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("DocumentoRecibidoSri");
+                });
+
             modelBuilder.Entity("KONTAXPRO.Domain.Entities.Compras.LiquidacionCompra", b =>
                 {
                     b.HasOne("KONTAXPRO.Domain.Entities.Seguridad.Usuario", "AnuladoPorUsuario")
@@ -11453,6 +12638,42 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                     b.Navigation("LiquidacionCompraDetalle");
 
                     b.Navigation("TarifaImpuesto");
+                });
+
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Compras.ProveedorProductoEquivalencia", b =>
+                {
+                    b.HasOne("KONTAXPRO.Domain.Entities.Seguridad.Usuario", "CreadoPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("CreadoPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Configuracion.Empresa", "Empresa")
+                        .WithMany()
+                        .HasForeignKey("EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Comercial.Tercero", "Tercero")
+                        .WithMany()
+                        .HasForeignKey("TerceroId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Inventario.ProductoPresentacion", "ProductoPresentacion")
+                        .WithMany()
+                        .HasForeignKey("ProductoPresentacionId", "EmpresaId")
+                        .HasPrincipalKey("Id", "EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreadoPorUsuario");
+
+                    b.Navigation("Empresa");
+
+                    b.Navigation("ProductoPresentacion");
+
+                    b.Navigation("Tercero");
                 });
 
             modelBuilder.Entity("KONTAXPRO.Domain.Entities.Configuracion.Empresa", b =>
@@ -11668,19 +12889,22 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                 {
                     b.HasOne("KONTAXPRO.Domain.Entities.Contabilidad.Asiento", "Asiento")
                         .WithMany("Detalles")
-                        .HasForeignKey("AsientoId")
+                        .HasForeignKey("AsientoId", "EmpresaId")
+                        .HasPrincipalKey("Id", "EmpresaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("KONTAXPRO.Domain.Entities.Contabilidad.PlanCuenta", "CuentaContable")
                         .WithMany()
-                        .HasForeignKey("CuentaContableId")
+                        .HasForeignKey("CuentaContableId", "EmpresaId")
+                        .HasPrincipalKey("Id", "EmpresaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("KONTAXPRO.Domain.Entities.Comercial.EmpresaTercero", "EmpresaTercero")
                         .WithMany()
-                        .HasForeignKey("EmpresaTerceroId")
+                        .HasForeignKey("EmpresaTerceroId", "EmpresaId")
+                        .HasPrincipalKey("Id", "EmpresaId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Asiento");
@@ -12339,7 +13563,8 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
 
                     b.HasOne("KONTAXPRO.Domain.Entities.Inventario.ProductoLote", "ProductoLote")
                         .WithMany("Series")
-                        .HasForeignKey("ProductoLoteId")
+                        .HasForeignKey("ProductoLoteId", "ProductoId")
+                        .HasPrincipalKey("Id", "ProductoId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Bodega");
@@ -12685,6 +13910,133 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                     b.Navigation("TipoMovimientoCaja");
 
                     b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Tesoreria.OperacionSinSustento", b =>
+                {
+                    b.HasOne("KONTAXPRO.Domain.Entities.Seguridad.Usuario", "AnuladoPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("AnuladoPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Contabilidad.Asiento", "Asiento")
+                        .WithMany()
+                        .HasForeignKey("AsientoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Inventario.Bodega", "Bodega")
+                        .WithMany()
+                        .HasForeignKey("BodegaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Tesoreria.CajaSesion", "CajaSesion")
+                        .WithMany()
+                        .HasForeignKey("CajaSesionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Bancos.CuentaBancaria", "CuentaBancaria")
+                        .WithMany()
+                        .HasForeignKey("CuentaBancariaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Configuracion.Empresa", "Empresa")
+                        .WithMany()
+                        .HasForeignKey("EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Bancos.MovimientoBancario", "MovimientoBancario")
+                        .WithMany()
+                        .HasForeignKey("MovimientoBancarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Tesoreria.MovimientoCaja", "MovimientoCaja")
+                        .WithMany()
+                        .HasForeignKey("MovimientoCajaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Inventario.MovimientoInventario", "MovimientoInventario")
+                        .WithMany()
+                        .HasForeignKey("MovimientoInventarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Tesoreria.OperacionSinSustento", "OperacionSustituida")
+                        .WithOne("OperacionSustituta")
+                        .HasForeignKey("KONTAXPRO.Domain.Entities.Tesoreria.OperacionSinSustento", "OperacionSustituidaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Seguridad.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Configuracion.Establecimiento", "Establecimiento")
+                        .WithMany()
+                        .HasForeignKey("EstablecimientoId", "EmpresaId")
+                        .HasPrincipalKey("Id", "EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AnuladoPorUsuario");
+
+                    b.Navigation("Asiento");
+
+                    b.Navigation("Bodega");
+
+                    b.Navigation("CajaSesion");
+
+                    b.Navigation("CuentaBancaria");
+
+                    b.Navigation("Empresa");
+
+                    b.Navigation("Establecimiento");
+
+                    b.Navigation("MovimientoBancario");
+
+                    b.Navigation("MovimientoCaja");
+
+                    b.Navigation("MovimientoInventario");
+
+                    b.Navigation("OperacionSustituida");
+
+                    b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Tesoreria.OperacionSinSustentoDetalle", b =>
+                {
+                    b.HasOne("KONTAXPRO.Domain.Entities.Contabilidad.PlanCuenta", "CuentaContable")
+                        .WithMany()
+                        .HasForeignKey("CuentaContableId", "EmpresaId")
+                        .HasPrincipalKey("Id", "EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Tesoreria.OperacionSinSustento", "OperacionSinSustento")
+                        .WithMany("Detalles")
+                        .HasForeignKey("OperacionSinSustentoId", "EmpresaId")
+                        .HasPrincipalKey("Id", "EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Inventario.Producto", "Producto")
+                        .WithMany()
+                        .HasForeignKey("ProductoId", "EmpresaId")
+                        .HasPrincipalKey("Id", "EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Inventario.ProductoPresentacion", "ProductoPresentacion")
+                        .WithMany()
+                        .HasForeignKey("ProductoPresentacionId", "EmpresaId")
+                        .HasPrincipalKey("Id", "EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CuentaContable");
+
+                    b.Navigation("OperacionSinSustento");
+
+                    b.Navigation("Producto");
+
+                    b.Navigation("ProductoPresentacion");
                 });
 
             modelBuilder.Entity("KONTAXPRO.Domain.Entities.Tributacion.RetencionEmitida", b =>
@@ -13788,17 +15140,40 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("KONTAXPRO.Domain.Entities.Compras.Compra", b =>
                 {
+                    b.Navigation("CompraSustituta");
+
                     b.Navigation("Detalles");
+
+                    b.Navigation("Recepciones");
                 });
 
             modelBuilder.Entity("KONTAXPRO.Domain.Entities.Compras.CompraDetalle", b =>
                 {
                     b.Navigation("Impuestos");
+
+                    b.Navigation("RecepcionesDetalles");
+                });
+
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Compras.CompraRecepcion", b =>
+                {
+                    b.Navigation("Detalles");
+                });
+
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Compras.CompraRecepcionDetalle", b =>
+                {
+                    b.Navigation("Lotes");
+
+                    b.Navigation("Series");
                 });
 
             modelBuilder.Entity("KONTAXPRO.Domain.Entities.Compras.DevolucionCompra", b =>
                 {
                     b.Navigation("Detalles");
+                });
+
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Compras.DocumentoRecibidoSri", b =>
+                {
+                    b.Navigation("PagosDeclarados");
                 });
 
             modelBuilder.Entity("KONTAXPRO.Domain.Entities.Compras.LiquidacionCompra", b =>
@@ -13975,6 +15350,13 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("KONTAXPRO.Domain.Entities.Tesoreria.MovimientoCaja", b =>
                 {
                     b.Navigation("MovimientoOrigenReversado");
+                });
+
+            modelBuilder.Entity("KONTAXPRO.Domain.Entities.Tesoreria.OperacionSinSustento", b =>
+                {
+                    b.Navigation("Detalles");
+
+                    b.Navigation("OperacionSustituta");
                 });
 
             modelBuilder.Entity("KONTAXPRO.Domain.Entities.Tributacion.RetencionEmitida", b =>

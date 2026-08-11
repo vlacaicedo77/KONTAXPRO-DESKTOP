@@ -26,7 +26,7 @@ public partial class NotificationWindow : Window
         {
             MessageDialogType.Warning => "KontaxDialogWarningBrush",
             MessageDialogType.Info => "KontaxDialogInfoBrush",
-            _ => "BrandProBrush"
+            _ => "PrimaryDarkBrush"
         });
 
     public NotificationWindow(

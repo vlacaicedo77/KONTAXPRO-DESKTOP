@@ -395,6 +395,7 @@ Seeds:
 
 ## tipos_movimiento_cuentas_por_pagar
 - ORIGEN_DEUDA / DEBITO
+- ANULACION_DEUDA / CREDITO
 - PAGO / CREDITO
 - REVERSO_PAGO / DEBITO
 - NOTA_CREDITO_PROVEEDOR / CREDITO
@@ -914,9 +915,14 @@ Tipo:
 Toda compra genera CxP.
 
 ## compras_detalles
-`id, compra_id, producto_id?, producto_presentacion_id?, bodega_id?, descripcion, cantidad_presentacion, factor_conversion, cantidad_base, precio_unitario_compra, descuento_porcentaje, descuento_valor, costo_total_linea, costo_unitario_base, es_bonificacion, created_at, updated_at`
+`id, compra_id, producto_id?, producto_presentacion_id?, bodega_id?, cuenta_contable_id, clasificacion_contable, descripcion, cantidad_presentacion, factor_conversion, cantidad_base, precio_unitario_compra, descuento_porcentaje, descuento_valor, costo_total_linea, costo_unitario_base, es_bonificacion, created_at, updated_at`
 
 Inventariable => producto/presentación/bodega obligatorios.
+
+Clasificación contable:
+- INVENTARIO para líneas inventariables; usa la cuenta configurada de inventario;
+- GASTO|ACTIVO|OTRO para líneas no inventariables; la cuenta de movimiento se selecciona al registrar la compra;
+- `cuenta_contable_id` conserva la cuenta aplicada como dato histórico y debe pertenecer a la empresa.
 
 FACTURADA => bodega facturable.
 SIN_FACTURA => bodega no facturable.

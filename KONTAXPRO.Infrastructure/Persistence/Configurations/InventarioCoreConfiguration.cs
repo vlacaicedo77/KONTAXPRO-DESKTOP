@@ -110,6 +110,8 @@ public sealed class ProductoPresentacionConfiguration
                 "NOT es_presentacion_base OR factor_conversion = 1");
         });
         b.HasKey(x => x.Id); InventarioEf.Id(b);
+        b.HasAlternateKey(x => new { x.Id, x.ProductoId, x.EmpresaId })
+            .HasName("ak_productos_presentaciones_id_producto_empresa");
         b.Property(x => x.Uuid).HasColumnName("uuid")
             .HasColumnType("uuid").IsRequired();
         b.Property(x => x.EmpresaId).HasColumnName("empresa_id").IsRequired();

@@ -177,6 +177,8 @@ public sealed class AsientoConfiguration : IEntityTypeConfiguration<Asiento>
                 "numero_asiento ~ '^ASI-[0-9]{4}-[0-9]{6,}$'");
         });
         b.Property(x => x.NumeroAsiento).HasMaxLength(32).IsRequired();
+        b.HasAlternateKey(x => new { x.Id, x.EmpresaId })
+            .HasName("ak_asientos_id_empresa");
         b.Property(x => x.TipoAsiento).HasMaxLength(16).IsRequired();
         b.Property(x => x.Concepto).HasMaxLength(500).IsRequired();
         b.Property(x => x.Estado).HasMaxLength(16).IsRequired();
@@ -186,8 +188,9 @@ public sealed class AsientoConfiguration : IEntityTypeConfiguration<Asiento>
         b.HasIndex(x => new { x.EmpresaId, x.NumeroAsiento }).IsUnique()
             .HasDatabaseName("ux_asientos_empresa_numero");
         b.HasIndex(x => new { x.EmpresaId, x.TipoOrigenAsientoId, x.OrigenId })
+            .IsUnique()
             .HasFilter("origen_id IS NOT NULL")
-            .HasDatabaseName("ix_asientos_origen");
+            .HasDatabaseName("ux_asientos_origen");
         b.HasIndex(x => x.AsientoOrigenReversadoId).IsUnique()
             .HasFilter("asiento_origen_reversado_id IS NOT NULL")
             .HasDatabaseName("ux_asientos_origen_reversado");
@@ -228,12 +231,16 @@ public sealed class AsientoDetalleConfiguration
         b.HasIndex(x => new { x.AsientoId, x.Orden }).IsUnique()
             .HasDatabaseName("ux_asientos_detalles_asiento_orden");
         b.HasOne(x => x.Asiento).WithMany(x => x.Detalles)
-            .HasForeignKey(x => x.AsientoId).OnDelete(DeleteBehavior.Restrict);
+            .HasForeignKey(x => new { x.AsientoId, x.EmpresaId })
+            .HasPrincipalKey(x => new { x.Id, x.EmpresaId })
+            .OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.CuentaContable).WithMany()
-            .HasForeignKey(x => x.CuentaContableId)
+            .HasForeignKey(x => new { x.CuentaContableId, x.EmpresaId })
+            .HasPrincipalKey(x => new { x.Id, x.EmpresaId })
             .OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.EmpresaTercero).WithMany()
-            .HasForeignKey(x => x.EmpresaTerceroId)
+            .HasForeignKey(x => new { x.EmpresaTerceroId, x.EmpresaId })
+            .HasPrincipalKey(x => new { x.Id, x.EmpresaId })
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

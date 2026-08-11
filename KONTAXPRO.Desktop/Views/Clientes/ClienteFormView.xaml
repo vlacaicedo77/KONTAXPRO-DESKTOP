@@ -161,9 +161,9 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <Border Width="48" Height="48" CornerRadius="14"
-                        Background="{DynamicResource SuccessSoftBrush}">
+                        Background="{DynamicResource PrimaryDarkBrush}">
                     <materialDesign:PackIcon Kind="AccountEdit" Width="25" Height="25"
-                        Foreground="{DynamicResource BrandProBrush}"
+                        Foreground="White"
                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
                 <StackPanel Grid.Column="2" VerticalAlignment="Center">

@@ -19,6 +19,9 @@ public partial class ProductFormViewModel : ObservableObject
     private readonly IInventoryService _inventoryService;
     private readonly CurrentSession _currentSession;
     private readonly IMessageDialogService _messageDialogService;
+    private ProductoPresentacionDto? _presentacionCompraXml;
+    private decimal _costoPresentacionCompraXml;
+    private decimal _cantidadPresentacionesCompraXml;
 
     private CancellationTokenSource?
     _suggestionsCancellationTokenSource;
@@ -112,6 +115,8 @@ public partial class ProductFormViewModel : ObservableObject
         ? IsEditing
             ? "Este código de barras fue generado automáticamente por KONTAXPRO."
             : "KONTAXPRO generará automáticamente un código de barras al guardar."
+        : EsCreacionDesdeCompra && CodigoBarrasSugeridoDesdeXml
+            ? "Código detectado en el XML y validado por su dígito GS1. Verifica que corresponda al producto antes de guardar."
         : "Ingresa o escanea el código de barras proporcionado por el fabricante.";
 
     [ObservableProperty]
@@ -209,6 +214,7 @@ public partial class ProductFormViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CostoBaseInventarioInicial))]
+    [NotifyPropertyChangedFor(nameof(CostoBaseReferenciaPrecios))]
     [NotifyPropertyChangedFor(nameof(CostoPresentacionPrecio))]
     private ProductoCostoDto costo = new();
 
@@ -221,6 +227,12 @@ public partial class ProductFormViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(MostrarCapturaInventarioInicial))]
     private bool registrarInventarioInicial;
+
+    [ObservableProperty]
+    private bool esCreacionDesdeCompra;
+
+    [ObservableProperty]
+    private decimal costoReferencialCompra;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(MostrarCapturaInventarioInicial))]
@@ -352,9 +364,7 @@ public partial class ProductFormViewModel : ObservableObject
             var factor = PresentacionesInventarioInicial
                 .FirstOrDefault(x => x.Codigo == PresentacionPrecioCodigo)
                 ?.FactorConversion ?? 1;
-            var costoBase = RegistrarInventarioInicial
-                ? CostoBaseInventarioInicial
-                : Costo.CostoPromedio;
+            var costoBase = CostoBaseReferenciaPrecios;
             return costoBase * factor;
         }
     }
@@ -366,9 +376,78 @@ public partial class ProductFormViewModel : ObservableObject
     public decimal CantidadSeriesPendiente =>
         CantidadBaseInicial - TotalSeriesInicial;
     public bool PuedeConfigurarPrecios =>
-        IsEditing || RegistrarInventarioInicial;
+        IsEditing || RegistrarInventarioInicial || EsCreacionDesdeCompra;
+    public bool MostrarSeccionPrecios =>
+        RegistrarInventarioInicial || EsCreacionDesdeCompra;
+    public bool MostrarOpcionInventarioInicial =>
+        !IsEditing && !EsCreacionDesdeCompra;
+    public bool MostrarAvisoCreacionDesdeCompra =>
+        !IsEditing && EsCreacionDesdeCompra;
+    public decimal CostoBaseReferenciaPrecios => EsCreacionDesdeCompra
+        ? CostoReferencialCompra
+        : RegistrarInventarioInicial
+            ? CostoBaseInventarioInicial
+            : Costo.CostoPromedio;
+    public string EtiquetaCostoReferencia => EsCreacionDesdeCompra
+        ? EsCreacionDesdeOperacionSinComprobante
+            ? "Costo por unidad base"
+            : MostrarResumenPresentacionCompraXml
+                ? "Costo por unidad base"
+                : "Costo referencial del XML"
+        : "Costo unitario base";
+    public string AyudaCostoReferencia => EsCreacionDesdeCompra
+        ? EsCreacionDesdeOperacionSinComprobante
+            ? "Calculado desde la cantidad y el costo total de la operación. No registra existencias."
+            : MostrarResumenPresentacionCompraXml
+                ? $"Calculado desde el costo de {_presentacionCompraXml!.Nombre}."
+                : "Solo se utiliza para calcular precios; no registra inventario."
+        : "Costo de una unidad base";
+    public string AyudaSeccionPrecios => EsCreacionDesdeCompra
+        ? EsCreacionDesdeOperacionSinComprobante
+            ? "Configura los precios usando el costo real declarado en esta operación."
+            : "Puedes configurar precios usando el costo de la factura como referencia."
+        : "Configura cada lista para la presentación seleccionada.";
+    public string AvisoCostoCreacionContextual =>
+        EsCreacionDesdeOperacionSinComprobante
+            ? "El costo proviene de la cantidad y el costo total ingresados en la operación. Solo sirve como referencia para calcular precios; el costo real se actualizará al confirmar la operación."
+            : "El costo proviene del XML y solo sirve como referencia para calcular precios. El costo real se actualizará al recibir la compra.";
+    public string AvisoInventarioCreacionContextual =>
+        EsCreacionDesdeOperacionSinComprobante
+            ? "Las existencias, el costo real, los lotes y las series se registrarán únicamente al confirmar la operación sin comprobante."
+            : "Las existencias, el costo real, los lotes y las series se registrarán al confirmar la recepción de esta compra.";
+    public bool EsCreacionDesdeOperacionSinComprobante { get; private set; }
     public bool TieneEntradaInicialPendiente =>
         InventariosIniciales.Any(x => !x.EsHistorico);
+    public string? PresentacionCompraXmlCodigo =>
+        _presentacionCompraXml?.Codigo;
+    public bool MostrarResumenPresentacionCompraXml =>
+        EsCreacionDesdeCompra && _presentacionCompraXml is
+        {
+            FactorConversion: > 1,
+            Estado: 1
+        };
+    public string ResumenPresentacionCompraXml
+    {
+        get
+        {
+            if (!MostrarResumenPresentacionCompraXml)
+                return string.Empty;
+
+            var factor = _presentacionCompraXml!.FactorConversion;
+            var cantidadBase = _cantidadPresentacionesCompraXml * factor;
+            var nombreBase = string.IsNullOrWhiteSpace(PresentacionNombre)
+                ? "UNIDAD"
+                : PresentacionNombre;
+            var origen = EsCreacionDesdeOperacionSinComprobante
+                ? "La operación registra"
+                : "El XML registra";
+            return $"{origen} {_cantidadPresentacionesCompraXml:0.######} " +
+                   $"{_presentacionCompraXml.Nombre} → {cantidadBase:0.######} " +
+                   $"{nombreBase}.  Costo por {_presentacionCompraXml.Nombre}: " +
+                   $"{_costoPresentacionCompraXml:N2}  •  Costo por " +
+                   $"{nombreBase}: {CostoReferencialCompra:N6}";
+        }
+    }
     public bool MostrarCancelarEntradaInicial =>
         IsEditing && MostrarEntradaInicialExistente;
 
@@ -404,6 +483,10 @@ public partial class ProductFormViewModel : ObservableObject
 
     [ObservableProperty]
     private string codigoBarras = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TextoAyudaCodigoBarras))]
+    private bool codigoBarrasSugeridoDesdeXml;
 
     [ObservableProperty]
     private bool sinCodigoBarras;
@@ -798,6 +881,88 @@ public partial class ProductFormViewModel : ObservableObject
         }
     }
 
+    public async Task NuevoDesdeCompraAsync(
+        string? codigoBarras,
+        bool sinCodigoBarras,
+        decimal costoReferencial)
+    {
+        await NuevoAsync(codigoBarras, sinCodigoBarras);
+        EsCreacionDesdeCompra = true;
+        CodigoBarrasSugeridoDesdeXml =
+            !string.IsNullOrWhiteSpace(codigoBarras);
+        CostoReferencialCompra = Math.Max(0, costoReferencial);
+        RegistrarInventarioInicial = false;
+        TituloFormulario = "Nuevo producto desde compra";
+        ActualizarPresentacionesInventarioInicial();
+        ActualizarReferenciasPrecios();
+        ReconstruirResumenesPrecios();
+    }
+
+    public async Task NuevoDesdeOperacionSinComprobanteAsync(
+        decimal costoPresentacion)
+    {
+        await NuevoDesdeCompraAsync(
+            codigoBarras: null,
+            sinCodigoBarras: true,
+            costoReferencial: costoPresentacion);
+        EsCreacionDesdeOperacionSinComprobante = true;
+        ConfigurarPreciosAhora = true;
+        TituloFormulario = "Nuevo producto desde operación sin comprobante";
+        OnPropertyChanged(nameof(EtiquetaCostoReferencia));
+        OnPropertyChanged(nameof(AyudaCostoReferencia));
+        OnPropertyChanged(nameof(AyudaSeccionPrecios));
+        OnPropertyChanged(nameof(AvisoCostoCreacionContextual));
+        OnPropertyChanged(nameof(AvisoInventarioCreacionContextual));
+        OnPropertyChanged(nameof(ResumenPresentacionCompraXml));
+    }
+
+    public IReadOnlyList<ProductoPrecioPendienteDto>
+        ObtenerPreciosPendientesOperacionSinComprobante() =>
+        !EsCreacionDesdeOperacionSinComprobante
+            ? []
+            : _preciosPorPresentacion.SelectMany(group =>
+                group.Value.Select(price => new ProductoPrecioPendienteDto
+                {
+                    PresentacionCodigo = group.Key,
+                    ListaPrecioId = price.ListaPrecioId,
+                    MetodoCalculo = price.MetodoCalculo,
+                    Porcentaje = price.Porcentaje,
+                    Precio = price.Precio,
+                    Estado = price.Estado
+                })).ToList();
+
+    public void ConfigurarPresentacionCompraDesdeXml(
+        string? nombre,
+        decimal factor,
+        decimal costoPresentacion,
+        decimal cantidadPresentaciones)
+    {
+        _costoPresentacionCompraXml = Math.Max(0, costoPresentacion);
+        _cantidadPresentacionesCompraXml = Math.Max(0, cantidadPresentaciones);
+        if (string.IsNullOrWhiteSpace(nombre) || factor <= 1)
+        {
+            NotificarPresentacionCompraXml();
+            return;
+        }
+
+        _presentacionCompraXml = new ProductoPresentacionDto
+        {
+            Codigo = $"P{PresentacionesAdicionales.Count + 1:00}",
+            Nombre = nombre.Trim().ToUpperInvariant(),
+            FactorConversion = factor,
+            PermiteCompra = true,
+            PermiteVenta = true,
+            Estado = 1
+        };
+        PresentacionesAdicionales.Add(_presentacionCompraXml);
+        CostoReferencialCompra = _costoPresentacionCompraXml / factor;
+        PresentacionPrecioCodigo = "BASE";
+        ActualizarPresentacionesInventarioInicial();
+        ActualizarReferenciasPrecios();
+        ReconstruirResumenesPrecios();
+        NotificarPresentacionCompraXml();
+    }
+
     public async Task EditarAsync(long productoId)
     {
         if (IsLoading)
@@ -1011,7 +1176,8 @@ public partial class ProductFormViewModel : ObservableObject
                     "Agregue al menos una presentación y bodega al inventario inicial.";
                 return;
             }
-            if (capturaInventarioActiva)
+            if (capturaInventarioActiva ||
+                (EsCreacionDesdeCompra && ConfigurarPreciosAhora))
             {
                 var presentacionesSinPrecio =
                     PresentacionesInventarioInicial
@@ -1123,15 +1289,19 @@ public partial class ProductFormViewModel : ObservableObject
                             PermiteCompra = true,
                             PermiteVenta = true,
                             Estado = 1,
-                            Precios = ConfigurarPreciosAhora
+                            Precios = ConfigurarPreciosAhora &&
+                                      !EsCreacionDesdeOperacionSinComprobante
                                 ? ObtenerPrecios("BASE")
                                 : []
                         },
                         .. PresentacionesAdicionales.Select(x =>
                         {
-                            x.Precios = ConfigurarPreciosAhora
+                            x.Precios = ConfigurarPreciosAhora &&
+                                        !EsCreacionDesdeOperacionSinComprobante
                                 ? ObtenerPrecios(x.Codigo)
-                                : x.Precios;
+                                : EsCreacionDesdeOperacionSinComprobante
+                                    ? []
+                                    : x.Precios;
                             return x;
                         })
                     ],
@@ -1456,6 +1626,8 @@ public partial class ProductFormViewModel : ObservableObject
             nameof(TextoAyudaCodigoBarras));
         OnPropertyChanged(nameof(PuedeConfigurarPrecios));
         OnPropertyChanged(nameof(MostrarCapturaInventarioInicial));
+        OnPropertyChanged(nameof(MostrarOpcionInventarioInicial));
+        OnPropertyChanged(nameof(MostrarAvisoCreacionDesdeCompra));
         ActualizarReferenciasPrecios();
     }
 
@@ -1598,9 +1770,7 @@ public partial class ProductFormViewModel : ObservableObject
 
     private void ActualizarReferenciasPrecios()
     {
-        var costoBase = RegistrarInventarioInicial
-            ? CostoBaseInventarioInicial
-            : Costo.CostoPromedio;
+        var costoBase = CostoBaseReferenciaPrecios;
         var factor = PresentacionesInventarioInicial
             .FirstOrDefault(x => x.Codigo == PresentacionPrecioCodigo)
             ?.FactorConversion ?? 1;
@@ -1714,6 +1884,14 @@ public partial class ProductFormViewModel : ObservableObject
     private void LimpiarFormulario()
     {
         _productoId = null;
+
+        EsCreacionDesdeCompra = false;
+        EsCreacionDesdeOperacionSinComprobante = false;
+        CodigoBarrasSugeridoDesdeXml = false;
+        CostoReferencialCompra = 0;
+        _presentacionCompraXml = null;
+        _costoPresentacionCompraXml = 0;
+        _cantidadPresentacionesCompraXml = 0;
 
         Nombre = string.Empty;
         CodigoInterno = null;
@@ -1829,6 +2007,13 @@ public partial class ProductFormViewModel : ObservableObject
         OnPropertyChanged(nameof(CantidadBaseInicial));
         OnPropertyChanged(nameof(CostoUnitarioBaseInicial));
         OnPropertyChanged(nameof(ResumenInventarioInicial));
+        if (ReferenceEquals(presentacion, _presentacionCompraXml) &&
+            presentacion.FactorConversion > 0)
+        {
+            CostoReferencialCompra =
+                _costoPresentacionCompraXml / presentacion.FactorConversion;
+            NotificarPresentacionCompraXml();
+        }
         ActualizarReferenciasPrecios();
     }
 
@@ -1845,6 +2030,12 @@ public partial class ProductFormViewModel : ObservableObject
         }
 
         PresentacionesAdicionales.Remove(presentacion);
+        if (ReferenceEquals(presentacion, _presentacionCompraXml))
+        {
+            _presentacionCompraXml = null;
+            CostoReferencialCompra = _costoPresentacionCompraXml;
+            NotificarPresentacionCompraXml();
+        }
         _preciosPorPresentacion.Remove(presentacion.Codigo);
         var resumenesPrecio = PreciosPresentacionesConfigurados
             .Where(x => string.Equals(
@@ -1855,6 +2046,15 @@ public partial class ProductFormViewModel : ObservableObject
         foreach (var resumenPrecio in resumenesPrecio)
             PreciosPresentacionesConfigurados.Remove(resumenPrecio);
         ActualizarPresentacionesInventarioInicial();
+    }
+
+    private void NotificarPresentacionCompraXml()
+    {
+        OnPropertyChanged(nameof(PresentacionCompraXmlCodigo));
+        OnPropertyChanged(nameof(MostrarResumenPresentacionCompraXml));
+        OnPropertyChanged(nameof(ResumenPresentacionCompraXml));
+        OnPropertyChanged(nameof(EtiquetaCostoReferencia));
+        OnPropertyChanged(nameof(AyudaCostoReferencia));
     }
 
     private void ActualizarPresentacionesInventarioInicial()
@@ -2013,9 +2213,7 @@ public partial class ProductFormViewModel : ObservableObject
         foreach (var item in existente)
             PreciosPresentacionesConfigurados.Remove(item);
 
-        var costoBase = RegistrarInventarioInicial
-            ? CostoBaseInventarioInicial
-            : Costo.CostoPromedio;
+        var costoBase = CostoBaseReferenciaPrecios;
         var costoEquivalente =
             costoBase * presentacion.FactorConversion;
         var precioListaBase = 0m;
@@ -2086,13 +2284,38 @@ public partial class ProductFormViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(PuedeConfigurarPrecios));
         OnPropertyChanged(nameof(CostoBaseInventarioInicial));
-        if (!value && !IsEditing)
+        OnPropertyChanged(nameof(CostoBaseReferenciaPrecios));
+        OnPropertyChanged(nameof(MostrarSeccionPrecios));
+        if (!value && !IsEditing && !EsCreacionDesdeCompra)
             ConfigurarPreciosAhora = false;
         if (value)
         {
             ActualizarPresentacionesInventarioInicial();
         }
         ActualizarReferenciasPrecios();
+    }
+
+    partial void OnEsCreacionDesdeCompraChanged(bool value)
+    {
+        if (value) RegistrarInventarioInicial = false;
+        OnPropertyChanged(nameof(PuedeConfigurarPrecios));
+        OnPropertyChanged(nameof(MostrarSeccionPrecios));
+        OnPropertyChanged(nameof(MostrarOpcionInventarioInicial));
+        OnPropertyChanged(nameof(MostrarAvisoCreacionDesdeCompra));
+        OnPropertyChanged(nameof(CostoBaseReferenciaPrecios));
+        OnPropertyChanged(nameof(EtiquetaCostoReferencia));
+        OnPropertyChanged(nameof(AyudaCostoReferencia));
+        OnPropertyChanged(nameof(AyudaSeccionPrecios));
+        OnPropertyChanged(nameof(TextoAyudaCodigoBarras));
+        ActualizarReferenciasPrecios();
+    }
+
+    partial void OnCostoReferencialCompraChanged(decimal value)
+    {
+        OnPropertyChanged(nameof(CostoBaseReferenciaPrecios));
+        OnPropertyChanged(nameof(CostoPresentacionPrecio));
+        ActualizarReferenciasPrecios();
+        ReconstruirResumenesPrecios();
     }
 
     partial void OnCantidadPresentacionesInicialChanged(decimal value)
@@ -2170,6 +2393,7 @@ public partial class ProductFormViewModel : ObservableObject
 
         if (_preciosPorPresentacion.ContainsKey("BASE"))
             ActualizarResumenPrecioPresentacion("BASE");
+        NotificarPresentacionCompraXml();
     }
 
     [RelayCommand]

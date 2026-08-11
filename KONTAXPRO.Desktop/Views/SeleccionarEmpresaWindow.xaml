@@ -267,13 +267,13 @@
                         <Border Width="54"
                                 Height="54"
                                 CornerRadius="15"
-                                Background="{DynamicResource PrimaryButtonBackgroundBrush}"
+                                Background="{DynamicResource PrimaryDarkBrush}"
                                 Margin="0,0,16,0">
 
                             <materialDesign:PackIcon Kind="OfficeBuilding"
                                                      Width="28"
                                                      Height="28"
-                                                     Foreground="{DynamicResource PrimaryButtonForegroundBrush}"
+                                                     Foreground="White"
                                                      HorizontalAlignment="Center"
                                                      VerticalAlignment="Center" />
 

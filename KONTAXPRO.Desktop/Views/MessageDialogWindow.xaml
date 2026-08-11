@@ -41,12 +41,12 @@
 
                     <Border Grid.Column="0"
                             Style="{StaticResource KontaxDialogIconContainerStyle}"
-                            Background="{Binding AccentSoftBrush}"
+                            Background="{Binding AccentBrush}"
                             Margin="0,0,16,0">
                         <materialDesign:PackIcon Kind="{Binding IconKind}"
                                                  Width="27"
                                                  Height="27"
-                                                 Foreground="{Binding AccentBrush}"
+                                                 Foreground="White"
                                                  HorizontalAlignment="Center"
                                                  VerticalAlignment="Center"/>
                     </Border>

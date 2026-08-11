@@ -185,26 +185,101 @@ public sealed class DemoSeeder
                     listaBase = lista;
             }
 
-            var cuentaCaja = await db.PlanCuentas.SingleOrDefaultAsync(
-                x => x.EmpresaId == empresa.Id && x.Codigo == "1.1.01",
-                cancellationToken);
-            if (cuentaCaja is null)
+            var accountDefinitions = new[]
             {
-                cuentaCaja = new PlanCuenta
+                new { Code = "1.1.01", Name = "CAJA GENERAL",
+                    Nature = "DEUDORA" },
+                new { Code = "1.1.02", Name = "INVENTARIO DE MERCADERÍAS",
+                    Nature = "DEUDORA" },
+                new { Code = "1.1.03", Name = "IVA CRÉDITO TRIBUTARIO",
+                    Nature = "DEUDORA" },
+                new { Code = "1.2.01", Name = "ACTIVOS PARA OPERACIÓN",
+                    Nature = "DEUDORA" },
+                new { Code = "2.1.01", Name = "CUENTAS POR PAGAR PROVEEDORES",
+                    Nature = "ACREEDORA" },
+                new { Code = "5.1.01", Name = "GASTOS GENERALES",
+                    Nature = "DEUDORA" },
+                new { Code = "5.9.01", Name = "OTROS COSTOS Y GASTOS",
+                    Nature = "DEUDORA" }
+            };
+            var demoAccounts = new Dictionary<string, PlanCuenta>();
+            foreach (var definitionAccount in accountDefinitions)
+            {
+                var account = await db.PlanCuentas.SingleOrDefaultAsync(
+                    x => x.EmpresaId == empresa.Id &&
+                         x.Codigo == definitionAccount.Code,
+                    cancellationToken);
+                if (account is null)
                 {
-                    EmpresaId = empresa.Id,
-                    Codigo = "1.1.01",
-                    Nombre = "CAJA GENERAL",
-                    Naturaleza = "DEUDORA",
-                    AceptaMovimientos = true,
-                    Estado = 1,
-                    CreatedAt = now,
-                    UpdatedAt = now
-                };
-                db.PlanCuentas.Add(cuentaCaja);
+                    account = new PlanCuenta
+                    {
+                        EmpresaId = empresa.Id,
+                        Codigo = definitionAccount.Code,
+                        CreatedAt = now
+                    };
+                    db.PlanCuentas.Add(account);
+                }
+                account.Nombre = definitionAccount.Name;
+                account.Naturaleza = definitionAccount.Nature;
+                account.AceptaMovimientos = true;
+                account.Estado = 1;
+                account.UpdatedAt = now;
+                demoAccounts[definitionAccount.Code] = account;
             }
 
             await db.SaveChangesAsync(cancellationToken);
+            var cuentaCaja = demoAccounts["1.1.01"];
+            var accountingConfigurations = new[]
+            {
+                new { Type = "INVENTARIO", Account = "1.1.02" },
+                new { Type = "IVA_CREDITO_TRIBUTARIO", Account = "1.1.03" },
+                new { Type = "CUENTAS_POR_PAGAR", Account = "2.1.01" },
+                new { Type = "GASTOS_NO_DEDUCIBLES", Account = "5.9.01" }
+            };
+            foreach (var definitionConfiguration in accountingConfigurations)
+            {
+                var configurationType = await db.TiposConfiguracionContable
+                    .SingleAsync(x => x.Codigo == definitionConfiguration.Type,
+                        cancellationToken);
+                var configuration = await db.ConfiguracionCuentas
+                    .SingleOrDefaultAsync(x => x.EmpresaId == empresa.Id &&
+                        x.TipoConfiguracionContableId == configurationType.Id,
+                        cancellationToken);
+                if (configuration is null)
+                {
+                    configuration = new ConfiguracionCuenta
+                    {
+                        EmpresaId = empresa.Id,
+                        TipoConfiguracionContableId = configurationType.Id,
+                        CreatedAt = now
+                    };
+                    db.ConfiguracionCuentas.Add(configuration);
+                }
+                configuration.CuentaContableId =
+                    demoAccounts[definitionConfiguration.Account].Id;
+                configuration.Estado = 1;
+                configuration.UpdatedAt = now;
+            }
+
+            for (var month = 1; month <= 12; month++)
+            {
+                var period = await db.PeriodosContables.SingleOrDefaultAsync(
+                    x => x.EmpresaId == empresa.Id && x.Anio == now.Year &&
+                         x.Mes == month, cancellationToken);
+                if (period is not null) continue;
+                var firstDay = new DateOnly(now.Year, month, 1);
+                db.PeriodosContables.Add(new PeriodoContable
+                {
+                    EmpresaId = empresa.Id,
+                    Anio = now.Year,
+                    Mes = month,
+                    FechaInicio = firstDay,
+                    FechaFin = firstDay.AddMonths(1).AddDays(-1),
+                    Estado = "ABIERTO",
+                    CreatedAt = now,
+                    UpdatedAt = now
+                });
+            }
 
             var puntoEmision = await db.PuntosEmision.SingleOrDefaultAsync(
                 x => x.EstablecimientoId == establecimiento.Id && x.Codigo == "001",

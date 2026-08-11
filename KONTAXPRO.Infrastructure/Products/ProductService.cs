@@ -1099,6 +1099,44 @@ public sealed class ProductService(
             nuevoEstado == 1 ? "Producto activado." : "Producto inactivado.");
     }
 
+    public async Task<ProductOperationResult> EliminarBorradorContextualAsync(
+        long productoId, long empresaId,
+        CancellationToken cancellationToken = default)
+    {
+        await using var context = await dbContextFactory.CreateDbContextAsync(
+            cancellationToken);
+        await using var transaction = await context.Database.BeginTransactionAsync(
+            cancellationToken);
+        var product = await context.Productos.SingleOrDefaultAsync(x =>
+            x.Id == productoId && x.EmpresaId == empresaId, cancellationToken);
+        if (product is null)
+            return ProductOperationResult.Ok(productoId, "El borrador ya no existe.");
+        if (product.Estado != 0 ||
+            await context.MovimientosInventarioDetalles.AsNoTracking().AnyAsync(x =>
+                x.ProductoId == productoId, cancellationToken) ||
+            await context.ProductosExistencias.AsNoTracking().AnyAsync(x =>
+                x.ProductoId == productoId, cancellationToken) ||
+            await context.ProductosCostos.AsNoTracking().AnyAsync(x =>
+                x.ProductoId == productoId, cancellationToken))
+            return ProductOperationResult.Fail(
+                "El producto dejó de ser un borrador limpio y no puede descartarse.");
+
+        var presentationIds = await context.ProductosPresentaciones
+            .Where(x => x.ProductoId == productoId).Select(x => x.Id)
+            .ToArrayAsync(cancellationToken);
+        await context.ProductosPresentacionesPrecios
+            .Where(x => presentationIds.Contains(x.ProductoPresentacionId))
+            .ExecuteDeleteAsync(cancellationToken);
+        await context.ProductosImpuestos.Where(x => x.ProductoId == productoId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await context.ProductosPresentaciones.Where(x => x.ProductoId == productoId)
+            .ExecuteDeleteAsync(cancellationToken);
+        context.Productos.Remove(product);
+        await context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return ProductOperationResult.Ok(productoId, "Borrador descartado.");
+    }
+
     public async Task<ProductoCodigoBarrasDto?> BuscarPorCodigoBarrasAsync(
         long empresaId,
         string codigoBarras,

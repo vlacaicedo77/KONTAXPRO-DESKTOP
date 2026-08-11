@@ -102,6 +102,7 @@ public sealed class AsientoDetalle
 {
     public long Id { get; set; }
     public long AsientoId { get; set; }
+    public long EmpresaId { get; set; }
     public long CuentaContableId { get; set; }
     public long? EmpresaTerceroId { get; set; }
     public int Orden { get; set; }
