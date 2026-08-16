@@ -2105,7 +2105,7 @@
                             </Border>
                         </Grid>
 
-                        <Border Margin="0,22,0,0"
+                        <Border x:Name="InventoryOperationsSection" Margin="0,22,0,0"
                                 Padding="16"
                                 CornerRadius="12"
                                 Background="{DynamicResource SuccessSoftBrush}"
@@ -2138,75 +2138,41 @@
                                                    Foreground="{DynamicResource SecondaryTextBrush}" />
                                     </StackPanel>
                                 </Border>
-                                <TextBlock Text="Operaciones de inventario"
+                                <TextBlock Text="Configuración avanzada de inventario"
                                            FontWeight="SemiBold"
                                            Foreground="{DynamicResource PrimaryTextBrush}"
-                                           Visibility="{Binding IsEditing,
-                                             Converter={StaticResource BooleanToVisibilityConverter}}" />
-                                <TextBlock Text="Las cantidades confirmadas se modifican mediante operaciones trazables."
+                                           Visibility="{Binding MostrarConfiguracionAvanzadaInventario,
+                                              Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                <TextBlock Text="Las existencias, saldos iniciales, ajustes y Kardex se administran desde Inventario. Aquí se conserva únicamente la configuración estructural del producto."
                                            Style="{StaticResource FieldHelpStyle}"
-                                           Visibility="{Binding IsEditing,
-                                             Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                           TextWrapping="Wrap"
+                                           Visibility="{Binding MostrarConfiguracionAvanzadaInventario,
+                                              Converter={StaticResource BooleanToVisibilityConverter}}" />
                                 <StackPanel Margin="0,12,0,0"
-                                            Visibility="{Binding IsEditing,
-                                              Converter={StaticResource BooleanToVisibilityConverter}}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <Button Command="{Binding AgregarEntradaInicialExistenteCommand}"
-                                                IsEnabled="{Binding PuedeCompletarInventarioInicial}"
-                                                ToolTip="Existencias omitidas durante la carga inicial."
-                                                Style="{StaticResource PrimaryButtonStyle}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <materialDesign:PackIcon Kind="PackageVariantClosed"
-                                                                         Width="18" Height="18"
-                                                                         Margin="0,0,8,0" />
-                                                <TextBlock Text="Completar inventario inicial" />
-                                            </StackPanel>
-                                        </Button>
-                                        <Button Command="{Binding AbrirAjusteCommand}"
-                                                ToolTip="Corrige diferencias físicas después de iniciada la operación."
-                                                Margin="10,0,0,0"
-                                                Style="{StaticResource PrimaryButtonStyle}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <materialDesign:PackIcon Kind="TuneVariant"
-                                                                         Width="18" Height="18"
-                                                                         Margin="0,0,8,0" />
-                                                <TextBlock Text="Registrar ajuste" />
-                                            </StackPanel>
-                                        </Button>
-                                        <Button Command="{Binding VerKardexCommand}"
-                                                ToolTip="Consulta entradas, salidas, existencias y costos."
-                                                Margin="10,0,0,0"
-                                                Style="{StaticResource NeutralButtonStyle}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <materialDesign:PackIcon Kind="EyeOutline"
-                                                                         Width="18" Height="18"
-                                                                         Margin="0,0,8,0" />
-                                                <TextBlock Text="Ver Kardex" />
-                                            </StackPanel>
-                                        </Button>
-                                        <Button Command="{Binding CancelarEntradaInicialExistenteCommand}"
-                                                Margin="10,0,0,0"
-                                                Style="{StaticResource DangerButtonStyle}"
-                                                Visibility="{Binding MostrarCancelarEntradaInicial,
-                                                  Converter={StaticResource BooleanToVisibilityConverter}}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <materialDesign:PackIcon Kind="Close"
-                                                                         Width="18" Height="18"
-                                                                         Margin="0,0,8,0" />
-                                                <TextBlock Text="Cancelar entrada" />
-                                            </StackPanel>
-                                        </Button>
-                                    </StackPanel>
-                                    <TextBlock Text="{Binding MotivoNoPuedeCompletarInventarioInicial}"
-                                               Style="{StaticResource FieldHelpStyle}"
-                                               Foreground="#DC2626"
-                                               Margin="0,8,0,0"
-                                               Visibility="{Binding PuedeCompletarInventarioInicial,
-                                                 Converter={StaticResource InverseBooleanToVisibilityConverter}}" />
-                                    <Expander Margin="0,10,0,0"
+                                             Visibility="{Binding MostrarConfiguracionAvanzadaInventario,
+                                               Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <Border Padding="12,10" CornerRadius="10"
+                                            Background="{DynamicResource InfoSoftBrush}"
+                                            BorderBrush="#3B82F6" BorderThickness="1">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Border Width="30" Height="30" CornerRadius="8"
+                                                    Background="#2563EB" Margin="0,0,10,0">
+                                                <materialDesign:PackIcon Kind="Warehouse"
+                                                                         Width="17" Height="17"
+                                                                         Foreground="White"
+                                                                         HorizontalAlignment="Center"
+                                                                         VerticalAlignment="Center" />
+                                            </Border>
+                                            <TextBlock Text="Para consultar existencias o registrar movimientos, abre Inventario y selecciona este producto."
+                                                       VerticalAlignment="Center"
+                                                       TextWrapping="Wrap"
+                                                       Foreground="{DynamicResource SecondaryTextBrush}" />
+                                        </StackPanel>
+                                    </Border>
+                                    <Expander Margin="0,12,0,0"
                                               HorizontalAlignment="Left">
                                         <Expander.Header>
-                                            <TextBlock Text="MÁS OPERACIONES"
+                                            <TextBlock Text="CONFIGURACIÓN AVANZADA"
                                                        FontWeight="SemiBold"
                                                        Foreground="{DynamicResource PrimaryTextBrush}" />
                                         </Expander.Header>
@@ -2314,7 +2280,7 @@
                                         </StackPanel>
                                         <StackPanel Grid.Column="6">
                                             <TextBlock Style="{StaticResource FieldLabelStyle}">
-                                                <Run Text="Costo presentación" />
+                                                <Run Text="Costo por presentación" />
                                                 <Run Text=" *" Foreground="#DC2626" FontWeight="Bold" />
                                             </TextBlock>
                                             <Border Style="{StaticResource FormFieldBorderStyle}">
@@ -2324,9 +2290,10 @@
                                                            Language="en-US"
                                                            behaviors:DecimalInputBehavior.IsEnabled="True"
                                                            behaviors:DecimalInputBehavior.DecimalPlaces="6"
-                                                           behaviors:DecimalInputBehavior.MinimumDecimalPlaces="2"
-                                                           behaviors:DecimalInputBehavior.ClearZeroOnFocus="True"
-                                                           Style="{StaticResource ModernTextBoxStyle}" />
+                                                            behaviors:DecimalInputBehavior.MinimumDecimalPlaces="2"
+                                                            behaviors:DecimalInputBehavior.ClearZeroOnFocus="True"
+                                                            ToolTip="Costo de una presentación seleccionada."
+                                                            Style="{StaticResource ModernTextBoxStyle}" />
                                             </Border>
                                         </StackPanel>
                                          <StackPanel Grid.Row="1"
@@ -2681,7 +2648,7 @@
                                         <TextBlock Text="Agregar existencia inicial" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
-                                <TextBlock Text="Los ingresos confirmados son históricos. Para corregir cantidades, lotes o series utiliza un ajuste de inventario."
+                                <TextBlock Text="Los ingresos confirmados son históricos. Las cantidades se corrigen desde Inventario mediante un ajuste trazable."
                                            TextWrapping="Wrap"
                                            Margin="0,0,0,8"
                                            Style="{StaticResource FieldHelpStyle}"
@@ -2706,7 +2673,22 @@
                                                             IsReadOnly="True" Width="1.6*" />
                                         <DataGridTextColumn Header="ESTADO"
                                                             Binding="{Binding EstadoTexto}"
-                                                            IsReadOnly="True" Width="105" />
+                                                            IsReadOnly="True" Width="105">
+                                            <DataGridTextColumn.HeaderStyle>
+                                                <Style TargetType="DataGridColumnHeader"
+                                                       BasedOn="{StaticResource KontaxDataGridColumnHeaderStyle}">
+                                                    <Setter Property="HorizontalContentAlignment" Value="Center" />
+                                                    <Setter Property="VerticalContentAlignment" Value="Center" />
+                                                </Style>
+                                            </DataGridTextColumn.HeaderStyle>
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="HorizontalAlignment" Value="Center" />
+                                                    <Setter Property="VerticalAlignment" Value="Center" />
+                                                    <Setter Property="TextAlignment" Value="Center" />
+                                                </Style>
+                                            </DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
                                         <DataGridTextColumn Header="CANTIDAD"
                                                             Binding="{Binding CantidadPresentaciones, StringFormat={}{0:#,0.######}}"
                                                             IsReadOnly="True" Width="110" />
@@ -3592,7 +3574,11 @@
                                                                      Foreground="{DynamicResource PrimaryTextBrush}"
                                                                      MaxHeight="270"
                                                                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                                                     ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                                                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                                                     ScrollViewer.CanContentScroll="True"
+                                                                     VirtualizingPanel.IsVirtualizing="True"
+                                                                     VirtualizingPanel.VirtualizationMode="Recycling"
+                                                                     VirtualizingPanel.ScrollUnit="Pixel">
                                                                 <ListBox.ItemContainerStyle>
                                                                     <Style TargetType="ListBoxItem">
                                                                         <Setter Property="Background" Value="Transparent" />

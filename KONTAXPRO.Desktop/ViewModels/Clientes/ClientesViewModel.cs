@@ -5,12 +5,15 @@ using KONTAXPRO.Application.Interfaces;
 using KONTAXPRO.Application.Models.Clientes;
 using KONTAXPRO.Application.Security;
 using KONTAXPRO.Application.Session;
+using KONTAXPRO.Desktop.Services;
 
 namespace KONTAXPRO.Desktop.ViewModels.Clientes;
 
 public sealed record ClienteFiltroItem<T>(string Nombre, T Valor);
 
-public partial class ClientesViewModel : ObservableObject, IDisposable
+public partial class ClientesViewModel : ObservableObject,
+    IAsyncNavigationTarget,
+    IDisposable
 {
     private readonly IClienteService _clienteService;
     private readonly CurrentSession _currentSession;
@@ -23,6 +26,8 @@ public partial class ClientesViewModel : ObservableObject, IDisposable
     private bool _suppressReload;
     private bool _isDisposed;
     private Task _companyChangeTask = Task.CompletedTask;
+    private readonly object _initializationLock = new();
+    private Task? _initializationTask;
 
     public ClienteFormViewModel ClienteForm { get; }
     public ObservableCollection<ClienteCatalogoItemDto> Clientes { get; } = [];
@@ -59,6 +64,9 @@ public partial class ClientesViewModel : ObservableObject, IDisposable
     [ObservableProperty] private int paginaActual = 1;
     [ObservableProperty] private int tamanoPagina = 25;
     [ObservableProperty] private int totalItems;
+    [ObservableProperty] private ClienteCatalogoOrden ordenClientes =
+        ClienteCatalogoOrden.RazonSocial;
+    [ObservableProperty] private bool ordenClientesDescendente;
     [ObservableProperty] private int totalClientes;
     [ObservableProperty] private int totalPendientesVerificar;
     [ObservableProperty] private int totalSinCredito;
@@ -93,6 +101,16 @@ public partial class ClientesViewModel : ObservableObject, IDisposable
     public bool PuedeIrAnterior => PaginaActual > 1;
     public bool PuedeIrSiguiente => PaginaActual < TotalPaginas;
     public Task PendingCompanyChange => _companyChangeTask;
+    public string IndicadorIdentificacion => IndicadorOrdenClientes(
+        ClienteCatalogoOrden.Identificacion);
+    public string IndicadorRazonSocial => IndicadorOrdenClientes(
+        ClienteCatalogoOrden.RazonSocial);
+    public string IndicadorClasificacion => IndicadorOrdenClientes(
+        ClienteCatalogoOrden.Clasificacion);
+    public string IndicadorCredito => IndicadorOrdenClientes(
+        ClienteCatalogoOrden.Credito);
+    public string IndicadorEstado => IndicadorOrdenClientes(
+        ClienteCatalogoOrden.Estado);
     public string TextoPaginacion
     {
         get
@@ -127,7 +145,16 @@ public partial class ClientesViewModel : ObservableObject, IDisposable
         _currentSession.EmpresaActivaChanged += OnEmpresaActivaChanged;
     }
 
-    public Task InitializeAsync() => LoadAsync();
+    public Task InitializeAsync(
+        CancellationToken cancellationToken = default)
+    {
+        lock (_initializationLock)
+        {
+            if (_isDisposed)
+                return Task.CompletedTask;
+            return _initializationTask ??= LoadAsync(cancellationToken);
+        }
+    }
 
     [RelayCommand]
     private Task RecargarAsync() => LoadAsync();
@@ -310,6 +337,9 @@ public partial class ClientesViewModel : ObservableObject, IDisposable
 
     private async Task LoadAsync(CancellationToken cancellationToken = default)
     {
+        if (_isDisposed)
+            return;
+
         var companyId = CurrentCompanyId();
         if (companyId <= 0)
         {
@@ -335,6 +365,8 @@ public partial class ClientesViewModel : ObservableObject, IDisposable
                     Estado = EstadoSeleccionado.Valor,
                     Verificacion = VerificacionSeleccionada.Valor,
                     Credito = CreditoSeleccionado.Valor,
+                    Orden = OrdenClientes,
+                    OrdenDescendente = OrdenClientesDescendente,
                     Pagina = PaginaActual,
                     TamanoPagina = TamanoPagina
                 },
@@ -367,6 +399,22 @@ public partial class ClientesViewModel : ObservableObject, IDisposable
             if (sequence == Volatile.Read(ref _loadSequence))
                 IsLoading = false;
         }
+    }
+
+    [RelayCommand]
+    private async Task OrdenarClientesAsync(ClienteCatalogoOrden orden)
+    {
+        if (OrdenClientes == orden)
+            OrdenClientesDescendente = !OrdenClientesDescendente;
+        else
+        {
+            OrdenClientes = orden;
+            OrdenClientesDescendente = false;
+        }
+
+        PaginaActual = 1;
+        NotifyClientSortIndicators();
+        await LoadAsync();
     }
 
     private async void OnClientSaved(long id)
@@ -457,6 +505,20 @@ public partial class ClientesViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(PuedeIrAnterior));
         OnPropertyChanged(nameof(PuedeIrSiguiente));
         OnPropertyChanged(nameof(TextoPaginacion));
+    }
+
+    private string IndicadorOrdenClientes(ClienteCatalogoOrden orden) =>
+        OrdenClientes != orden
+            ? string.Empty
+            : OrdenClientesDescendente ? "▼" : "▲";
+
+    private void NotifyClientSortIndicators()
+    {
+        OnPropertyChanged(nameof(IndicadorIdentificacion));
+        OnPropertyChanged(nameof(IndicadorRazonSocial));
+        OnPropertyChanged(nameof(IndicadorClasificacion));
+        OnPropertyChanged(nameof(IndicadorCredito));
+        OnPropertyChanged(nameof(IndicadorEstado));
     }
 
     private void NotifyManagementPermissionChanged()

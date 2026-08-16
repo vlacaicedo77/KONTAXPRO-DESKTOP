@@ -89,6 +89,31 @@ public static class ProductoNuevoRules
         decimal porcentajeDescuento) =>
         precioListaBase * (1 - porcentajeDescuento / 100m);
 
+    public static decimal CalcularPrecioFinalConImpuesto(
+        decimal precioNeto,
+        string? tipoCalculo,
+        decimal? porcentaje,
+        decimal? valorEspecifico,
+        decimal factorConversion = 1m)
+    {
+        if (precioNeto < 0)
+            throw new ArgumentOutOfRangeException(nameof(precioNeto));
+        if (factorConversion <= 0)
+            throw new ArgumentOutOfRangeException(nameof(factorConversion));
+
+        var impuestoPorcentaje = tipoCalculo is "PORCENTAJE" or "MIXTO"
+            ? precioNeto * (porcentaje ?? 0m) / 100m
+            : 0m;
+        var impuestoEspecifico = tipoCalculo is "ESPECIFICO" or "MIXTO"
+            ? (valorEspecifico ?? 0m) * factorConversion
+            : 0m;
+
+        return decimal.Round(
+            precioNeto + impuestoPorcentaje + impuestoEspecifico,
+            2,
+            MidpointRounding.AwayFromZero);
+    }
+
     public static decimal CalcularPrecioEquivalentePresentacion(
         decimal precioPresentacionBase,
         decimal factorConversion)

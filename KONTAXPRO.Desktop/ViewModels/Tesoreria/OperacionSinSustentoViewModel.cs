@@ -313,7 +313,8 @@ public partial class OperacionSinSustentoViewModel : ObservableObject
 
         ExistingLots.Clear();
         var state = await _inventoryService.ObtenerEstadoControlAsync(
-            _session.EmpresaId.Value, line.Product.ProductoId);
+            _session.EmpresaId.Value, _session.UsuarioId,
+            line.Product.ProductoId);
         if (state is not null)
             foreach (var warehouse in state.Bodegas)
                 foreach (var lot in warehouse.Lotes)

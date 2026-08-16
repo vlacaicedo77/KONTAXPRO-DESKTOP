@@ -8,33 +8,11 @@ namespace KONTAXPRO.Desktop.Views.Products;
 
 public partial class ProductsView : UserControl
 {
-    private bool _initialized;
-
     public ProductsView()
     {
         InitializeComponent();
 
-        Loaded += ProductsView_Loaded;
         DataContextChanged += ProductsView_DataContextChanged;
-    }
-
-    private async void ProductsView_Loaded(
-        object sender,
-        RoutedEventArgs e)
-    {
-        if (_initialized)
-        {
-            return;
-        }
-
-        if (DataContext is not ProductsViewModel viewModel)
-        {
-            return;
-        }
-
-        _initialized = true;
-
-        await viewModel.InitializeAsync();
     }
 
     private void ProductsView_DataContextChanged(

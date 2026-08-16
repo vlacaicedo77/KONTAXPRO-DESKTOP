@@ -23,12 +23,22 @@ public enum ProveedorVerificacionFiltro
     NoVerificados
 }
 
+public enum ProveedorCatalogoOrden
+{
+    Ruc,
+    RazonSocial,
+    Estado
+}
+
 public sealed class ProveedorCatalogoQuery
 {
     public string? Busqueda { get; init; }
     public ProveedorCatalogoKpi Kpi { get; init; }
     public ProveedorEstadoFiltro Estado { get; init; }
     public ProveedorVerificacionFiltro Verificacion { get; init; }
+    public ProveedorCatalogoOrden Orden { get; init; } =
+        ProveedorCatalogoOrden.RazonSocial;
+    public bool OrdenDescendente { get; init; }
     public int Pagina { get; init; } = 1;
     public int TamanoPagina { get; init; } = 25;
 }

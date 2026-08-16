@@ -5,11 +5,14 @@ using CommunityToolkit.Mvvm.Input;
 using KONTAXPRO.Application.Interfaces;
 using KONTAXPRO.Application.Models.Tesoreria;
 using KONTAXPRO.Application.Session;
+using KONTAXPRO.Desktop.Services;
 using Microsoft.Win32;
 
 namespace KONTAXPRO.Desktop.ViewModels.Tesoreria;
 
-public partial class OperacionesSinSustentoViewModel : ObservableObject, IDisposable
+public partial class OperacionesSinSustentoViewModel : ObservableObject,
+    IAsyncNavigationTarget,
+    IDisposable
 {
     private readonly IOperacionSinSustentoService _service;
     private readonly CurrentSession _session;
@@ -18,6 +21,9 @@ public partial class OperacionesSinSustentoViewModel : ObservableObject, IDispos
     private CancellationTokenSource? _searchCancellation;
     private long _loadVersion;
     private bool _suppressAutoLoad;
+    private readonly object _initializationLock = new();
+    private Task? _initializationTask;
+    private bool _disposed;
 
     public ObservableCollection<OperacionSinSustentoItemDto> Operations { get; } = [];
     public ObservableCollection<PaginaOperacionItemViewModel> VisiblePages { get; } = [];
@@ -42,6 +48,9 @@ public partial class OperacionesSinSustentoViewModel : ObservableObject, IDispos
     [ObservableProperty] private int page = 1;
     [ObservableProperty] private int pageSize = 25;
     [ObservableProperty] private int totalItems;
+    [ObservableProperty] private OperacionSinSustentoCatalogoOrden operationOrder =
+        OperacionSinSustentoCatalogoOrden.Fecha;
+    [ObservableProperty] private bool operationOrderDescending = true;
 
     public bool HasItems => Operations.Count > 0;
     public int OperationCount => ConfirmedCount + CancelledCount;
@@ -63,6 +72,18 @@ public partial class OperacionesSinSustentoViewModel : ObservableObject, IDispos
             return $"Mostrando {start:N0}–{end:N0} de {TotalItems:N0} operaciones";
         }
     }
+    public string DateSortIndicator => OperationSortIndicator(
+        OperacionSinSustentoCatalogoOrden.Fecha);
+    public string OperationSortIndicatorText => OperationSortIndicator(
+        OperacionSinSustentoCatalogoOrden.Operacion);
+    public string BeneficiarySortIndicator => OperationSortIndicator(
+        OperacionSinSustentoCatalogoOrden.Beneficiario);
+    public string FundSortIndicator => OperationSortIndicator(
+        OperacionSinSustentoCatalogoOrden.Fondo);
+    public string TotalSortIndicator => OperationSortIndicator(
+        OperacionSinSustentoCatalogoOrden.Total);
+    public string StateSortIndicator => OperationSortIndicator(
+        OperacionSinSustentoCatalogoOrden.Estado);
     public bool CanRegister => _session.HasPermission("TESORERIA_REGISTRAR_SIN_SUSTENTO");
     public bool CanCorrect => _session.HasPermission("TESORERIA_CORREGIR_SIN_SUSTENTO");
     public bool CanCancel => _session.HasPermission("TESORERIA_ANULAR_SIN_SUSTENTO");
@@ -77,14 +98,23 @@ public partial class OperacionesSinSustentoViewModel : ObservableObject, IDispos
         _session.EmpresaActivaChanged += OnCompanyChanged;
     }
 
-    public Task InitializeAsync() => LoadAsync();
+    public Task InitializeAsync(
+        CancellationToken cancellationToken = default)
+    {
+        lock (_initializationLock)
+        {
+            if (_disposed) return Task.CompletedTask;
+            return _initializationTask ??= LoadAsync(cancellationToken);
+        }
+    }
 
     [RelayCommand]
-    private async Task LoadAsync()
+    private async Task LoadAsync(CancellationToken cancellationToken = default)
     {
-        if (!_session.EmpresaId.HasValue) return;
+        if (_disposed || !_session.EmpresaId.HasValue) return;
         _loadCancellation?.Cancel(); _loadCancellation?.Dispose();
-        _loadCancellation = new CancellationTokenSource();
+        _loadCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken);
         var version = ++_loadVersion;
         IsLoading = true;
         try
@@ -92,6 +122,8 @@ public partial class OperacionesSinSustentoViewModel : ObservableObject, IDispos
             var result = await _service.ListarAsync(new OperacionSinSustentoCatalogoRequest
             { EmpresaId = _session.EmpresaId.Value, UsuarioId = _session.UsuarioId,
               Busqueda = SearchText, Estado = SelectedState, Tipo = SelectedType,
+              Orden = OperationOrder,
+              OrdenDescendente = OperationOrderDescending,
               Pagina = Page, TamanoPagina = PageSize },
                 _loadCancellation.Token);
             if (version != _loadVersion) return;
@@ -113,6 +145,23 @@ public partial class OperacionesSinSustentoViewModel : ObservableObject, IDispos
                     $"No fue posible consultar las operaciones. {ex.Message}");
         }
         finally { if (version == _loadVersion) IsLoading = false; }
+    }
+
+    [RelayCommand]
+    private async Task SortOperationsAsync(
+        OperacionSinSustentoCatalogoOrden order)
+    {
+        if (OperationOrder == order)
+            OperationOrderDescending = !OperationOrderDescending;
+        else
+        {
+            OperationOrder = order;
+            OperationOrderDescending = false;
+        }
+
+        Page = 1;
+        NotifyOperationSortIndicators();
+        await LoadAsync();
     }
 
     [RelayCommand]
@@ -257,7 +306,7 @@ public partial class OperacionesSinSustentoViewModel : ObservableObject, IDispos
         {
             await Task.Delay(350, token);
             Page = 1;
-            await LoadAsync();
+            await LoadAsync(token);
         }
         catch (OperationCanceledException) { }
     }
@@ -271,6 +320,22 @@ public partial class OperacionesSinSustentoViewModel : ObservableObject, IDispos
         OnPropertyChanged(nameof(PaginationText));
         PreviousPageCommand.NotifyCanExecuteChanged();
         NextPageCommand.NotifyCanExecuteChanged();
+    }
+
+    private string OperationSortIndicator(
+        OperacionSinSustentoCatalogoOrden order) =>
+        OperationOrder != order
+            ? string.Empty
+            : OperationOrderDescending ? "▼" : "▲";
+
+    private void NotifyOperationSortIndicators()
+    {
+        OnPropertyChanged(nameof(DateSortIndicator));
+        OnPropertyChanged(nameof(OperationSortIndicatorText));
+        OnPropertyChanged(nameof(BeneficiarySortIndicator));
+        OnPropertyChanged(nameof(FundSortIndicator));
+        OnPropertyChanged(nameof(TotalSortIndicator));
+        OnPropertyChanged(nameof(StateSortIndicator));
     }
 
     private void BuildVisiblePages()
@@ -307,6 +372,8 @@ public partial class OperacionesSinSustentoViewModel : ObservableObject, IDispos
 
     public void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
         _loadCancellation?.Cancel(); _loadCancellation?.Dispose();
         _searchCancellation?.Cancel(); _searchCancellation?.Dispose();
         Form.CloseRequested -= CloseForm; Form.Saved -= OnSaved;

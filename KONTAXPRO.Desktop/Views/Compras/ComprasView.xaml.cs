@@ -19,26 +19,6 @@ public partial class ComprasView : UserControl
         Unloaded += OnUnloaded;
     }
 
-    private async void OnLoaded(object sender, RoutedEventArgs e)
-    {
-        if (DataContext is not ComprasViewModel viewModel) return;
-        if (!ReferenceEquals(_subscribed, viewModel))
-        {
-            Unsubscribe();
-            _subscribed = viewModel;
-            viewModel.SelectXmlRequested += SelectXmlAsync;
-            viewModel.FocusDueDateRequested += FocusDueDate;
-            viewModel.FocusManualDueDateRequested += FocusManualDueDate;
-            viewModel.FocusManualSupplierSearchRequested +=
-                FocusManualSupplierSearch;
-            viewModel.ProveedorForm.FocusRucRequested += FocusManualSupplierRuc;
-            viewModel.ProveedorForm.FocusBusinessNameRequested +=
-                FocusManualSupplierBusinessName;
-            viewModel.PropertyChanged += OnViewModelPropertyChanged;
-        }
-        await viewModel.InitializeAsync();
-    }
-
     private void OnDataContextChanged(object sender,
         DependencyPropertyChangedEventArgs e)
     {
@@ -66,7 +46,43 @@ public partial class ComprasView : UserControl
             Multiselect = false
         };
         if (dialog.ShowDialog() == true && _subscribed is not null)
-            await _subscribed.ImportXmlAsync(dialog.FileName);
+            await _subscribed.AcceptXmlFileAsync(dialog.FileName);
+    }
+
+    private void XmlDropZone_DragEnter(object sender, DragEventArgs e) =>
+        UpdateXmlDragState(e);
+
+    private void XmlDropZone_DragOver(object sender, DragEventArgs e) =>
+        UpdateXmlDragState(e);
+
+    private void XmlDropZone_DragLeave(object sender, DragEventArgs e)
+    {
+        _subscribed?.SetXmlDragActive(false);
+        e.Handled = true;
+    }
+
+    private async void XmlDropZone_Drop(object sender, DragEventArgs e)
+    {
+        _subscribed?.SetXmlDragActive(false);
+        e.Handled = true;
+        if (_subscribed is null ||
+            !e.Data.GetDataPresent(DataFormats.FileDrop) ||
+            e.Data.GetData(DataFormats.FileDrop) is not string[] files ||
+            files.Length == 0)
+            return;
+
+        await _subscribed.AcceptXmlFileAsync(files[0]);
+    }
+
+    private void UpdateXmlDragState(DragEventArgs e)
+    {
+        var hasSingleFile =
+            e.Data.GetDataPresent(DataFormats.FileDrop) &&
+            e.Data.GetData(DataFormats.FileDrop) is string[] files &&
+            files.Length == 1;
+        e.Effects = hasSingleFile ? DragDropEffects.Copy : DragDropEffects.None;
+        _subscribed?.SetXmlDragActive(hasSingleFile);
+        e.Handled = true;
     }
 
     private void ReviewProductsScroll_PreviewMouseWheel(
@@ -161,6 +177,7 @@ public partial class ComprasView : UserControl
             return;
         line.SelectDescriptionSuggestionCommand.Execute(suggestion);
         list.SelectedItem = null;
+        FocusManualQuantity(line);
     }
 
     private void ManualProductSuggestion_SelectionChanged(
@@ -174,7 +191,25 @@ public partial class ComprasView : UserControl
             return;
         line.SelectProductSuggestionCommand.Execute(suggestion);
         list.SelectedItem = null;
+        FocusManualQuantity(line);
     }
+
+    private void FocusManualQuantity(CompraManualLineViewModel line) =>
+        Dispatcher.BeginInvoke(
+            System.Windows.Threading.DispatcherPriority.ApplicationIdle,
+            () =>
+            {
+                ManualLinesGrid.SelectedItem = line;
+                ManualLinesGrid.ScrollIntoView(line, ManualQuantityColumn);
+                ManualLinesGrid.UpdateLayout();
+                var content = ManualQuantityColumn.GetCellContent(line);
+                var input = FindVisualChild<TextBox>(
+                    content, "ManualQuantityInput");
+                if (input is null) return;
+                input.Focus();
+                Keyboard.Focus(input);
+                input.SelectAll();
+            });
 
     private void ManualLinesGrid_PreviewMouseWheel(
         object sender, MouseWheelEventArgs e)

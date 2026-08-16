@@ -1,6 +1,147 @@
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
+
+    <Style x:Key="KontaxSortHeaderStyle" TargetType="Button">
+        <Setter Property="Padding" Value="6,4" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border Padding="{TemplateBinding Padding}"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="6">
+                        <ContentPresenter HorizontalAlignment="Left"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground"
+                                    Value="{DynamicResource BrandProBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter Property="Opacity" Value="0.75" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="KontaxCenteredSortHeaderStyle"
+           TargetType="Button"
+           BasedOn="{StaticResource KontaxSortHeaderStyle}">
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border Padding="{TemplateBinding Padding}"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="6">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground"
+                                    Value="{DynamicResource BrandProBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter Property="Opacity" Value="0.75" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="KontaxCatalogPrimaryTextStyle" TargetType="TextBlock">
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+
+    <Style x:Key="KontaxCatalogMetaTextStyle" TargetType="TextBlock">
+        <Setter Property="Margin" Value="0,4,0,0" />
+        <Setter Property="FontSize" Value="10" />
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+
+    <Style x:Key="KontaxEmptyListIconStyle" TargetType="materialDesign:PackIcon">
+        <Setter Property="Kind" Value="PackageVariant" />
+        <Setter Property="Width" Value="56" />
+        <Setter Property="Height" Value="56" />
+        <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
+        <Setter Property="Opacity" Value="0.72" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="KontaxEmptyListTextStyle" TargetType="TextBlock">
+        <Setter Property="Margin" Value="0,10,0,0" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontStyle" Value="Italic" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
+        <Setter Property="TextAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="KontaxCenteredCellTextStyle" TargetType="TextBlock">
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="TextAlignment" Value="Center" />
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+    </Style>
+
+    <Style x:Key="KontaxControlBadgeStyle" TargetType="Border">
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Padding" Value="9,5" />
+        <Setter Property="Background" Value="{DynamicResource PrimaryDarkBrush}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <DataTemplate x:Key="KontaxControlCellTemplate">
+        <Border Style="{StaticResource KontaxControlBadgeStyle}"
+                ToolTip="{Binding TipoControl}">
+            <StackPanel Orientation="Horizontal">
+                <materialDesign:PackIcon Width="15" Height="15"
+                                         Margin="0,0,6,0"
+                                         Foreground="White"
+                                         VerticalAlignment="Center">
+                    <materialDesign:PackIcon.Style>
+                        <Style TargetType="materialDesign:PackIcon">
+                            <Setter Property="Kind" Value="PackageVariant" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding TipoControl}" Value="LOTE">
+                                    <Setter Property="Kind" Value="ArchiveOutline" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding TipoControl}" Value="SERIE">
+                                    <Setter Property="Kind" Value="Barcode" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding TipoControl}" Value="LOTE Y SERIE">
+                                    <Setter Property="Kind" Value="PackageVariantClosedCheck" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </materialDesign:PackIcon.Style>
+                </materialDesign:PackIcon>
+                <TextBlock Text="{Binding TipoControl}"
+                           Foreground="White" FontSize="9"
+                           FontWeight="Bold" VerticalAlignment="Center" />
+            </StackPanel>
+        </Border>
+    </DataTemplate>
 
     <Style x:Key="KontaxDataGridColumnHeaderStyle"
            TargetType="DataGridColumnHeader">
@@ -77,6 +218,10 @@
         <Setter Property="ColumnHeaderHeight" Value="44" />
         <Setter Property="RowHeight" Value="46" />
         <Setter Property="CanUserAddRows" Value="False" />
+        <Setter Property="ScrollViewer.CanContentScroll" Value="True" />
+        <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True" />
+        <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling" />
+        <Setter Property="VirtualizingPanel.ScrollUnit" Value="Pixel" />
         <Setter Property="ColumnHeaderStyle"
                 Value="{StaticResource KontaxDataGridColumnHeaderStyle}" />
         <Setter Property="RowStyle"

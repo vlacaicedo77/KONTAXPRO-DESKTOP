@@ -4,8 +4,7 @@
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:behaviors="clr-namespace:KONTAXPRO.Desktop.Behaviors"
              xmlns:supplierModels="clr-namespace:KONTAXPRO.Application.Models.Proveedores;assembly=KONTAXPRO.Application"
-             xmlns:supplierViews="clr-namespace:KONTAXPRO.Desktop.Views.Proveedores"
-             Loaded="UserControl_Loaded">
+             xmlns:supplierViews="clr-namespace:KONTAXPRO.Desktop.Views.Proveedores">
     <UserControl.Resources>
         <Style x:Key="SupplierColumnHeaderStyle" TargetType="DataGridColumnHeader"
                BasedOn="{StaticResource KontaxDataGridColumnHeaderStyle}">
@@ -34,6 +33,13 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+        </Style>
+
+        <Style x:Key="SupplierCenteredColumnHeaderStyle"
+               TargetType="DataGridColumnHeader"
+               BasedOn="{StaticResource SupplierColumnHeaderStyle}">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
 
         <Style x:Key="SupplierKpiButtonStyle" TargetType="Button">
@@ -279,13 +285,14 @@
                                  ToolTip="Cargando proveedores..." Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                     <DataGrid Grid.Row="1" ItemsSource="{Binding Proveedores}" Style="{StaticResource KontaxDataGridStyle}"
                               AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False"
-                              CanUserResizeColumns="True" CanUserReorderColumns="False" BorderThickness="0"
+                              CanUserResizeColumns="True" CanUserReorderColumns="False" CanUserSortColumns="False" BorderThickness="0"
                               HeadersVisibility="Column" RowHeight="58" ColumnHeaderHeight="42"
                               ColumnHeaderStyle="{StaticResource SupplierColumnHeaderStyle}" SelectionMode="Single"
                               SelectionUnit="FullRow" behaviors:ResponsiveDataGridBehavior.IsEnabled="True"
                               ScrollViewer.HorizontalScrollBarVisibility="Auto">
                         <DataGrid.Columns>
-                            <DataGridTemplateColumn Header="RUC" Width="150" MinWidth="140" behaviors:ResponsiveDataGridBehavior.Priority="Always">
+                            <DataGridTemplateColumn Width="150" MinWidth="140" behaviors:ResponsiveDataGridBehavior.Priority="Always">
+                                <DataGridTemplateColumn.Header><Button Style="{StaticResource KontaxSortHeaderStyle}" Command="{Binding DataContext.OrdenarProveedoresCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{x:Static supplierModels:ProveedorCatalogoOrden.Ruc}"><StackPanel Orientation="Horizontal"><TextBlock Text="RUC"/><TextBlock Text="{Binding DataContext.IndicadorRuc, RelativeSource={RelativeSource AncestorType=DataGrid}}" Margin="5,0,0,0"/></StackPanel></Button></DataGridTemplateColumn.Header>
                                 <DataGridTemplateColumn.CellTemplate><DataTemplate>
                                     <Grid ToolTip="{Binding FuenteVerificacion}"><Grid.ColumnDefinitions><ColumnDefinition Width="30"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                         <materialDesign:PackIcon Width="21" Height="21" VerticalAlignment="Center" Foreground="#2563EB">
@@ -295,14 +302,16 @@
                                     </Grid>
                                 </DataTemplate></DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="RAZÓN SOCIAL" Width="1.4*" MinWidth="230" behaviors:ResponsiveDataGridBehavior.Priority="Always">
+                            <DataGridTemplateColumn Width="1.4*" MinWidth="230" behaviors:ResponsiveDataGridBehavior.Priority="Always">
+                                <DataGridTemplateColumn.Header><Button Style="{StaticResource KontaxSortHeaderStyle}" Command="{Binding DataContext.OrdenarProveedoresCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{x:Static supplierModels:ProveedorCatalogoOrden.RazonSocial}"><StackPanel Orientation="Horizontal"><TextBlock Text="RAZÓN SOCIAL"/><TextBlock Text="{Binding DataContext.IndicadorRazonSocial, RelativeSource={RelativeSource AncestorType=DataGrid}}" Margin="5,0,0,0"/></StackPanel></Button></DataGridTemplateColumn.Header>
                                 <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding RazonSocial}" FontWeight="SemiBold" FontSize="10.5" VerticalAlignment="Center" ToolTip="{Binding RazonSocial}" Foreground="{DynamicResource PrimaryTextBrush}" TextTrimming="CharacterEllipsis"/></DataTemplate></DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
                             <DataGridTextColumn Header="DIRECCIÓN" Binding="{Binding Direccion}" Width="1.1*" MinWidth="150" ElementStyle="{StaticResource CompactSupplierTextStyle}" behaviors:ResponsiveDataGridBehavior.Priority="Wide"/>
                             <DataGridTextColumn Header="TELÉFONO" Binding="{Binding Telefono}" Width="105" ElementStyle="{StaticResource CompactSupplierTextStyle}" behaviors:ResponsiveDataGridBehavior.Priority="Medium"/>
                             <DataGridTextColumn Header="EMAIL" Binding="{Binding Correo}" Width="1.1*" MinWidth="160" ElementStyle="{StaticResource TrimmedSupplierTextStyle}" behaviors:ResponsiveDataGridBehavior.Priority="Wide"/>
-                            <DataGridTemplateColumn Header="ESTADO" Width="104" MinWidth="96" behaviors:ResponsiveDataGridBehavior.Priority="Always">
-                                <DataGridTemplateColumn.CellTemplate><DataTemplate><Border CornerRadius="10" Padding="9,5" HorizontalAlignment="Left"><Border.Style><Style TargetType="Border"><Setter Property="Background" Value="#4B5563"/><Style.Triggers><DataTrigger Binding="{Binding Activo}" Value="True"><Setter Property="Background" Value="#16A34A"/></DataTrigger></Style.Triggers></Style></Border.Style><TextBlock Text="{Binding EstadoTexto}" Foreground="White" FontSize="10" FontWeight="Bold"/></Border></DataTemplate></DataGridTemplateColumn.CellTemplate>
+                            <DataGridTemplateColumn Width="112" MinWidth="104" HeaderStyle="{StaticResource SupplierCenteredColumnHeaderStyle}" behaviors:ResponsiveDataGridBehavior.Priority="Always">
+                                <DataGridTemplateColumn.Header><Button Style="{StaticResource KontaxCenteredSortHeaderStyle}" Command="{Binding DataContext.OrdenarProveedoresCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{x:Static supplierModels:ProveedorCatalogoOrden.Estado}"><StackPanel Orientation="Horizontal"><TextBlock Text="ESTADO"/><TextBlock Text="{Binding DataContext.IndicadorEstado, RelativeSource={RelativeSource AncestorType=DataGrid}}" Margin="5,0,0,0"/></StackPanel></Button></DataGridTemplateColumn.Header>
+                                <DataGridTemplateColumn.CellTemplate><DataTemplate><Border CornerRadius="10" Padding="9,5" HorizontalAlignment="Center" VerticalAlignment="Center"><Border.Style><Style TargetType="Border"><Setter Property="Background" Value="#4B5563"/><Style.Triggers><DataTrigger Binding="{Binding Activo}" Value="True"><Setter Property="Background" Value="#16A34A"/></DataTrigger></Style.Triggers></Style></Border.Style><TextBlock Text="{Binding EstadoTexto}" Foreground="White" FontSize="10" FontWeight="Bold"/></Border></DataTemplate></DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
                             <DataGridTemplateColumn Header="ACCIONES" Width="86" behaviors:ResponsiveDataGridBehavior.Priority="Always">
                                 <DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel Orientation="Horizontal">
@@ -314,8 +323,8 @@
                         </DataGrid.Columns>
                     </DataGrid>
                     <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding MostrarEstadoVacio, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <Border Width="70" Height="70" CornerRadius="20" Background="{DynamicResource SuccessSoftBrush}"><materialDesign:PackIcon Kind="TruckOutline" Width="34" Height="34" Foreground="{DynamicResource BrandProBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
-                        <TextBlock Text="{Binding TituloEstadoVacio}" Margin="0,14,0,0" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" TextAlignment="Center"/>
+                        <materialDesign:PackIcon Style="{StaticResource KontaxEmptyListIconStyle}"/>
+                        <TextBlock Text="No se encontraron registros" Style="{StaticResource KontaxEmptyListTextStyle}"/>
                         <Button Content="Limpiar filtros" Margin="0,14,0,0" Style="{StaticResource NeutralButtonStyle}" Command="{Binding LimpiarFiltrosCommand}"/>
                     </StackPanel>
                     <Grid Grid.Row="2" Margin="14,10" MinHeight="38">
@@ -336,7 +345,21 @@
         <Border Margin="18" Background="{DynamicResource ElevatedSurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="1" Visibility="{Binding IsSupplierFormOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
             <Border.Effect><DropShadowEffect BlurRadius="35" ShadowDepth="0" Opacity="0.32"/></Border.Effect>
-            <supplierViews:ProveedorFormView DataContext="{Binding ProveedorForm}"/>
+            <ContentControl>
+                <ContentControl.Style>
+                    <Style TargetType="ContentControl">
+                        <Setter Property="Content" Value="{x:Null}"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsSupplierFormOpen}" Value="True">
+                                <Setter Property="Content" Value="{Binding ProveedorForm}"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ContentControl.Style>
+                <ContentControl.ContentTemplate>
+                    <DataTemplate><supplierViews:ProveedorFormView/></DataTemplate>
+                </ContentControl.ContentTemplate>
+            </ContentControl>
         </Border>
     </Grid>
 </UserControl>

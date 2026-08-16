@@ -4,9 +4,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:behaviors="clr-namespace:KONTAXPRO.Desktop.Behaviors"
+             xmlns:purchaseModels="clr-namespace:KONTAXPRO.Application.Models.Compras;assembly=KONTAXPRO.Application"
              xmlns:productViews="clr-namespace:KONTAXPRO.Desktop.Views.Products"
              xmlns:supplierViews="clr-namespace:KONTAXPRO.Desktop.Views.Proveedores"
-             Loaded="OnLoaded">
+             >
     <UserControl.Resources>
         <Style x:Key="KontaxSecondaryButtonStyle"
                TargetType="Button"
@@ -357,6 +358,8 @@
         <Style x:Key="PurchaseColumnHeaderStyle"
                TargetType="DataGridColumnHeader"
                BasedOn="{StaticResource KontaxDataGridColumnHeaderStyle}">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="DataGridColumnHeader">
@@ -384,6 +387,13 @@
                BasedOn="{StaticResource PurchaseColumnHeaderStyle}">
             <Setter Property="FontSize" Value="9"/>
             <Setter Property="Padding" Value="5,8"/>
+        </Style>
+
+        <Style x:Key="PurchaseCenteredColumnHeaderStyle"
+               TargetType="DataGridColumnHeader"
+               BasedOn="{StaticResource PurchaseColumnHeaderStyle}">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
 
         <Style x:Key="PurchaseManualCellStyle" TargetType="DataGridCell"
@@ -563,7 +573,7 @@
                         <TextBlock Text="Compras" FontSize="28" FontWeight="Bold"
                                    Foreground="{DynamicResource PrimaryTextBrush}"/>
                         <TextBlock Margin="0,3,0,0" FontSize="12"
-                                   Text="Registra comprobantes y recibe la mercadería cuando ingresa a bodega"
+                                   Text="Gestiona compras manuales o XML, recepción de mercadería y trazabilidad desde un solo lugar"
                                    Foreground="{DynamicResource SecondaryTextBrush}"/>
                     </StackPanel>
                 </StackPanel>
@@ -781,14 +791,16 @@
                               SelectedItem="{Binding SelectedPurchase}"
                               AutoGenerateColumns="False"
                               IsReadOnly="True" Style="{StaticResource KontaxDataGridStyle}"
-                              CanUserAddRows="False" CanUserDeleteRows="False"
+                               CanUserAddRows="False" CanUserDeleteRows="False"
+                               CanUserSortColumns="False"
                               BorderThickness="0" HeadersVisibility="Column"
                               MinRowHeight="60" ColumnHeaderHeight="46"
                               ColumnHeaderStyle="{StaticResource PurchaseColumnHeaderStyle}"
                               SelectionMode="Single" SelectionUnit="FullRow">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="FECHA" Binding="{Binding FechaEmision, StringFormat=dd/MM/yyyy}" Width="105"/>
-                            <DataGridTemplateColumn Header="DOCUMENTO" Width="170">
+                            <DataGridTextColumn Binding="{Binding FechaEmision, StringFormat=dd/MM/yyyy}" Width="112"><DataGridTextColumn.Header><Button Style="{StaticResource KontaxCenteredSortHeaderStyle}" Command="{Binding DataContext.OrdenarComprasCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{x:Static purchaseModels:CompraCatalogoOrden.Fecha}"><StackPanel Orientation="Horizontal"><TextBlock Text="FECHA"/><TextBlock Text="{Binding DataContext.IndicadorFecha, RelativeSource={RelativeSource AncestorType=DataGrid}}" Margin="5,0,0,0"/></StackPanel></Button></DataGridTextColumn.Header></DataGridTextColumn>
+                            <DataGridTemplateColumn Width="178">
+                                <DataGridTemplateColumn.Header><Button Style="{StaticResource KontaxSortHeaderStyle}" Command="{Binding DataContext.OrdenarComprasCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{x:Static purchaseModels:CompraCatalogoOrden.Documento}"><StackPanel Orientation="Horizontal"><TextBlock Text="DOCUMENTO"/><TextBlock Text="{Binding DataContext.IndicadorDocumento, RelativeSource={RelativeSource AncestorType=DataGrid}}" Margin="5,0,0,0"/></StackPanel></Button></DataGridTemplateColumn.Header>
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel VerticalAlignment="Center">
@@ -800,7 +812,8 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="PROVEEDOR" Width="*" MinWidth="260">
+                            <DataGridTemplateColumn Width="*" MinWidth="260">
+                                <DataGridTemplateColumn.Header><Button Style="{StaticResource KontaxSortHeaderStyle}" Command="{Binding DataContext.OrdenarComprasCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{x:Static purchaseModels:CompraCatalogoOrden.Proveedor}"><StackPanel Orientation="Horizontal"><TextBlock Text="PROVEEDOR"/><TextBlock Text="{Binding DataContext.IndicadorProveedor, RelativeSource={RelativeSource AncestorType=DataGrid}}" Margin="5,0,0,0"/></StackPanel></Button></DataGridTemplateColumn.Header>
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel VerticalAlignment="Center">
@@ -813,7 +826,8 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="TOTAL" Width="125">
+                            <DataGridTemplateColumn Width="132" HeaderStyle="{StaticResource PurchaseCenteredColumnHeaderStyle}">
+                                <DataGridTemplateColumn.Header><Button Style="{StaticResource KontaxCenteredSortHeaderStyle}" Command="{Binding DataContext.OrdenarComprasCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{x:Static purchaseModels:CompraCatalogoOrden.Total}"><StackPanel Orientation="Horizontal"><TextBlock Text="TOTAL"/><TextBlock Text="{Binding DataContext.IndicadorTotal, RelativeSource={RelativeSource AncestorType=DataGrid}}" Margin="5,0,0,0"/></StackPanel></Button></DataGridTemplateColumn.Header>
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding Total, StringFormat={}{0:C2}}"
@@ -823,7 +837,8 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="PENDIENTES" Width="105">
+                            <DataGridTemplateColumn Width="116" HeaderStyle="{StaticResource PurchaseCenteredColumnHeaderStyle}">
+                                <DataGridTemplateColumn.Header><Button Style="{StaticResource KontaxCenteredSortHeaderStyle}" Command="{Binding DataContext.OrdenarComprasCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{x:Static purchaseModels:CompraCatalogoOrden.Pendientes}"><StackPanel Orientation="Horizontal"><TextBlock Text="PENDIENTES"/><TextBlock Text="{Binding DataContext.IndicadorPendientes, RelativeSource={RelativeSource AncestorType=DataGrid}}" Margin="5,0,0,0"/></StackPanel></Button></DataGridTemplateColumn.Header>
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding LineasPendientes}" FontWeight="SemiBold"
@@ -831,10 +846,11 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="ESTADO" Width="185">
+                            <DataGridTemplateColumn Width="192" HeaderStyle="{StaticResource PurchaseCenteredColumnHeaderStyle}">
+                                <DataGridTemplateColumn.Header><Button Style="{StaticResource KontaxCenteredSortHeaderStyle}" Command="{Binding DataContext.OrdenarComprasCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{x:Static purchaseModels:CompraCatalogoOrden.Estado}"><StackPanel Orientation="Horizontal"><TextBlock Text="ESTADO"/><TextBlock Text="{Binding DataContext.IndicadorEstado, RelativeSource={RelativeSource AncestorType=DataGrid}}" Margin="5,0,0,0"/></StackPanel></Button></DataGridTemplateColumn.Header>
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <Border Style="{StaticResource StatusBadge}" HorizontalAlignment="Left">
+                                        <Border Style="{StaticResource StatusBadge}" HorizontalAlignment="Center" VerticalAlignment="Center">
                                             <TextBlock Foreground="White" FontSize="10" FontWeight="Bold">
                                                 <TextBlock.Style>
                                                     <Style TargetType="TextBlock">
@@ -901,16 +917,8 @@
                     <StackPanel Grid.Row="1" HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
                                 Visibility="{Binding StatusMessage, Converter={StaticResource StringToVisibilityConverter}}">
-                        <Border Width="70" Height="70" CornerRadius="20"
-                                Background="{DynamicResource SuccessSoftBrush}">
-                            <materialDesign:PackIcon Kind="CartOff" Width="34" Height="34"
-                                                     Foreground="{DynamicResource BrandProBrush}"
-                                                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <TextBlock Text="{Binding EmptyStateTitle}" Margin="0,14,0,0"
-                                   FontSize="16" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource PrimaryTextBrush}"
-                                   TextAlignment="Center"/>
+                        <materialDesign:PackIcon Style="{StaticResource KontaxEmptyListIconStyle}"/>
+                        <TextBlock Text="No se encontraron registros" Style="{StaticResource KontaxEmptyListTextStyle}"/>
                         <Button Content="Limpiar filtros" Margin="0,14,0,0"
                                 Style="{StaticResource NeutralButtonStyle}"
                                 Command="{Binding ClearFiltersCommand}"/>
@@ -988,6 +996,146 @@
                 </Grid>
             </Border>
         </Grid>
+
+        <!-- Selector previo: mantiene la importación dentro del módulo y admite arrastrar o examinar. -->
+        <Border Panel.ZIndex="90" Background="{DynamicResource OverlayBrush}"
+                Visibility="{Binding IsXmlPickerOpen, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+        <Border Panel.ZIndex="91" Width="760" MaxWidth="760"
+                HorizontalAlignment="Center" VerticalAlignment="Center"
+                Style="{StaticResource PurchaseWorkspaceStyle}"
+                Visibility="{Binding IsXmlPickerOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="20"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="18"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="50"/>
+                        <ColumnDefinition Width="14"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Width="50" Height="50" CornerRadius="14"
+                            Background="{DynamicResource PrimaryDarkBrush}">
+                        <materialDesign:PackIcon Kind="FileXmlBox" Width="27" Height="27"
+                                                 Foreground="White"
+                                                 HorizontalAlignment="Center"
+                                                 VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                        <TextBlock Text="Importar factura electrónica"
+                                   FontSize="23" FontWeight="Bold"
+                                   Foreground="{DynamicResource PrimaryTextBrush}"/>
+                        <TextBlock Text="Selecciona un XML para iniciar su validación y registro"
+                                   Margin="0,4,0,0"
+                                   Foreground="{DynamicResource SecondaryTextBrush}"/>
+                    </StackPanel>
+                    <Button Grid.Column="3" Command="{Binding CloseXmlPickerCommand}"
+                            Style="{StaticResource PurchaseCloseButtonStyle}">
+                        <materialDesign:PackIcon Kind="Close" Width="18" Height="18"
+                                                 Foreground="White"/>
+                    </Button>
+                </Grid>
+
+                <Border Grid.Row="2" MinHeight="300" Padding="36"
+                        AllowDrop="True"
+                        DragEnter="XmlDropZone_DragEnter"
+                        DragOver="XmlDropZone_DragOver"
+                        DragLeave="XmlDropZone_DragLeave"
+                        Drop="XmlDropZone_Drop">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="18"/>
+                            <Setter Property="BorderThickness" Value="2"/>
+                            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+                            <Setter Property="Background" Value="{DynamicResource SecondarySurfaceBrush}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsXmlDragActive}" Value="True">
+                                    <Setter Property="BorderBrush" Value="{DynamicResource PrimaryDarkBrush}"/>
+                                    <Setter Property="Background" Value="{DynamicResource TableSelectedRowBrush}"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding XmlPickerHasError}" Value="True">
+                                    <Setter Property="BorderBrush" Value="#DC2626"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                                MaxWidth="570">
+                        <Border Width="76" Height="76" CornerRadius="22"
+                                HorizontalAlignment="Center">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="{DynamicResource PrimaryDarkBrush}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding XmlPickerHasError}" Value="True">
+                                            <Setter Property="Background" Value="#DC2626"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <materialDesign:PackIcon Width="38" Height="38" Foreground="White"
+                                                     HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <materialDesign:PackIcon.Style>
+                                    <Style TargetType="materialDesign:PackIcon">
+                                        <Setter Property="Kind" Value="TrayArrowDown"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding XmlPickerHasError}" Value="True">
+                                                <Setter Property="Kind" Value="AlertCircleOutline"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </materialDesign:PackIcon.Style>
+                            </materialDesign:PackIcon>
+                        </Border>
+                        <TextBlock Text="Suelta aquí tu archivo XML"
+                                   Margin="0,20,0,0" FontSize="18" FontWeight="Bold"
+                                   HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource PrimaryTextBrush}"/>
+                        <TextBlock Text="{Binding XmlPickerMessage}"
+                                   Margin="0,8,0,0" FontSize="12"
+                                   TextAlignment="Center" TextWrapping="Wrap"
+                                   HorizontalAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding XmlPickerHasError}" Value="True">
+                                            <Setter Property="Foreground" Value="#DC2626"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <Button Command="{Binding BrowseXmlCommand}"
+                                Style="{StaticResource KontaxPrimaryButtonStyle}"
+                                Margin="0,22,0,0" HorizontalAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="FolderSearchOutline"
+                                                         Width="18" Height="18"/>
+                                <TextBlock Text="Examinar archivo" Margin="8,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+                        <TextBlock Text="Solo se admite un archivo .XML por operación"
+                                   Margin="0,14,0,0" FontSize="10"
+                                   HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource SecondaryTextBrush}"/>
+                    </StackPanel>
+                </Border>
+
+                <Grid Grid.Row="4">
+                    <ProgressBar Height="4" VerticalAlignment="Top"
+                                 Style="{StaticResource PurchaseLoadingBarStyle}"
+                                 Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                </Grid>
+            </Grid>
+        </Border>
 
         <Border Panel.ZIndex="100" Background="{DynamicResource OverlayBrush}"
                 Visibility="{Binding IsImportWizardOpen, Converter={StaticResource BooleanToVisibilityConverter}}"/>
@@ -2823,9 +2971,13 @@
                                                                           SelectedItem="{Binding SelectedExistingLot, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                                           SelectionChanged="TraceabilityLotSuggestion_SelectionChanged"
                                                                           Background="Transparent" BorderThickness="0"
-                                                                          Foreground="{DynamicResource PrimaryTextBrush}"
-                                                                          MaxHeight="250"
-                                                                          ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                                                           Foreground="{DynamicResource PrimaryTextBrush}"
+                                                                           MaxHeight="250"
+                                                                           ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                                                           ScrollViewer.CanContentScroll="True"
+                                                                           VirtualizingPanel.IsVirtualizing="True"
+                                                                           VirtualizingPanel.VirtualizationMode="Recycling"
+                                                                           VirtualizingPanel.ScrollUnit="Pixel">
                                                                     <ListBox.ItemContainerStyle>
                                                                         <Style TargetType="ListBoxItem">
                                                                             <Setter Property="Background" Value="Transparent"/>
@@ -3220,9 +3372,13 @@
                                                 <StackPanel>
                                                     <ScrollViewer MaxHeight="250" VerticalScrollBarVisibility="Auto"
                                                                   HorizontalScrollBarVisibility="Disabled">
-                                                        <ListBox ItemsSource="{Binding ManualSupplierSuggestions}"
-                                                                 SelectionChanged="ManualSupplierSuggestion_SelectionChanged"
-                                                                 Background="Transparent" BorderThickness="0">
+                                                         <ListBox ItemsSource="{Binding ManualSupplierSuggestions}"
+                                                                  SelectionChanged="ManualSupplierSuggestion_SelectionChanged"
+                                                                  Background="Transparent" BorderThickness="0"
+                                                                  ScrollViewer.CanContentScroll="True"
+                                                                  VirtualizingPanel.IsVirtualizing="True"
+                                                                  VirtualizingPanel.VirtualizationMode="Recycling"
+                                                                  VirtualizingPanel.ScrollUnit="Pixel">
                                                             <ListBox.ItemContainerStyle>
                                                                 <Style TargetType="ListBoxItem">
                                                                     <Setter Property="Padding" Value="0"/>
@@ -3426,7 +3582,14 @@
                                                                      materialDesign:HintAssist.Hint="Texto de la factura"/>
                                                             <materialDesign:PackIcon Grid.Column="1" Kind="Magnify" Width="16" Height="16"
                                                                                      Foreground="{DynamicResource MutedTextBrush}"
-                                                                                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                                     HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                                     Visibility="{Binding HasDescription, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
+                                                            <Button Grid.Column="1" Command="{Binding ClearDescriptionCommand}"
+                                                                    Style="{StaticResource PurchaseInlineClearButtonStyle}"
+                                                                    ToolTip="Limpiar descripción y datos de la línea"
+                                                                    Visibility="{Binding HasDescription, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                                <materialDesign:PackIcon Kind="Close" Width="15" Height="15" Foreground="#DC2626"/>
+                                                            </Button>
                                                         </Grid>
                                                     </Border>
                                                     <Popup Placement="Bottom" PlacementTarget="{Binding ElementName=ManualDescriptionSearchField}"
@@ -3436,9 +3599,13 @@
                                                                 MinWidth="{Binding ActualWidth, ElementName=ManualDescriptionSearchField}"
                                                                 Background="{DynamicResource CardBackgroundBrush}"
                                                                 BorderBrush="{DynamicResource InputBorderBrush}" BorderThickness="1">
-                                                            <ListBox ItemsSource="{Binding DescriptionSuggestions}"
-                                                                     SelectionChanged="ManualDescriptionSuggestion_SelectionChanged"
-                                                                     MaxHeight="240" Background="Transparent" BorderThickness="0">
+                                                             <ListBox ItemsSource="{Binding DescriptionSuggestions}"
+                                                                      SelectionChanged="ManualDescriptionSuggestion_SelectionChanged"
+                                                                      MaxHeight="240" Background="Transparent" BorderThickness="0"
+                                                                      ScrollViewer.CanContentScroll="True"
+                                                                      VirtualizingPanel.IsVirtualizing="True"
+                                                                      VirtualizingPanel.VirtualizationMode="Recycling"
+                                                                      VirtualizingPanel.ScrollUnit="Pixel">
                                                                 <ListBox.ItemContainerStyle>
                                                                     <Style TargetType="ListBoxItem">
                                                                         <Setter Property="Padding" Value="9,7"/>
@@ -3534,9 +3701,13 @@
                                                                         MinWidth="{Binding ActualWidth, ElementName=ManualProductSearchField}"
                                                                         Background="{DynamicResource CardBackgroundBrush}"
                                                                         BorderBrush="{DynamicResource InputBorderBrush}" BorderThickness="1">
-                                                                    <ListBox ItemsSource="{Binding ProductSuggestions}"
-                                                                             SelectionChanged="ManualProductSuggestion_SelectionChanged"
-                                                                             MaxHeight="240" Background="Transparent" BorderThickness="0">
+                                                                     <ListBox ItemsSource="{Binding ProductSuggestions}"
+                                                                              SelectionChanged="ManualProductSuggestion_SelectionChanged"
+                                                                              MaxHeight="240" Background="Transparent" BorderThickness="0"
+                                                                              ScrollViewer.CanContentScroll="True"
+                                                                              VirtualizingPanel.IsVirtualizing="True"
+                                                                              VirtualizingPanel.VirtualizationMode="Recycling"
+                                                                              VirtualizingPanel.ScrollUnit="Pixel">
                                                                         <ListBox.ItemContainerStyle>
                                                                             <Style TargetType="ListBoxItem">
                                                                                 <Setter Property="Padding" Value="9,7"/>
@@ -3629,10 +3800,12 @@
                                                 </Grid>
                                             </DataTemplate></DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
-                                        <DataGridTemplateColumn Header="CANT. *" Width="70">
+                                        <DataGridTemplateColumn x:Name="ManualQuantityColumn"
+                                                                Header="CANT. *" Width="70">
                                             <DataGridTemplateColumn.CellTemplate><DataTemplate>
                                                 <Border Height="38" MinHeight="38" Style="{StaticResource PurchaseFieldBorderStyle}">
-                                                    <TextBox Text="{Binding Quantity, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.######}}"
+                                                    <TextBox x:Name="ManualQuantityInput"
+                                                             Text="{Binding Quantity, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.######}}"
                                                              Style="{StaticResource PurchaseFieldTextBoxStyle}" Padding="7,0"
                                                              HorizontalContentAlignment="Center"
                                                              behaviors:DecimalInputBehavior.IsEnabled="True" behaviors:DecimalInputBehavior.DecimalPlaces="6"
@@ -4271,9 +4444,49 @@
         </Border>
 
         <Border Panel.ZIndex="200" Background="{DynamicResource OverlayBrush}" Visibility="{Binding IsProductFormOpen, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-        <Border Panel.ZIndex="201" Style="{StaticResource PurchaseEmbeddedWorkspaceStyle}" Visibility="{Binding IsProductFormOpen, Converter={StaticResource BooleanToVisibilityConverter}}"><productViews:ProductFormView DataContext="{Binding ProductForm}"/></Border>
+        <Border Panel.ZIndex="201" Style="{StaticResource PurchaseEmbeddedWorkspaceStyle}" Visibility="{Binding IsProductFormOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <ContentControl>
+                <ContentControl.Style>
+                    <Style TargetType="ContentControl">
+                        <Setter Property="Content" Value="{x:Null}"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsProductFormOpen}" Value="True">
+                                <Setter Property="Content" Value="{Binding ProductForm}"/>
+                                <Setter Property="ContentTemplate">
+                                    <Setter.Value>
+                                        <DataTemplate>
+                                            <productViews:ProductFormView/>
+                                        </DataTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ContentControl.Style>
+            </ContentControl>
+        </Border>
         <Border Panel.ZIndex="210" Background="{DynamicResource OverlayBrush}" Visibility="{Binding IsSupplierFormOpen, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-        <Border Panel.ZIndex="211" Style="{StaticResource PurchaseEmbeddedWorkspaceStyle}" Visibility="{Binding IsSupplierFormOpen, Converter={StaticResource BooleanToVisibilityConverter}}"><supplierViews:ProveedorFormView DataContext="{Binding ProveedorForm}"/></Border>
+        <Border Panel.ZIndex="211" Style="{StaticResource PurchaseEmbeddedWorkspaceStyle}" Visibility="{Binding IsSupplierFormOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <ContentControl>
+                <ContentControl.Style>
+                    <Style TargetType="ContentControl">
+                        <Setter Property="Content" Value="{x:Null}"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsSupplierFormOpen}" Value="True">
+                                <Setter Property="Content" Value="{Binding ProveedorForm}"/>
+                                <Setter Property="ContentTemplate">
+                                    <Setter.Value>
+                                        <DataTemplate>
+                                            <supplierViews:ProveedorFormView/>
+                                        </DataTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ContentControl.Style>
+            </ContentControl>
+        </Border>
 
         <!-- Alta rápida exclusiva de la compra manual; reutiliza las reglas oficiales de Proveedores. -->
         <Border Panel.ZIndex="220" Background="{DynamicResource OverlayBrush}"

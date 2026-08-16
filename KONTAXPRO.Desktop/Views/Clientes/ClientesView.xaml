@@ -4,8 +4,7 @@
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:behaviors="clr-namespace:KONTAXPRO.Desktop.Behaviors"
              xmlns:clientModels="clr-namespace:KONTAXPRO.Application.Models.Clientes;assembly=KONTAXPRO.Application"
-             xmlns:clientViews="clr-namespace:KONTAXPRO.Desktop.Views.Clientes"
-             Loaded="UserControl_Loaded">
+             xmlns:clientViews="clr-namespace:KONTAXPRO.Desktop.Views.Clientes">
     <UserControl.Resources>
         <Style x:Key="ClientColumnHeaderStyle"
                TargetType="DataGridColumnHeader"
@@ -38,6 +37,13 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+        </Style>
+
+        <Style x:Key="ClientCenteredColumnHeaderStyle"
+               TargetType="DataGridColumnHeader"
+               BasedOn="{StaticResource ClientColumnHeaderStyle}">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
 
         <Style x:Key="ClientKpiButtonStyle" TargetType="Button">
@@ -446,7 +452,7 @@
                         Style="{StaticResource KontaxDataGridStyle}"
                         AutoGenerateColumns="False" IsReadOnly="True"
                         CanUserAddRows="False" CanUserDeleteRows="False"
-                        CanUserResizeColumns="True" CanUserReorderColumns="False"
+                              CanUserResizeColumns="True" CanUserReorderColumns="False" CanUserSortColumns="False"
                         BorderThickness="0" HeadersVisibility="Column"
                         RowHeight="58" ColumnHeaderHeight="42"
                         ColumnHeaderStyle="{StaticResource ClientColumnHeaderStyle}"
@@ -454,8 +460,9 @@
                         behaviors:ResponsiveDataGridBehavior.IsEnabled="True"
                         ScrollViewer.HorizontalScrollBarVisibility="Auto">
                         <DataGrid.Columns>
-                            <DataGridTemplateColumn Header="IDENTIFICACIÓN" Width="150" MinWidth="140"
-                                behaviors:ResponsiveDataGridBehavior.Priority="Always">
+                            <DataGridTemplateColumn Width="150" MinWidth="140"
+                                                    behaviors:ResponsiveDataGridBehavior.Priority="Always">
+                                <DataGridTemplateColumn.Header><Button Style="{StaticResource KontaxSortHeaderStyle}" Command="{Binding DataContext.OrdenarClientesCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{x:Static clientModels:ClienteCatalogoOrden.Identificacion}"><StackPanel Orientation="Horizontal"><TextBlock Text="IDENTIFICACIÓN"/><TextBlock Text="{Binding DataContext.IndicadorIdentificacion, RelativeSource={RelativeSource AncestorType=DataGrid}}" Margin="5,0,0,0"/></StackPanel></Button></DataGridTemplateColumn.Header>
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <Grid ToolTip="{Binding VerificacionTexto}">
@@ -503,8 +510,9 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
 
-                            <DataGridTemplateColumn Header="NOMBRES / RAZÓN SOCIAL" Width="*" MinWidth="190"
-                                behaviors:ResponsiveDataGridBehavior.Priority="Always">
+                            <DataGridTemplateColumn Width="*" MinWidth="190"
+                                                    behaviors:ResponsiveDataGridBehavior.Priority="Always">
+                                <DataGridTemplateColumn.Header><Button Style="{StaticResource KontaxSortHeaderStyle}" Command="{Binding DataContext.OrdenarClientesCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{x:Static clientModels:ClienteCatalogoOrden.RazonSocial}"><StackPanel Orientation="Horizontal"><TextBlock Text="NOMBRES / RAZÓN SOCIAL"/><TextBlock Text="{Binding DataContext.IndicadorRazonSocial, RelativeSource={RelativeSource AncestorType=DataGrid}}" Margin="5,0,0,0"/></StackPanel></Button></DataGridTemplateColumn.Header>
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding RazonSocial}" FontWeight="SemiBold"
@@ -520,7 +528,8 @@
                                 ElementStyle="{StaticResource CompactClientTextStyle}" behaviors:ResponsiveDataGridBehavior.Priority="Medium"/>
                             <DataGridTextColumn Header="EMAIL" Binding="{Binding Correo}" Width="1.1*" MinWidth="160"
                                 ElementStyle="{StaticResource TrimmedClientTextStyle}" behaviors:ResponsiveDataGridBehavior.Priority="Wide"/>
-                            <DataGridTemplateColumn Header="CLASE" Width="64" behaviors:ResponsiveDataGridBehavior.Priority="Medium">
+                            <DataGridTemplateColumn Width="72" HeaderStyle="{StaticResource ClientCenteredColumnHeaderStyle}" behaviors:ResponsiveDataGridBehavior.Priority="Medium">
+                                <DataGridTemplateColumn.Header><Button Style="{StaticResource KontaxCenteredSortHeaderStyle}" Command="{Binding DataContext.OrdenarClientesCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{x:Static clientModels:ClienteCatalogoOrden.Clasificacion}"><StackPanel Orientation="Horizontal"><TextBlock Text="CLASE"/><TextBlock Text="{Binding DataContext.IndicadorClasificacion, RelativeSource={RelativeSource AncestorType=DataGrid}}" Margin="5,0,0,0"/></StackPanel></Button></DataGridTemplateColumn.Header>
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <Border Width="30" Height="26" CornerRadius="8"
@@ -552,7 +561,8 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="CRÉDITO" Width="74" behaviors:ResponsiveDataGridBehavior.Priority="Medium">
+                            <DataGridTemplateColumn Width="84" HeaderStyle="{StaticResource ClientCenteredColumnHeaderStyle}" behaviors:ResponsiveDataGridBehavior.Priority="Medium">
+                                <DataGridTemplateColumn.Header><Button Style="{StaticResource KontaxCenteredSortHeaderStyle}" Command="{Binding DataContext.OrdenarClientesCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{x:Static clientModels:ClienteCatalogoOrden.Credito}"><StackPanel Orientation="Horizontal"><TextBlock Text="CRÉDITO"/><TextBlock Text="{Binding DataContext.IndicadorCredito, RelativeSource={RelativeSource AncestorType=DataGrid}}" Margin="5,0,0,0"/></StackPanel></Button></DataGridTemplateColumn.Header>
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <materialDesign:PackIcon Width="23" Height="23" HorizontalAlignment="Center" VerticalAlignment="Center" ToolTip="{Binding CreditoTexto}">
@@ -566,10 +576,11 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="ESTADO" Width="104" MinWidth="96" behaviors:ResponsiveDataGridBehavior.Priority="Always">
+                            <DataGridTemplateColumn Width="112" MinWidth="104" HeaderStyle="{StaticResource ClientCenteredColumnHeaderStyle}" behaviors:ResponsiveDataGridBehavior.Priority="Always">
+                                <DataGridTemplateColumn.Header><Button Style="{StaticResource KontaxCenteredSortHeaderStyle}" Command="{Binding DataContext.OrdenarClientesCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{x:Static clientModels:ClienteCatalogoOrden.Estado}"><StackPanel Orientation="Horizontal"><TextBlock Text="ESTADO"/><TextBlock Text="{Binding DataContext.IndicadorEstado, RelativeSource={RelativeSource AncestorType=DataGrid}}" Margin="5,0,0,0"/></StackPanel></Button></DataGridTemplateColumn.Header>
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <Border CornerRadius="10" Padding="9,5" HorizontalAlignment="Left">
+                                        <Border CornerRadius="10" Padding="9,5" HorizontalAlignment="Center" VerticalAlignment="Center">
                                             <Border.Style><Style TargetType="Border"><Setter Property="Background" Value="#4B5563"/><Style.Triggers><DataTrigger Binding="{Binding Activo}" Value="True"><Setter Property="Background" Value="#16A34A"/></DataTrigger></Style.Triggers></Style></Border.Style>
                                             <TextBlock Text="{Binding EstadoTexto}" Foreground="White" FontSize="10" FontWeight="Bold"/>
                                         </Border>
@@ -603,12 +614,8 @@
 
                     <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center"
                         Visibility="{Binding MostrarEstadoVacio, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <Border Width="70" Height="70" CornerRadius="20" Background="{DynamicResource SuccessSoftBrush}">
-                            <materialDesign:PackIcon Kind="AccountSearch" Width="34" Height="34"
-                                Foreground="{DynamicResource BrandProBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <TextBlock Text="{Binding TituloEstadoVacio}" Margin="0,14,0,0" FontSize="16" FontWeight="SemiBold"
-                            Foreground="{DynamicResource PrimaryTextBrush}" TextAlignment="Center"/>
+                        <materialDesign:PackIcon Style="{StaticResource KontaxEmptyListIconStyle}"/>
+                        <TextBlock Text="No se encontraron registros" Style="{StaticResource KontaxEmptyListTextStyle}"/>
                         <Button Content="Limpiar filtros" Margin="0,14,0,0"
                             Style="{StaticResource NeutralButtonStyle}" Command="{Binding LimpiarFiltrosCommand}"/>
                     </StackPanel>
@@ -657,7 +664,21 @@
             BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
             Visibility="{Binding IsClientFormOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
             <Border.Effect><DropShadowEffect BlurRadius="35" ShadowDepth="0" Opacity="0.32"/></Border.Effect>
-            <clientViews:ClienteFormView DataContext="{Binding ClienteForm}"/>
+            <ContentControl>
+                <ContentControl.Style>
+                    <Style TargetType="ContentControl">
+                        <Setter Property="Content" Value="{x:Null}"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsClientFormOpen}" Value="True">
+                                <Setter Property="Content" Value="{Binding ClienteForm}"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ContentControl.Style>
+                <ContentControl.ContentTemplate>
+                    <DataTemplate><clientViews:ClienteFormView/></DataTemplate>
+                </ContentControl.ContentTemplate>
+            </ContentControl>
         </Border>
     </Grid>
 </UserControl>

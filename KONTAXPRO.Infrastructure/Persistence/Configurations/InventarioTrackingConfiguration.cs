@@ -135,6 +135,16 @@ public sealed class MovimientoInventarioConfiguration
         InventarioEf.Timestamps(b);
         b.HasIndex(x => new { x.EmpresaId, x.NumeroMovimiento }).IsUnique()
             .HasDatabaseName("ux_movimientos_inventario_empresa_numero");
+        b.HasIndex(x => new { x.EmpresaId, x.BodegaId, x.FechaMovimiento })
+            .HasDatabaseName("ix_movimientos_inventario_empresa_bodega_fecha");
+        b.HasIndex(x => new
+            {
+                x.EmpresaId, x.OrigenTipoId, x.OrigenId,
+                x.BodegaId, x.TipoMovimientoId
+            })
+            .IsUnique()
+            .HasFilter("origen_id > 0")
+            .HasDatabaseName("ux_movimientos_inventario_origen_bodega_tipo");
         b.HasIndex(x => x.MovimientoReversoId).IsUnique()
             .HasFilter("movimiento_reverso_id IS NOT NULL")
             .HasDatabaseName("ux_movimientos_inventario_reverso");

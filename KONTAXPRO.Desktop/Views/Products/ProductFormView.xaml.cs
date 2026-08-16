@@ -39,6 +39,8 @@ public partial class ProductFormView : UserControl
             oldViewModel.PropertyChanged -= ViewModel_PropertyChanged;
             oldViewModel.PresentationAdded -= ViewModel_PresentationAdded;
             oldViewModel.InitialFocusRequested -= ViewModel_InitialFocusRequested;
+            oldViewModel.InventoryOperationFocusRequested -=
+                ViewModel_InventoryOperationFocusRequested;
         }
 
         if (e.NewValue is global::KONTAXPRO.Desktop.ViewModels.Products.ProductFormViewModel newViewModel)
@@ -46,9 +48,18 @@ public partial class ProductFormView : UserControl
             newViewModel.PropertyChanged += ViewModel_PropertyChanged;
             newViewModel.PresentationAdded += ViewModel_PresentationAdded;
             newViewModel.InitialFocusRequested += ViewModel_InitialFocusRequested;
+            newViewModel.InventoryOperationFocusRequested +=
+                ViewModel_InventoryOperationFocusRequested;
         }
 
         ActualizarColumnasInventario();
+    }
+
+    private void ViewModel_InventoryOperationFocusRequested()
+    {
+        Dispatcher.BeginInvoke(
+            System.Windows.Threading.DispatcherPriority.Loaded,
+            () => InventoryOperationsSection.BringIntoView());
     }
 
     private void ViewModel_InitialFocusRequested()

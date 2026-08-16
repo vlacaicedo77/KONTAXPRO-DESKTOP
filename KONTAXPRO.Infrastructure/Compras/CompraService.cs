@@ -24,6 +24,8 @@ public sealed class CompraService(
         string? estado = null,
         int pagina = 1,
         int tamanoPagina = 25,
+        CompraCatalogoOrden orden = CompraCatalogoOrden.Fecha,
+        bool ordenDescendente = true,
         CancellationToken cancellationToken = default)
     {
         if (!currentSession.IsAuthenticated ||
@@ -52,8 +54,39 @@ public sealed class CompraService(
         pagina = Math.Max(1, pagina);
         tamanoPagina = Math.Clamp(tamanoPagina, 1, 100);
         var totalFiltrado = await query.CountAsync(cancellationToken);
-        var items = await query.OrderByDescending(x => x.FechaEmision)
-            .ThenByDescending(x => x.Id)
+        var orderedQuery = (orden, ordenDescendente) switch
+        {
+            (CompraCatalogoOrden.Documento, false) => query
+                .OrderBy(x => x.NumeroDocumento),
+            (CompraCatalogoOrden.Documento, true) => query
+                .OrderByDescending(x => x.NumeroDocumento),
+            (CompraCatalogoOrden.Proveedor, false) => query
+                .OrderBy(x => x.ProveedorRazonSocial),
+            (CompraCatalogoOrden.Proveedor, true) => query
+                .OrderByDescending(x => x.ProveedorRazonSocial),
+            (CompraCatalogoOrden.Total, false) => query.OrderBy(x => x.Total),
+            (CompraCatalogoOrden.Total, true) => query
+                .OrderByDescending(x => x.Total),
+            (CompraCatalogoOrden.Pendientes, false) => query.OrderBy(x =>
+                x.Detalles.Count(d => d.EsInventariable &&
+                    d.RecepcionesDetalles.Where(r =>
+                        r.CompraRecepcion!.Estado == "CONFIRMADA")
+                    .Sum(r => (decimal?)r.CantidadPresentacion) <
+                    d.CantidadPresentacion)),
+            (CompraCatalogoOrden.Pendientes, true) => query.OrderByDescending(x =>
+                x.Detalles.Count(d => d.EsInventariable &&
+                    d.RecepcionesDetalles.Where(r =>
+                        r.CompraRecepcion!.Estado == "CONFIRMADA")
+                    .Sum(r => (decimal?)r.CantidadPresentacion) <
+                    d.CantidadPresentacion)),
+            (CompraCatalogoOrden.Estado, false) => query.OrderBy(x => x.Estado),
+            (CompraCatalogoOrden.Estado, true) => query
+                .OrderByDescending(x => x.Estado),
+            (CompraCatalogoOrden.Fecha, false) => query
+                .OrderBy(x => x.FechaEmision),
+            _ => query.OrderByDescending(x => x.FechaEmision)
+        };
+        var items = await orderedQuery.ThenByDescending(x => x.Id)
             .Skip((pagina - 1) * tamanoPagina)
             .Take(tamanoPagina)
             .Select(x => new CompraCatalogoItemDto

@@ -90,6 +90,7 @@ public sealed class StructuralSeeder
                 "COMPRA", "LIQUIDACION_COMPRA", "FACTURA", "NOTA_ENTREGA",
                 "VENTA_XF", "DEVOLUCION_COMPRA", "DEVOLUCION_VENTA",
                 "TRANSFERENCIA", "AJUSTE", "INVENTARIO_INICIAL",
+                "RECEPCION_COMPRA",
                 "OPERACION_SIN_SUSTENTO"
             ],
             now,
@@ -350,6 +351,9 @@ public sealed class StructuralSeeder
             ("INVENTARIO_AGREGAR_ENTRADA_INICIAL", "INVENTARIO"),
             ("INVENTARIO_REGISTRAR_AJUSTE", "INVENTARIO"),
             ("INVENTARIO_VER_KARDEX", "INVENTARIO"),
+            ("INVENTARIO_TRANSFERIR", "INVENTARIO"),
+            ("INVENTARIO_RECONCILIAR", "INVENTARIO"),
+            ("INVENTARIO_ANULAR_OPERACION", "INVENTARIO"),
             ("INVENTARIO_CONVERTIR_TIPO_CONTROL", "INVENTARIO"),
             ("INVENTARIO_CREAR_LOTE_REGULARIZACION", "INVENTARIO"),
             ("INVENTARIO_CORREGIR_LOTE", "INVENTARIO"),
@@ -429,6 +433,10 @@ public sealed class StructuralSeeder
         var asignaciones = permisosSeeds
             .Select(x => ("ADMINISTRADOR", x.Codigo))
             .Append(("GUARDALMACEN", "INVENTARIO_VER_COSTO"))
+            .Append(("GUARDALMACEN", "INVENTARIO_VER_KARDEX"))
+            .Append(("GUARDALMACEN", "INVENTARIO_REGISTRAR_AJUSTE"))
+            .Append(("GUARDALMACEN", "INVENTARIO_TRANSFERIR"))
+            .Append(("GUARDALMACEN", "INVENTARIO_ANULAR_OPERACION"))
             .Append(("GUARDALMACEN", "COMPRAS_VER"))
             .Append(("GUARDALMACEN", "COMPRAS_RECIBIR"));
 
@@ -803,6 +811,7 @@ public sealed class StructuralSeeder
             ("NOTA_ENTREGA", "NE"),
             ("PROFORMA", "PRO"),
             ("MOVIMIENTO_INVENTARIO", "MOV"),
+            ("TRANSFERENCIA_INVENTARIO", "TRF"),
             ("COBRO", "COB"),
             ("PAGO", "PAG"),
             ("DEVOLUCION_COMPRA", "DC"),

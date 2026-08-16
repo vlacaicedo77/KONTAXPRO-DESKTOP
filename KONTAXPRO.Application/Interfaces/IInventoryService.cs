@@ -30,11 +30,13 @@ public interface IInventoryService
 
     Task<EstadoControlInventarioDto?> ObtenerEstadoControlAsync(
         long empresaId,
+        long usuarioId,
         long productoId,
         CancellationToken cancellationToken = default);
 
     Task<List<MotivoOperacionInventarioDto>> ObtenerMotivosOperacionAsync(
         long empresaId,
+        long usuarioId,
         string tipoOperacion,
         CancellationToken cancellationToken = default);
 

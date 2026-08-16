@@ -118,6 +118,25 @@ public sealed class ProductoNuevoRulesTests
         Assert.Equal(9m, listaC);
     }
 
+    [Theory]
+    [InlineData(10, 0, 10)]
+    [InlineData(10, 5, 10.50)]
+    [InlineData(10, 15, 11.50)]
+    [InlineData(10.439, 15, 12.00)]
+    public void PrecioFinal_IncluyeIvaYRedondeaComoDinero(
+        decimal precioNeto,
+        decimal porcentaje,
+        decimal esperado)
+    {
+        var resultado = ProductoNuevoRules.CalcularPrecioFinalConImpuesto(
+            precioNeto,
+            "PORCENTAJE",
+            porcentaje,
+            null);
+
+        Assert.Equal(esperado, resultado);
+    }
+
     [Fact]
     public void CajaX6_AdvierteSiSuperaElPrecioDeSeisUnidades()
     {

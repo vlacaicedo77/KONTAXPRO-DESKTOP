@@ -43,7 +43,25 @@
 
             </Border.Effect>
 
-            <productViews:ProductFormView DataContext="{Binding ProductForm}" />
+            <ContentControl>
+                <ContentControl.Style>
+                    <Style TargetType="ContentControl">
+                        <Setter Property="Content" Value="{x:Null}"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsProductFormOpen}"
+                                         Value="True">
+                                <Setter Property="Content"
+                                        Value="{Binding ProductForm}"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ContentControl.Style>
+                <ContentControl.ContentTemplate>
+                    <DataTemplate>
+                        <productViews:ProductFormView/>
+                    </DataTemplate>
+                </ContentControl.ContentTemplate>
+            </ContentControl>
 
         </Border>
 

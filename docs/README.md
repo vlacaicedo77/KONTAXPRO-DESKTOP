@@ -9,6 +9,8 @@
 - [POSTGRESQL_INTEGRATION_TESTS.md](POSTGRESQL_INTEGRATION_TESTS.md): configuración segura y ejecución opt-in de las pruebas relacionales contra una base PostgreSQL exclusiva `_test`.
 - [UI_UX_KONTAXPRO.md](UI_UX_KONTAXPRO.md): estándar visual global para interfaces WPF compatibles con los temas Light y Dark.
 - [PATRONES_DESARROLLO_KONTAXPRO.md](PATRONES_DESARROLLO_KONTAXPRO.md): patrones técnicos para construir y mantener módulos respetando la arquitectura real del repositorio.
+- [CONTROL_DIFERENCIAS_MERCADERIA.md](CONTROL_DIFERENCIAS_MERCADERIA.md): propuesta futura para conciliar diferencias entre comprobantes recibidos y mercadería física, sin crear existencias ficticias.
+- [DESPACHOS_SUCURSALES.md](DESPACHOS_SUCURSALES.md): arquitectura futura para exportar despachos desde la matriz e importarlos de forma idempotente en instalaciones de sucursales mediante UUID.
 
 Antes de modificar un módulo existente, consultar primero su documentación específica. Antes de construir UI nueva, consultar `UI_UX_KONTAXPRO.md`. Antes de crear la arquitectura de un módulo, consultar `PATRONES_DESARROLLO_KONTAXPRO.md`.
 

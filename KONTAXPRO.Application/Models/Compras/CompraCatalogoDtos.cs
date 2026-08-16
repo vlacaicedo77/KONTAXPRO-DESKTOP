@@ -1,5 +1,15 @@
 namespace KONTAXPRO.Application.Models.Compras;
 
+public enum CompraCatalogoOrden
+{
+    Fecha,
+    Documento,
+    Proveedor,
+    Total,
+    Pendientes,
+    Estado
+}
+
 public sealed class CompraCatalogoDto
 {
     public IReadOnlyList<CompraCatalogoItemDto> Items { get; init; } = [];

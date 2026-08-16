@@ -13,7 +13,9 @@
              xmlns:purchaseViews="clr-namespace:KONTAXPRO.Desktop.Views.Compras"
              xmlns:purchaseViewModels="clr-namespace:KONTAXPRO.Desktop.ViewModels.Compras"
              xmlns:treasuryViews="clr-namespace:KONTAXPRO.Desktop.Views.Tesoreria"
-             xmlns:treasuryViewModels="clr-namespace:KONTAXPRO.Desktop.ViewModels.Tesoreria">
+             xmlns:treasuryViewModels="clr-namespace:KONTAXPRO.Desktop.ViewModels.Tesoreria"
+             xmlns:inventoryViews="clr-namespace:KONTAXPRO.Desktop.Views.Inventory"
+             xmlns:inventoryViewModels="clr-namespace:KONTAXPRO.Desktop.ViewModels.Inventory">
 
     <Application.Resources>
         
@@ -70,6 +72,10 @@
 
             <DataTemplate DataType="{x:Type treasuryViewModels:OperacionesSinSustentoViewModel}">
                 <treasuryViews:OperacionesSinSustentoView/>
+            </DataTemplate>
+
+            <DataTemplate DataType="{x:Type inventoryViewModels:InventoryViewModel}">
+                <inventoryViews:InventoryView/>
             </DataTemplate>
 
         </ResourceDictionary>

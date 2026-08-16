@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using KONTAXPRO.Application.Interfaces;
 using KONTAXPRO.Application.Session;
 using KONTAXPRO.Desktop.Models;
 using KONTAXPRO.Desktop.Services;
@@ -15,6 +16,8 @@ namespace KONTAXPRO.Desktop.ViewModels
         private readonly ThemeService _themeService;
         private readonly INavigationService _navigationService;
         private readonly CurrentSession _currentSession;
+        private readonly ILoadingService _loadingService;
+        private readonly IMessageDialogService _messageDialogService;
 
         public event Action? CambioEmpresaRequested;
         public event Action? CerrarSesionRequested;
@@ -57,11 +60,15 @@ namespace KONTAXPRO.Desktop.ViewModels
         public MainViewModel(
             ThemeService themeService,
             INavigationService navigationService,
-            CurrentSession currentSession)
+            CurrentSession currentSession,
+            ILoadingService loadingService,
+            IMessageDialogService messageDialogService)
         {
             _themeService = themeService;
             _navigationService = navigationService;
             _currentSession = currentSession;
+            _loadingService = loadingService;
+            _messageDialogService = messageDialogService;
 
             // Cargar información del contexto actual del usuario
             ActualizarContexto();
@@ -90,7 +97,7 @@ namespace KONTAXPRO.Desktop.ViewModels
         }
 
         [RelayCommand]
-        private void Navegar(MenuItemModel item)
+        private async Task NavegarAsync(MenuItemModel item)
         {
             if (item == null)
                 return;
@@ -100,6 +107,12 @@ namespace KONTAXPRO.Desktop.ViewModels
             {
                 return;
             }
+
+            if (string.Equals(
+                    _navigationService.CurrentRoute,
+                    item.ComandoNavegacion,
+                    StringComparison.OrdinalIgnoreCase))
+                return;
 
 
             /*
@@ -149,9 +162,55 @@ namespace KONTAXPRO.Desktop.ViewModels
             /*
              * Navegar.
              */
-            _navigationService.NavigateTo(
-                item.ComandoNavegacion);
+            try
+            {
+                var loadingMessage = ObtenerMensajeCarga(
+                    item.ComandoNavegacion);
+                if (loadingMessage.HasValue)
+                {
+                    await using var loading = await _loadingService.ShowAsync(
+                        loadingMessage.Value.Title,
+                        loadingMessage.Value.Message);
+                    await _navigationService.NavigateToAsync(
+                        item.ComandoNavegacion);
+                    return;
+                }
+
+                await _navigationService.NavigateToAsync(
+                    item.ComandoNavegacion);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception exception)
+            {
+                System.Diagnostics.Debug.WriteLine(exception);
+                await _messageDialogService.ShowErrorAsync(
+                    "No fue posible abrir la opción",
+                    "La pantalla no pudo cargarse. Puedes volver a intentarlo.");
+            }
         }
+
+        private static (string Title, string Message)? ObtenerMensajeCarga(
+            string route) => route switch
+            {
+                "Productos" => ("Cargando productos",
+                    "Estamos preparando el catálogo y sus precios."),
+                "Clientes" => ("Cargando clientes",
+                    "Estamos preparando el listado y su configuración comercial."),
+                "Proveedores" => ("Cargando proveedores",
+                    "Estamos preparando el listado de proveedores."),
+                "OperacionesSinComprobante" => ("Cargando operaciones",
+                    "Estamos preparando las operaciones registradas."),
+                "Inventario" => ("Cargando inventario",
+                    "Estamos consultando existencias, bodegas y costos."),
+                "Compras/Xml" => null,
+                _ when route.StartsWith("Compras",
+                    StringComparison.OrdinalIgnoreCase) =>
+                    ("Cargando compras",
+                        "Estamos preparando la información de compras."),
+                _ => null
+            };
 
         private MenuItemModel? BuscarPadre(
     IEnumerable<MenuItemModel> items,
@@ -284,32 +343,9 @@ namespace KONTAXPRO.Desktop.ViewModels
 
                 new MenuItemModel
                 {
-                    Titulo = "Existencias",
-                    Icono = "PackageVariantClosedCheck"
-                },
-
-                new MenuItemModel
-                {
-                    Titulo = "Movimientos",
-                    Icono = "SwapHorizontal"
-                },
-
-                new MenuItemModel
-                {
-                    Titulo = "Transferencias",
-                    Icono = "TruckDeliveryOutline"
-                },
-
-                new MenuItemModel
-                {
-                    Titulo = "Ajustes de inventario",
-                    Icono = "TuneVariant"
-                },
-
-                new MenuItemModel
-                {
-                    Titulo = "Kardex",
-                    Icono = "ChartTimelineVariant"
+                    Titulo = "Inventario y Kardex",
+                    Icono = "PackageVariantClosedCheck",
+                    ComandoNavegacion = "Inventario"
                 }
             }
         },
@@ -327,30 +363,9 @@ namespace KONTAXPRO.Desktop.ViewModels
             {
                 new MenuItemModel
                 {
-                    Titulo = "Nueva compra",
-                    Icono = "CartPlus",
-                    ComandoNavegacion = "Compras"
-                },
-
-                new MenuItemModel
-                {
-                    Titulo = "Recepción de mercadería",
-                    Icono = "PackageDown",
-                    ComandoNavegacion = "Compras"
-                },
-
-                new MenuItemModel
-                {
-                    Titulo = "Importar XML",
-                    Icono = "FileXmlBox",
-                    ComandoNavegacion = "Compras"
-                },
-
-                new MenuItemModel
-                {
-                    Titulo = "Compras registradas",
+                    Titulo = "Gestión de compras",
                     Icono = "ClipboardTextClockOutline",
-                    ComandoNavegacion = "Compras"
+                    ComandoNavegacion = "Compras/Lista"
                 },
 
                 new MenuItemModel

@@ -7,6 +7,7 @@ using KONTAXPRO.Desktop.ViewModels.Clientes;
 using KONTAXPRO.Desktop.ViewModels.Proveedores;
 using KONTAXPRO.Desktop.ViewModels.Compras;
 using KONTAXPRO.Desktop.ViewModels.Tesoreria;
+using KONTAXPRO.Desktop.ViewModels.Inventory;
 using KONTAXPRO.Desktop.Views;
 using KONTAXPRO.Desktop.Views.Products;
 using KONTAXPRO.Desktop.Views.Clientes;
@@ -69,6 +70,9 @@ namespace KONTAXPRO.Desktop
             services.AddSingleton<INavigationService, NavigationService>();
             services.AddSingleton<SessionFlowService>();
             services.AddTransient<IInventoryService, InventoryService>();
+            services.AddTransient<IInventoryQueryService, InventoryQueryService>();
+            services.AddTransient<IInventoryTransferService, InventoryTransferService>();
+            services.AddTransient<IInventoryCancellationService, InventoryCancellationService>();
             services.AddTransient<IProductService, ProductService>();
             services.AddTransient<IProductCatalogService, ProductCatalogService>();
             services.AddTransient<IClienteService, ClienteService>();
@@ -142,13 +146,12 @@ namespace KONTAXPRO.Desktop
             services.AddTransient<ProductFormViewModel>();
             services.AddTransient<ClienteFormViewModel>();
             services.AddTransient<ClientesViewModel>();
-            services.AddTransient<ClientesView>();
             services.AddTransient<ProveedorFormViewModel>();
             services.AddTransient<ProveedoresViewModel>();
-            services.AddTransient<ProveedoresView>();
             services.AddTransient<ComprasViewModel>();
             services.AddTransient<OperacionSinSustentoViewModel>();
             services.AddTransient<OperacionesSinSustentoViewModel>();
+            services.AddTransient<InventoryViewModel>();
 
             var interoperabilidadOptions =
                 CreateInteroperabilidadOptions(_configuration);
@@ -187,8 +190,6 @@ namespace KONTAXPRO.Desktop
             services.AddTransient<LoginViewModel>();
             services.AddTransient<LoginWindow>();
             services.AddTransient<SeleccionarEmpresaViewModel>();
-            services.AddTransient<ProductsViewModel>();
-            services.AddTransient<ProductsView>();
 
             // Ventanas
             services.AddSingleton<MainWindow>();

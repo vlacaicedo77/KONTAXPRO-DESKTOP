@@ -100,8 +100,21 @@ public sealed class ProveedorService(
         };
 
         var total = await query.CountAsync(cancellationToken);
-        var rows = await query.OrderBy(x => x.RazonSocial)
-            .ThenBy(x => x.Ruc)
+        var orderedQuery = (request.Orden, request.OrdenDescendente) switch
+        {
+            (ProveedorCatalogoOrden.Ruc, false) => query.OrderBy(x => x.Ruc),
+            (ProveedorCatalogoOrden.Ruc, true) => query
+                .OrderByDescending(x => x.Ruc),
+            (ProveedorCatalogoOrden.Estado, false) => query
+                .OrderBy(x => x.Estado),
+            (ProveedorCatalogoOrden.Estado, true) => query
+                .OrderByDescending(x => x.Estado),
+            (ProveedorCatalogoOrden.RazonSocial, true) => query
+                .OrderByDescending(x => x.RazonSocial),
+            _ => query.OrderBy(x => x.RazonSocial)
+        };
+        var rows = await orderedQuery.ThenBy(x => x.Ruc)
+            .ThenBy(x => x.TerceroId)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(cancellationToken);

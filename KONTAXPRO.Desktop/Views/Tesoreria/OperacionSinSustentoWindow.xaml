@@ -460,7 +460,10 @@
                                                             <ListBox ItemsSource="{Binding Suggestions}" SelectedItem="{Binding Product, Mode=TwoWay}"
                                                                      MaxHeight="280" Background="Transparent" BorderThickness="0"
                                                                      ScrollViewer.VerticalScrollBarVisibility="Auto"
-                                                                     ScrollViewer.CanContentScroll="True">
+                                                                     ScrollViewer.CanContentScroll="True"
+                                                                     VirtualizingPanel.IsVirtualizing="True"
+                                                                     VirtualizingPanel.VirtualizationMode="Recycling"
+                                                                     VirtualizingPanel.ScrollUnit="Pixel">
                                                                 <ListBox.ItemContainerStyle>
                                                                     <Style TargetType="ListBoxItem">
                                                                         <Setter Property="Padding" Value="10,8"/>

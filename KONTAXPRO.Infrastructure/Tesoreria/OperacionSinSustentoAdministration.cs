@@ -56,7 +56,33 @@ public sealed partial class OperacionSinSustentoService
         if (request.Tipo is "GASTO" or "INVENTARIO") query = query.Where(x => x.TipoOperacion == request.Tipo);
         result.Total = await query.CountAsync(cancellationToken);
         var pageSize = Math.Clamp(request.TamanoPagina, 10, 200);
-        result.Items = await query.OrderByDescending(x => x.Fecha).ThenByDescending(x => x.Id)
+        var orderedQuery = (request.Orden, request.OrdenDescendente) switch
+        {
+            (OperacionSinSustentoCatalogoOrden.Operacion, false) => query
+                .OrderBy(x => x.NumeroOperacion),
+            (OperacionSinSustentoCatalogoOrden.Operacion, true) => query
+                .OrderByDescending(x => x.NumeroOperacion),
+            (OperacionSinSustentoCatalogoOrden.Beneficiario, false) => query
+                .OrderBy(x => x.Beneficiario),
+            (OperacionSinSustentoCatalogoOrden.Beneficiario, true) => query
+                .OrderByDescending(x => x.Beneficiario),
+            (OperacionSinSustentoCatalogoOrden.Fondo, false) => query
+                .OrderBy(x => x.MedioSalida),
+            (OperacionSinSustentoCatalogoOrden.Fondo, true) => query
+                .OrderByDescending(x => x.MedioSalida),
+            (OperacionSinSustentoCatalogoOrden.Total, false) => query
+                .OrderBy(x => x.Total),
+            (OperacionSinSustentoCatalogoOrden.Total, true) => query
+                .OrderByDescending(x => x.Total),
+            (OperacionSinSustentoCatalogoOrden.Estado, false) => query
+                .OrderBy(x => x.Estado),
+            (OperacionSinSustentoCatalogoOrden.Estado, true) => query
+                .OrderByDescending(x => x.Estado),
+            (OperacionSinSustentoCatalogoOrden.Fecha, false) => query
+                .OrderBy(x => x.Fecha),
+            _ => query.OrderByDescending(x => x.Fecha)
+        };
+        result.Items = await orderedQuery.ThenByDescending(x => x.Id)
             .Skip((Math.Max(1, request.Pagina) - 1) * pageSize).Take(pageSize)
             .Select(x => new OperacionSinSustentoItemDto
             {

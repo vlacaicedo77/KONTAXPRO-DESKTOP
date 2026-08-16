@@ -55,7 +55,7 @@ internal static class CompraReceiptProcessor
             .SingleAsync(x => x.Codigo == "COMPRA" && x.Estado == 1,
                 cancellationToken);
         var movementOrigin = await context.TiposOrigenMovimientoInventario
-            .SingleAsync(x => x.Codigo == "COMPRA" && x.Estado == 1,
+            .SingleAsync(x => x.Codigo == "RECEPCION_COMPRA" && x.Estado == 1,
                 cancellationToken);
         var movementNumber = await InventoryService.ObtenerSiguienteNumeroAsync(
             context, companyId, purchase.EstablecimientoId,
@@ -87,7 +87,9 @@ internal static class CompraReceiptProcessor
             FechaMovimiento = receiptDate,
             BodegaId = warehouse.Id,
             OrigenTipoId = movementOrigin.Id,
-            OrigenId = purchase.Id,
+            // La recepción es la operación física idempotente. Una compra
+            // puede recibirse parcialmente varias veces en la misma bodega.
+            OrigenId = receipt.Id,
             NumeroDocumento = purchase.NumeroDocumento,
             Referencia = receipt.NumeroRecepcion,
             Observacion = Normalize(request.Observacion),
@@ -137,7 +139,8 @@ internal static class CompraReceiptProcessor
             var movementDetail = await InventoryService.AddInitialDetailAsync(
                 context, movement, inventoryInput, now, cancellationToken,
                 purchaseLine.EsBonificacion, lastPurchasePrice,
-                purchaseLine.FactorConversion);
+                purchaseLine.FactorConversion,
+                actualizarConfiguracionExistencia: false);
             var receiptDetail = new CompraRecepcionDetalle
             {
                 CompraRecepcion = receipt,

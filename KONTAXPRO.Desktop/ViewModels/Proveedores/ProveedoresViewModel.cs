@@ -5,12 +5,15 @@ using KONTAXPRO.Application.Interfaces;
 using KONTAXPRO.Application.Models.Proveedores;
 using KONTAXPRO.Application.Security;
 using KONTAXPRO.Application.Session;
+using KONTAXPRO.Desktop.Services;
 
 namespace KONTAXPRO.Desktop.ViewModels.Proveedores;
 
 public sealed record ProveedorFiltroItem<T>(string Nombre, T Valor);
 
-public partial class ProveedoresViewModel : ObservableObject, IDisposable
+public partial class ProveedoresViewModel : ObservableObject,
+    IAsyncNavigationTarget,
+    IDisposable
 {
     private readonly IProveedorService _service;
     private readonly IMessageDialogService _dialogs;
@@ -22,6 +25,8 @@ public partial class ProveedoresViewModel : ObservableObject, IDisposable
     private bool _synchronizingFilters;
     private bool _suppressReload;
     private bool _disposed;
+    private readonly object _initializationLock = new();
+    private Task? _initializationTask;
 
     public ProveedorFormViewModel ProveedorForm { get; }
     public ObservableCollection<ProveedorCatalogoItemDto> Proveedores { get; } = [];
@@ -50,6 +55,9 @@ public partial class ProveedoresViewModel : ObservableObject, IDisposable
     [ObservableProperty] private int paginaActual = 1;
     [ObservableProperty] private int tamanoPagina = 25;
     [ObservableProperty] private int totalItems;
+    [ObservableProperty] private ProveedorCatalogoOrden ordenProveedores =
+        ProveedorCatalogoOrden.RazonSocial;
+    [ObservableProperty] private bool ordenProveedoresDescendente;
     [ObservableProperty] private int totalActivos;
     [ObservableProperty] private int totalPendientesVerificar;
     [ObservableProperty] private int totalSinCorreo;
@@ -85,6 +93,12 @@ public partial class ProveedoresViewModel : ObservableObject, IDisposable
     public string TextoPaginacion => TotalItems == 0
         ? "Mostrando 0 de 0 proveedores"
         : $"Mostrando {(PaginaActual - 1) * TamanoPagina + 1:N0}–{Math.Min(PaginaActual * TamanoPagina, TotalItems):N0} de {TotalItems:N0} proveedores";
+    public string IndicadorRuc => IndicadorOrdenProveedores(
+        ProveedorCatalogoOrden.Ruc);
+    public string IndicadorRazonSocial => IndicadorOrdenProveedores(
+        ProveedorCatalogoOrden.RazonSocial);
+    public string IndicadorEstado => IndicadorOrdenProveedores(
+        ProveedorCatalogoOrden.Estado);
 
     public ProveedoresViewModel(
         IProveedorService service,
@@ -107,7 +121,16 @@ public partial class ProveedoresViewModel : ObservableObject, IDisposable
         _session.EmpresaActivaChanged += OnEmpresaActivaChanged;
     }
 
-    public Task InitializeAsync() => LoadAsync();
+    public Task InitializeAsync(
+        CancellationToken cancellationToken = default)
+    {
+        lock (_initializationLock)
+        {
+            if (_disposed)
+                return Task.CompletedTask;
+            return _initializationTask ??= LoadAsync(cancellationToken);
+        }
+    }
 
     [RelayCommand] private Task RecargarAsync() => LoadAsync();
     [RelayCommand] private void LimpiarBusqueda() => TextoBusqueda = string.Empty;
@@ -267,6 +290,9 @@ public partial class ProveedoresViewModel : ObservableObject, IDisposable
 
     private async Task LoadAsync(CancellationToken cancellationToken = default)
     {
+        if (_disposed)
+            return;
+
         _loadCancellation?.Cancel();
         _loadCancellation?.Dispose();
         _loadCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -282,6 +308,8 @@ public partial class ProveedoresViewModel : ObservableObject, IDisposable
                     Kpi = KpiActivo,
                     Estado = EstadoSeleccionado.Valor,
                     Verificacion = VerificacionSeleccionada.Valor,
+                    Orden = OrdenProveedores,
+                    OrdenDescendente = OrdenProveedoresDescendente,
                     Pagina = PaginaActual,
                     TamanoPagina = TamanoPagina
                 },
@@ -310,6 +338,22 @@ public partial class ProveedoresViewModel : ObservableObject, IDisposable
             if (sequence == Volatile.Read(ref _loadSequence))
                 IsLoading = false;
         }
+    }
+
+    [RelayCommand]
+    private async Task OrdenarProveedoresAsync(ProveedorCatalogoOrden orden)
+    {
+        if (OrdenProveedores == orden)
+            OrdenProveedoresDescendente = !OrdenProveedoresDescendente;
+        else
+        {
+            OrdenProveedores = orden;
+            OrdenProveedoresDescendente = false;
+        }
+
+        PaginaActual = 1;
+        NotifySupplierSortIndicators();
+        await LoadAsync();
     }
 
     private async void SupplierSaved(long id)
@@ -349,6 +393,18 @@ public partial class ProveedoresViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(PuedeIrAnterior));
         OnPropertyChanged(nameof(PuedeIrSiguiente));
         OnPropertyChanged(nameof(TextoPaginacion));
+    }
+
+    private string IndicadorOrdenProveedores(ProveedorCatalogoOrden orden) =>
+        OrdenProveedores != orden
+            ? string.Empty
+            : OrdenProveedoresDescendente ? "▼" : "▲";
+
+    private void NotifySupplierSortIndicators()
+    {
+        OnPropertyChanged(nameof(IndicadorRuc));
+        OnPropertyChanged(nameof(IndicadorRazonSocial));
+        OnPropertyChanged(nameof(IndicadorEstado));
     }
 
     public void Dispose()

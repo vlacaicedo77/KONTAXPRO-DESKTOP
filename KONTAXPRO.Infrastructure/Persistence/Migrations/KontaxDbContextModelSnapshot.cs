@@ -6853,6 +6853,14 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_movimientos_inventario_empresa_numero");
 
+                    b.HasIndex("EmpresaId", "BodegaId", "FechaMovimiento")
+                        .HasDatabaseName("ix_movimientos_inventario_empresa_bodega_fecha");
+
+                    b.HasIndex("EmpresaId", "OrigenTipoId", "OrigenId", "BodegaId", "TipoMovimientoId")
+                        .IsUnique()
+                        .HasFilter("origen_id > 0")
+                        .HasDatabaseName("ux_movimientos_inventario_origen_bodega_tipo");
+
                     b.ToTable("movimientos_inventario", "s_inventario");
                 });
 

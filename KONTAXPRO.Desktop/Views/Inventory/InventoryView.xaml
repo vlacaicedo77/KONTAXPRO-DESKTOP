@@ -1,0 +1,654 @@
+<UserControl x:Class="KONTAXPRO.Desktop.Views.Inventory.InventoryView"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+  xmlns:behaviors="clr-namespace:KONTAXPRO.Desktop.Behaviors"
+  xmlns:inventoryModels="clr-namespace:KONTAXPRO.Application.Models.Inventario;assembly=KONTAXPRO.Application"
+  xmlns:productViews="clr-namespace:KONTAXPRO.Desktop.Views.Products"
+ xmlns:inventoryViews="clr-namespace:KONTAXPRO.Desktop.Views.Inventory"
+ xmlns:desktop="clr-namespace:KONTAXPRO.Desktop"
+ x:Name="InventoryRoot"
+ Background="{DynamicResource PageBackgroundBrush}">
+ <UserControl.Resources>
+  <desktop:BindingProxy x:Key="InventoryDataContextProxy" Data="{Binding}"/>
+  <Style x:Key="ModernTextBoxStyle" TargetType="TextBox">
+   <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
+   <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+   <Setter Property="CaretBrush" Value="{DynamicResource FocusBorderBrush}"/>
+   <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/>
+   <Setter Property="BorderThickness" Value="1"/>
+   <Setter Property="Padding" Value="13,10"/>
+   <Setter Property="FontSize" Value="13"/>
+   <Setter Property="VerticalContentAlignment" Value="Center"/>
+   <Setter Property="Template">
+    <Setter.Value>
+     <ControlTemplate TargetType="TextBox">
+      <Border x:Name="FieldBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="9">
+       <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" VerticalAlignment="Stretch"/>
+      </Border>
+      <ControlTemplate.Triggers>
+       <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="FieldBorder" Property="BorderBrush" Value="{DynamicResource FocusBorderBrush}"/><Setter TargetName="FieldBorder" Property="BorderThickness" Value="2"/></Trigger>
+       <Trigger Property="IsReadOnly" Value="True"><Setter TargetName="FieldBorder" Property="Background" Value="{DynamicResource InputSecondaryBackgroundBrush}"/><Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/></Trigger>
+       <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.62"/></Trigger>
+      </ControlTemplate.Triggers>
+     </ControlTemplate>
+    </Setter.Value>
+   </Setter>
+  </Style>
+  <Style x:Key="InventoryFieldBorderStyle" TargetType="Border">
+   <Setter Property="MinHeight" Value="46"/>
+   <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
+   <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/>
+   <Setter Property="BorderThickness" Value="1"/>
+   <Setter Property="CornerRadius" Value="9"/>
+  </Style>
+  <Style x:Key="InventoryFieldLabelStyle" TargetType="TextBlock">
+   <Setter Property="Margin" Value="1,0,0,6"/>
+   <Setter Property="FontSize" Value="12"/>
+   <Setter Property="FontWeight" Value="SemiBold"/>
+   <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+  </Style>
+  <Style x:Key="InventorySectionTitleStyle" TargetType="TextBlock"><Setter Property="FontSize" Value="14"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/></Style>
+  <Style x:Key="InventoryFieldHelpStyle" TargetType="TextBlock"><Setter Property="FontSize" Value="10"/><Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}"/><Setter Property="Margin" Value="1,5,0,0"/></Style>
+  <Style x:Key="InventoryGridTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource ModernTextBoxStyle}"><Setter Property="Height" Value="40"/><Setter Property="MinHeight" Value="40"/><Setter Property="Margin" Value="3"/><Setter Property="Padding" Value="10,4"/><Setter Property="VerticalContentAlignment" Value="Center"/></Style>
+  <Style x:Key="InventoryKpiStyle" TargetType="Button">
+   <Setter Property="Padding" Value="18"/><Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}"/>
+   <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/><Setter Property="BorderThickness" Value="1"/>
+   <Setter Property="Cursor" Value="Hand"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border x:Name="Card" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="16"><ContentPresenter/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Card" Property="Opacity" Value="0.9"/></Trigger><Trigger Property="Tag" Value="True"><Setter TargetName="Card" Property="BorderThickness" Value="2"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+  </Style>
+  <Style x:Key="InventoryKpiAllStyle" TargetType="Button" BasedOn="{StaticResource InventoryKpiStyle}"><Style.Triggers><Trigger Property="Tag" Value="True"><Setter Property="Background" Value="{DynamicResource InfoSoftBrush}"/><Setter Property="BorderBrush" Value="#3B82F6"/></Trigger></Style.Triggers></Style>
+  <Style x:Key="InventoryKpiNoStockStyle" TargetType="Button" BasedOn="{StaticResource InventoryKpiStyle}"><Style.Triggers><Trigger Property="Tag" Value="True"><Setter Property="Background" Value="{DynamicResource DangerSoftBrush}"/><Setter Property="BorderBrush" Value="#EF4444"/></Trigger></Style.Triggers></Style>
+  <Style x:Key="InventoryKpiLowStockStyle" TargetType="Button" BasedOn="{StaticResource InventoryKpiStyle}"><Style.Triggers><Trigger Property="Tag" Value="True"><Setter Property="Background" Value="{DynamicResource WarningSoftBrush}"/><Setter Property="BorderBrush" Value="#F59E0B"/></Trigger></Style.Triggers></Style>
+  <Style x:Key="InventoryKpiExpiryStyle" TargetType="Button" BasedOn="{StaticResource InventoryKpiStyle}"><Style.Triggers><Trigger Property="Tag" Value="True"><Setter Property="Background" Value="{DynamicResource PurpleSoftBrush}"/><Setter Property="BorderBrush" Value="#A855F7"/></Trigger></Style.Triggers></Style>
+  <Style x:Key="InventorySearchClearStyle" TargetType="Button">
+   <Setter Property="Width" Value="30"/><Setter Property="Height" Value="30"/><Setter Property="Padding" Value="0"/>
+   <Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/><Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border x:Name="ClearBackground" Background="{TemplateBinding Background}" CornerRadius="7"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ClearBackground" Property="Background" Value="{DynamicResource SuccessSoftBrush}"/><Setter Property="Foreground" Value="{DynamicResource BrandProBrush}"/></Trigger><Trigger Property="IsPressed" Value="True"><Setter Property="Opacity" Value="0.7"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+  </Style>
+   <Style x:Key="InventoryRefreshStyle" TargetType="Button">
+    <Setter Property="Width" Value="46"/><Setter Property="Height" Value="46"/><Setter Property="Padding" Value="0"/>
+    <Setter Property="Background" Value="{DynamicResource PrimaryButtonBackgroundBrush}"/><Setter Property="Foreground" Value="White"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource PrimaryButtonBackgroundBrush}"/><Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Cursor" Value="Hand"/><Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+    <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border x:Name="ButtonBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="10"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource PrimaryButtonHoverBrush}"/></Trigger><Trigger Property="IsPressed" Value="True"><Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource PrimaryButtonPressedBrush}"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+   </Style>
+  <Style x:Key="InventoryLoadingStyle" TargetType="ProgressBar">
+   <Setter Property="Height" Value="6"/><Setter Property="Background" Value="{DynamicResource SuccessSoftBrush}"/><Setter Property="Foreground" Value="{DynamicResource BrandProBrush}"/><Setter Property="BorderThickness" Value="0"/><Setter Property="IsIndeterminate" Value="True"/>
+   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ProgressBar"><Grid ClipToBounds="True" SnapsToDevicePixels="True"><Border Background="{TemplateBinding Background}" CornerRadius="3"/><Border x:Name="LoadingIndicator" Width="190" HorizontalAlignment="Left" Background="{TemplateBinding Foreground}" CornerRadius="3" Opacity="0.95"><Border.RenderTransform><TranslateTransform X="-210"/></Border.RenderTransform></Border></Grid><ControlTemplate.Triggers><Trigger Property="IsIndeterminate" Value="True"><Trigger.EnterActions><BeginStoryboard><Storyboard RepeatBehavior="Forever"><DoubleAnimation Storyboard.TargetName="LoadingIndicator" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" From="-210" To="2400" Duration="0:0:1.65"><DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut"/></DoubleAnimation.EasingFunction></DoubleAnimation></Storyboard></BeginStoryboard></Trigger.EnterActions></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+  </Style>
+   <Style x:Key="InventoryCenteredSortHeaderStyle" TargetType="Button">
+    <Setter Property="Padding" Value="6,4"/><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/><Setter Property="FontSize" Value="11"/><Setter Property="FontWeight" Value="Bold"/>
+    <Setter Property="Cursor" Value="Hand"/><Setter Property="FocusVisualStyle" Value="{x:Null}"/><Setter Property="HorizontalAlignment" Value="Stretch"/><Setter Property="HorizontalContentAlignment" Value="Center"/>
+    <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}" CornerRadius="6"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="{DynamicResource BrandProBrush}"/></Trigger><Trigger Property="IsPressed" Value="True"><Setter Property="Opacity" Value="0.75"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+   </Style>
+   <Style x:Key="InventorySortHeaderStyle" TargetType="Button">
+    <Setter Property="Padding" Value="6,4"/><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/><Setter Property="FontSize" Value="11"/><Setter Property="FontWeight" Value="Bold"/>
+    <Setter Property="Cursor" Value="Hand"/><Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+    <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}" CornerRadius="6"><ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="{DynamicResource BrandProBrush}"/></Trigger><Trigger Property="IsPressed" Value="True"><Setter Property="Opacity" Value="0.75"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+   </Style>
+   <Style x:Key="InventoryColumnHeaderStyle" TargetType="DataGridColumnHeader" BasedOn="{StaticResource KontaxDataGridColumnHeaderStyle}">
+    <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="DataGridColumnHeader"><Border x:Name="HeaderBorder" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"><ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="HeaderBorder" Property="Background" Value="{DynamicResource TableAlternateRowBrush}"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+    </Style>
+   <Style x:Key="InventoryCenteredColumnHeaderStyle" TargetType="DataGridColumnHeader" BasedOn="{StaticResource InventoryColumnHeaderStyle}">
+    <Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="VerticalContentAlignment" Value="Center"/>
+  </Style>
+  <Style x:Key="InventoryDetailColumnHeaderStyle" TargetType="DataGridColumnHeader" BasedOn="{StaticResource KontaxDataGridColumnHeaderStyle}">
+   <Setter Property="FontSize" Value="10"/>
+   <Setter Property="HorizontalContentAlignment" Value="Left"/>
+   <Setter Property="BorderThickness" Value="0"/>
+   <Setter Property="Template">
+    <Setter.Value>
+     <ControlTemplate TargetType="DataGridColumnHeader">
+      <Grid Background="{TemplateBinding Background}">
+       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="18"/></Grid.ColumnDefinitions>
+       <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center"/>
+       <materialDesign:PackIcon x:Name="SortIndicator" Grid.Column="1" Kind="ChevronUp" Width="14" Height="14" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource BrandProBrush}" Visibility="Collapsed"/>
+       <Thumb x:Name="PART_LeftHeaderGripper" Width="5" HorizontalAlignment="Left" Cursor="SizeWE" Background="Transparent"><Thumb.Template><ControlTemplate TargetType="Thumb"><Border Background="Transparent" BorderThickness="0"/></ControlTemplate></Thumb.Template></Thumb>
+       <Thumb x:Name="PART_RightHeaderGripper" Width="5" HorizontalAlignment="Right" Cursor="SizeWE" Background="Transparent"><Thumb.Template><ControlTemplate TargetType="Thumb"><Border Background="Transparent" BorderThickness="0"/></ControlTemplate></Thumb.Template></Thumb>
+      </Grid>
+      <ControlTemplate.Triggers>
+       <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource TableAlternateRowBrush}"/></Trigger>
+       <Trigger Property="SortDirection" Value="Ascending"><Setter TargetName="SortIndicator" Property="Visibility" Value="Visible"/><Setter TargetName="SortIndicator" Property="Kind" Value="ChevronUp"/></Trigger>
+       <Trigger Property="SortDirection" Value="Descending"><Setter TargetName="SortIndicator" Property="Visibility" Value="Visible"/><Setter TargetName="SortIndicator" Property="Kind" Value="ChevronDown"/></Trigger>
+      </ControlTemplate.Triggers>
+     </ControlTemplate>
+    </Setter.Value>
+   </Setter>
+  </Style>
+  <Style x:Key="InventoryDetailCenteredColumnHeaderStyle" TargetType="DataGridColumnHeader" BasedOn="{StaticResource InventoryDetailColumnHeaderStyle}">
+   <Setter Property="HorizontalContentAlignment" Value="Center"/>
+  </Style>
+  <Style x:Key="InventoryDetailCellStyle" TargetType="DataGridCell" BasedOn="{StaticResource KontaxDataGridCellStyle}">
+   <Setter Property="BorderThickness" Value="0"/>
+  </Style>
+  <Style x:Key="InventoryDetailDataGridStyle" TargetType="DataGrid" BasedOn="{StaticResource KontaxDataGridStyle}">
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="GridLinesVisibility" Value="None"/>
+    <Setter Property="HorizontalGridLinesBrush" Value="Transparent"/>
+    <Setter Property="VerticalGridLinesBrush" Value="Transparent"/>
+    <Setter Property="CellStyle" Value="{StaticResource InventoryDetailCellStyle}"/>
+    <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
+    <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True"/>
+    <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling"/>
+    <Setter Property="VirtualizingPanel.ScrollUnit" Value="Pixel"/>
+  </Style>
+  <Style x:Key="InventoryActionStyle" TargetType="Button" BasedOn="{StaticResource KontaxBaseButtonStyle}"><Setter Property="Width" Value="34"/><Setter Property="Height" Value="34"/><Setter Property="Padding" Value="0"/><Setter Property="Foreground" Value="White"/><Setter Property="Background" Value="{DynamicResource PrimaryButtonBackgroundBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource PrimaryButtonBackgroundBrush}"/><Setter Property="BorderThickness" Value="1"/></Style>
+  <Style x:Key="InventorySecondaryActionStyle" TargetType="Button" BasedOn="{StaticResource InventoryActionStyle}"><Setter Property="Background" Value="#2563EB"/><Setter Property="BorderBrush" Value="#2563EB"/><Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#1D4ED8"/></Trigger></Style.Triggers></Style>
+  <Style x:Key="InventoryPurpleActionStyle" TargetType="Button" BasedOn="{StaticResource InventoryActionStyle}"><Setter Property="Background" Value="#7C3AED"/><Setter Property="BorderBrush" Value="#7C3AED"/><Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#6D28D9"/></Trigger></Style.Triggers></Style>
+  <Style x:Key="InventoryPageButtonStyle" TargetType="Button" BasedOn="{StaticResource NeutralButtonStyle}"><Setter Property="MinWidth" Value="34"/><Setter Property="Height" Value="34"/><Setter Property="Padding" Value="9,0"/></Style>
+  <Style x:Key="InventoryEmphasizedCellTextStyle" TargetType="TextBlock" BasedOn="{StaticResource KontaxCenteredCellTextStyle}">
+   <Setter Property="FontWeight" Value="Bold"/>
+   <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+  </Style>
+  <Style x:Key="InventoryMovementValueStyle" TargetType="TextBlock" BasedOn="{StaticResource KontaxCenteredCellTextStyle}"><Setter Property="FontSize" Value="12"/><Setter Property="FontWeight" Value="ExtraBold"/></Style>
+  <Style x:Key="InventorySummaryCard" TargetType="Border"><Setter Property="MinHeight" Value="76"/><Setter Property="Padding" Value="12,10"/><Setter Property="Margin" Value="4"/><Setter Property="CornerRadius" Value="12"/><Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/><Setter Property="BorderThickness" Value="1"/></Style>
+  <Style x:Key="InventoryDetailMetricLabelStyle" TargetType="TextBlock"><Setter Property="FontSize" Value="9"/><Setter Property="FontWeight" Value="Bold"/><Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}"/><Setter Property="TextTrimming" Value="CharacterEllipsis"/></Style>
+  <Style x:Key="InventoryDetailMetricValueStyle" TargetType="TextBlock"><Setter Property="FontSize" Value="17"/><Setter Property="FontWeight" Value="Bold"/><Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/><Setter Property="TextAlignment" Value="Left"/></Style>
+  <Style x:Key="InventoryDetailMetricIconStyle" TargetType="Border"><Setter Property="Width" Value="40"/><Setter Property="Height" Value="40"/><Setter Property="CornerRadius" Value="11"/><Setter Property="VerticalAlignment" Value="Center"/><Setter Property="Margin" Value="0,0,10,0"/></Style>
+   <Style x:Key="InventoryDetailEmptyTextStyle" TargetType="TextBlock" BasedOn="{StaticResource KontaxEmptyListTextStyle}"/>
+  <Style x:Key="InventoryDetailTabControlStyle" TargetType="TabControl">
+   <Setter Property="Background" Value="Transparent"/>
+   <Setter Property="BorderThickness" Value="0"/>
+   <Setter Property="Template">
+    <Setter.Value>
+     <ControlTemplate TargetType="TabControl">
+      <Grid KeyboardNavigation.TabNavigation="Local">
+       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+       <TabPanel x:Name="HeaderPanel" IsItemsHost="True" Margin="0,0,0,9" KeyboardNavigation.TabIndex="1"/>
+       <Border Grid.Row="1" Padding="1" CornerRadius="13" Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+        <ContentPresenter x:Name="PART_SelectedContentHost" Margin="0" ContentSource="SelectedContent"/>
+       </Border>
+      </Grid>
+     </ControlTemplate>
+    </Setter.Value>
+   </Setter>
+  </Style>
+   <Style x:Key="InventoryDetailTabItemStyle" TargetType="TabItem">
+   <Setter Property="Width" Value="205"/>
+   <Setter Property="MinHeight" Value="42"/>
+   <Setter Property="Margin" Value="0,0,7,0"/>
+   <Setter Property="Padding" Value="11,7"/>
+   <Setter Property="Background" Value="{DynamicResource InputSecondaryBackgroundBrush}"/>
+   <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+   <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+   <Setter Property="FontSize" Value="10"/>
+   <Setter Property="FontWeight" Value="SemiBold"/>
+   <Setter Property="Cursor" Value="Hand"/>
+   <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+   <Setter Property="Template">
+    <Setter.Value>
+     <ControlTemplate TargetType="TabItem">
+      <Border x:Name="TabSurface" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="10">
+       <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True"/>
+      </Border>
+      <ControlTemplate.Triggers>
+       <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="TabSurface" Property="Background" Value="{DynamicResource TableSelectedRowBrush}"/><Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/></Trigger>
+       <Trigger Property="IsSelected" Value="True"><Setter TargetName="TabSurface" Property="Background" Value="#2563EB"/><Setter TargetName="TabSurface" Property="BorderBrush" Value="#2563EB"/><Setter Property="Foreground" Value="White"/></Trigger>
+       <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.55"/></Trigger>
+      </ControlTemplate.Triggers>
+     </ControlTemplate>
+    </Setter.Value>
+   </Setter>
+   </Style>
+   <Style x:Key="InventoryCorrectionCellStyle" TargetType="DataGridCell"
+          BasedOn="{StaticResource InventoryDetailCellStyle}">
+    <Setter Property="Padding" Value="2,1"/>
+   </Style>
+   <Style x:Key="InventoryCorrectionDataGridStyle" TargetType="DataGrid"
+          BasedOn="{StaticResource InventoryDetailDataGridStyle}">
+    <Setter Property="MinHeight" Value="118"/>
+    <Setter Property="MaxHeight" Value="158"/>
+    <Setter Property="RowHeight" Value="40"/>
+    <Setter Property="MinRowHeight" Value="40"/>
+    <Setter Property="ColumnHeaderHeight" Value="36"/>
+    <Setter Property="CellStyle" Value="{StaticResource InventoryCorrectionCellStyle}"/>
+    <Setter Property="ColumnHeaderStyle" Value="{StaticResource InventoryDetailColumnHeaderStyle}"/>
+    <Setter Property="CanUserAddRows" Value="False"/>
+    <Setter Property="CanUserDeleteRows" Value="False"/>
+    <Setter Property="CanUserReorderColumns" Value="False"/>
+    <Setter Property="CanUserResizeColumns" Value="True"/>
+    <Setter Property="CanUserSortColumns" Value="False"/>
+   </Style>
+   <Style x:Key="InventoryCorrectionGridInputStyle" TargetType="TextBox"
+          BasedOn="{StaticResource ModernTextBoxStyle}">
+    <Setter Property="Height" Value="32"/>
+    <Setter Property="MinHeight" Value="32"/>
+    <Setter Property="Margin" Value="4,2"/>
+    <Setter Property="Padding" Value="8,1"/>
+    <Setter Property="FontSize" Value="11"/>
+    <Setter Property="TextAlignment" Value="Center"/>
+   </Style>
+   <Style x:Key="InventoryCorrectionSummaryCardStyle" TargetType="Border"
+          BasedOn="{StaticResource InventorySummaryCard}">
+    <Setter Property="MinHeight" Value="62"/>
+    <Setter Property="Padding" Value="9,7"/>
+    <Setter Property="Margin" Value="3"/>
+   </Style>
+   <Style x:Key="InventoryCorrectionMetricIconStyle" TargetType="Border"
+          BasedOn="{StaticResource InventoryDetailMetricIconStyle}">
+    <Setter Property="Width" Value="34"/>
+    <Setter Property="Height" Value="34"/>
+    <Setter Property="CornerRadius" Value="9"/>
+    <Setter Property="Margin" Value="0,0,8,0"/>
+   </Style>
+   <Style x:Key="InventoryCorrectionFooterStyle" TargetType="Border"
+          BasedOn="{StaticResource InventoryDialogFooterStyle}">
+    <Setter Property="Padding" Value="0,9,0,0"/>
+   </Style>
+  </UserControl.Resources>
+
+ <Grid Margin="26">
+  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="18"/><RowDefinition Height="Auto"/><RowDefinition Height="18"/><RowDefinition Height="Auto"/><RowDefinition Height="14"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+  <Grid>
+   <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+   <StackPanel Orientation="Horizontal">
+    <Border Width="46" Height="46" CornerRadius="13" Background="{DynamicResource PrimaryDarkBrush}" Margin="0,0,14,0"><materialDesign:PackIcon Kind="Warehouse" Width="24" Height="24" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+    <StackPanel VerticalAlignment="Center"><TextBlock Text="Inventario" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/><TextBlock Text="Existencias, costos y trazabilidad física por bodega" Margin="0,3,0,0" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"/></StackPanel>
+   </StackPanel>
+   <StackPanel Grid.Column="1" Orientation="Horizontal"><Button Command="{Binding OpenInitialCommand}" CommandParameter="{Binding SelectedItem}" Visibility="{Binding CanRegisterInitial, Converter={StaticResource BooleanToVisibilityConverter}}" Style="{StaticResource NeutralButtonStyle}" ToolTip="Disponible únicamente antes del primer movimiento operativo del producto"><StackPanel Orientation="Horizontal"><materialDesign:PackIcon Kind="ArchiveArrowUpOutline" Width="18" Height="18"/><TextBlock Text="Saldo inicial" Margin="8,0,0,0"/></StackPanel></Button><Button Margin="8,0,0,0" Command="{Binding OpenAdjustmentCommand}" CommandParameter="{Binding SelectedItem}" Visibility="{Binding CanAdjust, Converter={StaticResource BooleanToVisibilityConverter}}" Style="{StaticResource PrimaryButtonStyle}" ToolTip="Selecciona un producto y registra un ajuste"><StackPanel Orientation="Horizontal"><materialDesign:PackIcon Kind="TuneVariant" Width="18" Height="18" Foreground="White"/><TextBlock Text="Nuevo ajuste" Margin="8,0,0,0"/></StackPanel></Button><Button Margin="8,0,0,0" Command="{Binding ReconcileCommand}" Visibility="{Binding CanReconcile, Converter={StaticResource BooleanToVisibilityConverter}}" Style="{StaticResource NeutralButtonStyle}" ToolTip="Verificar consistencia entre existencias, lotes y series"><materialDesign:PackIcon Kind="ShieldCheckOutline" Width="18" Height="18"/></Button></StackPanel>
+  </Grid>
+
+  <Grid Grid.Row="2">
+   <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+   <Button Grid.Column="0" Style="{StaticResource InventoryKpiAllStyle}" Tag="{Binding IsAllKpi}" ToolTip="Mostrar todos los productos" Command="{Binding SelectKpiCommand}" CommandParameter="TODOS"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Width="52" Height="52" CornerRadius="14" Background="#3B82F6"><materialDesign:PackIcon Kind="PackageVariantClosed" Width="25" Height="25" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><StackPanel Grid.Column="2" VerticalAlignment="Center"><TextBlock Text="{Binding ProductsCount}" FontSize="25" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/><TextBlock Text="PRODUCTOS" Foreground="{DynamicResource SecondaryTextBrush}"/></StackPanel></Grid></Button>
+   <Button Grid.Column="2" Style="{StaticResource InventoryKpiLowStockStyle}" Tag="{Binding IsLowStockKpi}" ToolTip="Mostrar productos con stock bajo" Command="{Binding SelectKpiCommand}" CommandParameter="STOCK_BAJO"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Width="52" Height="52" CornerRadius="14" Background="#F59E0B"><materialDesign:PackIcon Kind="PackageVariantClosedMinus" Width="25" Height="25" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><StackPanel Grid.Column="2" VerticalAlignment="Center"><TextBlock Text="{Binding LowStockCount}" FontSize="25" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/><TextBlock Text="STOCK BAJO" Foreground="{DynamicResource SecondaryTextBrush}"/></StackPanel></Grid></Button>
+   <Button Grid.Column="4" Style="{StaticResource InventoryKpiNoStockStyle}" Tag="{Binding IsNoStockKpi}" ToolTip="Mostrar productos sin stock" Command="{Binding SelectKpiCommand}" CommandParameter="SIN_STOCK"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Width="52" Height="52" CornerRadius="14" Background="#EF4444"><materialDesign:PackIcon Kind="PackageVariantRemove" Width="25" Height="25" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><StackPanel Grid.Column="2" VerticalAlignment="Center"><TextBlock Text="{Binding NoStockCount}" FontSize="25" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/><TextBlock Text="SIN STOCK" Foreground="{DynamicResource SecondaryTextBrush}"/></StackPanel></Grid></Button>
+   <Button Grid.Column="6" Style="{StaticResource InventoryKpiExpiryStyle}" Tag="{Binding IsExpiringKpi}" ToolTip="Mostrar productos próximos a caducar" Command="{Binding SelectKpiCommand}" CommandParameter="POR_CADUCAR"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Width="52" Height="52" CornerRadius="14" Background="#A855F7"><materialDesign:PackIcon Kind="CalendarAlert" Width="25" Height="25" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><StackPanel Grid.Column="2" VerticalAlignment="Center"><TextBlock Text="{Binding ExpiringCount}" FontSize="25" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/><TextBlock Text="POR CADUCAR" Foreground="{DynamicResource SecondaryTextBrush}"/></StackPanel></Grid></Button>
+    <Border Grid.Column="8" Padding="18" CornerRadius="16" Background="{DynamicResource PrimaryDarkBrush}" Visibility="{Binding CanViewCosts, Converter={StaticResource BooleanToVisibilityConverter}}"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Width="52" Height="52" CornerRadius="14" Background="#16A34A"><materialDesign:PackIcon Kind="CashMultiple" Width="25" Height="25" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><StackPanel Grid.Column="2" VerticalAlignment="Center"><TextBlock Text="{Binding InventoryValue, StringFormat={}{0:C2}}" FontSize="23" FontWeight="Bold" Foreground="White"/><TextBlock Text="VALOR INVENTARIO" Foreground="#D1FAE5"/></StackPanel></Grid></Border>
+  </Grid>
+
+  <Border Grid.Row="4" Padding="14" CornerRadius="14" Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+   <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="260"/><ColumnDefinition Width="14"/><ColumnDefinition Width="46"/></Grid.ColumnDefinitions>
+      <Border Height="46" CornerRadius="10" Background="{DynamicResource InputSecondaryBackgroundBrush}" BorderBrush="{DynamicResource InputBorderBrush}" BorderThickness="1"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="44"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><materialDesign:PackIcon Kind="Magnify" Width="19" Height="19" Foreground="{DynamicResource SecondaryTextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/><Grid Grid.Column="1"><TextBox x:Name="InventorySearchInput" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" Background="Transparent" Padding="0,0,38,0" BorderThickness="0"/><TextBlock Text="Buscar producto, marca, presentación o código" Margin="0,0,38,0" VerticalAlignment="Center" IsHitTestVisible="False" Foreground="{DynamicResource MutedTextBrush}" FontSize="12"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Text, ElementName=InventorySearchInput}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock><Button HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,6,0" Panel.ZIndex="2" Style="{StaticResource InventorySearchClearStyle}" Command="{Binding ClearSearchCommand}" ToolTip="Limpiar búsqueda" Visibility="{Binding SearchText, Converter={StaticResource StringToVisibilityConverter}}"><materialDesign:PackIcon Kind="Close" Width="17" Height="17" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/></Button></Grid></Grid></Border>
+    <ComboBox x:Name="InventoryWarehouseFilter" Grid.Column="2" ItemsSource="{Binding WarehouseFilters}" SelectedItem="{Binding SelectedWarehouse}" DisplayMemberPath="Display" Style="{StaticResource ModernComboBoxStyle}" materialDesign:HintAssist.Hint="Bodega" ToolTip="Consulta consolidada o existencias de una bodega específica"/>
+     <Button Grid.Column="4" Command="{Binding LoadCommand}" Style="{StaticResource InventoryRefreshStyle}" ToolTip="Actualizar inventario"><materialDesign:PackIcon Kind="Refresh" Width="20" Height="20" Foreground="White"/></Button>
+   </Grid>
+  </Border>
+
+  <Border Grid.Row="6" CornerRadius="14" Background="{DynamicResource TableBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" ClipToBounds="True">
+    <Grid><Grid.RowDefinitions><RowDefinition Height="10"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <ProgressBar Grid.Row="0" Margin="12,2" Style="{StaticResource InventoryLoadingStyle}" ToolTip="Cargando inventario..." Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+      <DataGrid x:Name="InventoryMainGrid" Grid.Row="1" ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource KontaxDataGridStyle}" CanUserAddRows="False" CanUserDeleteRows="False" CanUserSortColumns="False" HeadersVisibility="Column" MinRowHeight="92" ColumnHeaderHeight="46" ColumnHeaderStyle="{StaticResource InventoryColumnHeaderStyle}" BorderThickness="0" SelectionMode="Single" SelectionUnit="FullRow" ScrollViewer.CanContentScroll="True" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.ScrollUnit="Pixel">
+      <DataGrid.Columns>
+        <DataGridTemplateColumn Width="3*" MinWidth="410">
+         <DataGridTemplateColumn.Header><Button Style="{StaticResource InventorySortHeaderStyle}" Command="{Binding DataContext.SortInventoryCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{x:Static inventoryModels:InventarioCatalogoOrden.Producto}"><StackPanel Orientation="Horizontal"><TextBlock Text="PRODUCTO"/><TextBlock Text="{Binding DataContext.ProductSortIndicator, RelativeSource={RelativeSource AncestorType=DataGrid}}" Margin="5,0,0,0"/></StackPanel></Button></DataGridTemplateColumn.Header>
+        <DataGridTemplateColumn.CellTemplate>
+         <DataTemplate>
+          <Grid Margin="0,7">
+           <Grid.ColumnDefinitions><ColumnDefinition Width="38"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+           <Border Width="38" Height="38" CornerRadius="10" ToolTip="{Binding ControlVisual}" VerticalAlignment="Top">
+            <Border.Style>
+             <Style TargetType="Border">
+              <Setter Property="Background" Value="#15803D"/>
+              <Style.Triggers>
+               <DataTrigger Binding="{Binding ControlVisual}" Value="LOTE"><Setter Property="Background" Value="#0F766E"/></DataTrigger>
+               <DataTrigger Binding="{Binding ControlVisual}" Value="SERIE"><Setter Property="Background" Value="#4F46E5"/></DataTrigger>
+               <DataTrigger Binding="{Binding ControlVisual}" Value="LOTE Y SERIE"><Setter Property="Background" Value="#7E22CE"/></DataTrigger>
+              </Style.Triggers>
+             </Style>
+            </Border.Style>
+            <materialDesign:PackIcon Width="21" Height="21" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center">
+             <materialDesign:PackIcon.Style>
+              <Style TargetType="materialDesign:PackIcon">
+               <Setter Property="Kind" Value="PackageVariant"/>
+               <Style.Triggers>
+                <DataTrigger Binding="{Binding ControlVisual}" Value="LOTE"><Setter Property="Kind" Value="ArchiveOutline"/></DataTrigger>
+                <DataTrigger Binding="{Binding ControlVisual}" Value="SERIE"><Setter Property="Kind" Value="Barcode"/></DataTrigger>
+                <DataTrigger Binding="{Binding ControlVisual}" Value="LOTE Y SERIE"><Setter Property="Kind" Value="PackageVariantClosedCheck"/></DataTrigger>
+               </Style.Triggers>
+              </Style>
+             </materialDesign:PackIcon.Style>
+            </materialDesign:PackIcon>
+           </Border>
+           <StackPanel Grid.Column="2">
+            <TextBlock Text="{Binding NombreConMarca}" Style="{StaticResource KontaxCatalogPrimaryTextStyle}" ToolTip="{Binding NombreConMarca}"/>
+            <StackPanel Orientation="Horizontal" Margin="0,3,0,0" ToolTip="{Binding CategoriaModeloTexto}"
+                        Visibility="{Binding CategoriaModeloTexto, Converter={StaticResource StringToVisibilityConverter}}">
+             <Border Padding="6,2" CornerRadius="6" Margin="0,0,6,0" Background="#475569"
+                     Visibility="{Binding TieneCategoria, Converter={StaticResource BooleanToVisibilityConverter}}">
+              <StackPanel Orientation="Horizontal">
+               <materialDesign:PackIcon Kind="ShapeOutline" Width="11" Height="11" Margin="0,0,4,0" Foreground="White"/>
+               <TextBlock Text="{Binding Categoria}" MaxWidth="135" FontSize="9" FontWeight="SemiBold" Foreground="White" TextTrimming="CharacterEllipsis"/>
+              </StackPanel>
+             </Border>
+             <TextBlock Text="·" Margin="0,0,6,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedTextBrush}"
+                        Visibility="{Binding MostrarSeparadorCategoriaModelo, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+             <TextBlock Text="{Binding Modelo}" MaxWidth="210" VerticalAlignment="Center" FontSize="10"
+                        Foreground="{DynamicResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis"
+                        Visibility="{Binding TieneModelo, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+            </StackPanel>
+            <Grid Margin="0,4,0,0">
+             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+             <ItemsControl ItemsSource="{Binding PresentacionesVisibles}" VerticalAlignment="Center">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+               <DataTemplate>
+                <StackPanel Orientation="Horizontal">
+                 <Border Padding="7,3" Margin="0,0,5,0" CornerRadius="8" ToolTip="{Binding Etiqueta}">
+                  <Border.Style><Style TargetType="Border"><Setter Property="Background" Value="#2563EB"/><Style.Triggers><DataTrigger Binding="{Binding EsBase}" Value="True"><Setter Property="Background" Value="{DynamicResource PrimaryDarkBrush}"/></DataTrigger></Style.Triggers></Style></Border.Style>
+                  <TextBlock Text="{Binding Etiqueta}" Foreground="White" FontSize="9" FontWeight="Bold"/>
+                 </Border>
+                 <TextBlock Text="·" Margin="0,0,5,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedTextBrush}"
+                            Visibility="{Binding MostrarSeparador, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                </StackPanel>
+               </DataTemplate>
+              </ItemsControl.ItemTemplate>
+             </ItemsControl>
+             <ToggleButton x:Name="MoreInventoryPresentations" Grid.Column="1" Margin="5,0,0,0"
+                           Content="{Binding TextoPresentacionesAdicionales}" ToolTip="{Binding PresentacionesRestantesTexto}"
+                           Visibility="{Binding TienePresentacionesAdicionales, Converter={StaticResource BooleanToVisibilityConverter}}">
+              <ToggleButton.Style>
+               <Style TargetType="ToggleButton">
+                <Setter Property="Height" Value="26"/><Setter Property="Padding" Value="7,0"/>
+                <Setter Property="FontSize" Value="9"/><Setter Property="FontWeight" Value="Bold"/>
+                <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+                <Setter Property="Background" Value="{DynamicResource InputSecondaryBackgroundBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/><Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ToggleButton"><Border x:Name="MoreBorder" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="7"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="MoreBorder" Property="Background" Value="{DynamicResource TableSelectedRowBrush}"/><Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/></Trigger><Trigger Property="IsChecked" Value="True"><Setter TargetName="MoreBorder" Property="Background" Value="{DynamicResource PrimaryDarkBrush}"/><Setter TargetName="MoreBorder" Property="BorderBrush" Value="{DynamicResource PrimaryDarkBrush}"/><Setter Property="Foreground" Value="White"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+               </Style>
+              </ToggleButton.Style>
+             </ToggleButton>
+             <Popup PlacementTarget="{Binding ElementName=MoreInventoryPresentations}" Placement="Bottom" HorizontalOffset="-8" VerticalOffset="4"
+                    AllowsTransparency="True" PopupAnimation="Fade" StaysOpen="False" IsOpen="{Binding IsChecked, ElementName=MoreInventoryPresentations, Mode=TwoWay}">
+              <Border MinWidth="210" MaxWidth="320" Padding="14,12" Background="{DynamicResource ElevatedSurfaceBrush}"
+                      BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10">
+               <Border.Effect><DropShadowEffect BlurRadius="18" ShadowDepth="3" Opacity="0.20"/></Border.Effect>
+               <StackPanel>
+                <TextBlock Text="PRESENTACIONES" Margin="0,0,0,8" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                <ItemsControl ItemsSource="{Binding PresentacionesRestantes}">
+                 <ItemsControl.ItemTemplate><DataTemplate><Border Padding="8,4" Margin="0,3" CornerRadius="8" Background="#2563EB" HorizontalAlignment="Left"><TextBlock Text="{Binding Etiqueta}" FontSize="10" FontWeight="Bold" Foreground="White"/></Border></DataTemplate></ItemsControl.ItemTemplate>
+                </ItemsControl>
+               </StackPanel>
+              </Border>
+             </Popup>
+            </Grid>
+           </StackPanel>
+          </Grid>
+         </DataTemplate>
+        </DataGridTemplateColumn.CellTemplate>
+       </DataGridTemplateColumn>
+        <DataGridTextColumn Binding="{Binding StockActual, StringFormat={}{0:0.######}}" Width="82" ElementStyle="{StaticResource InventoryEmphasizedCellTextStyle}" HeaderStyle="{StaticResource InventoryCenteredColumnHeaderStyle}"><DataGridTextColumn.Header><Button Style="{StaticResource InventoryCenteredSortHeaderStyle}" Command="{Binding DataContext.SortInventoryCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{x:Static inventoryModels:InventarioCatalogoOrden.Stock}"><StackPanel Orientation="Horizontal"><TextBlock Text="STOCK"/><TextBlock Text="{Binding DataContext.StockSortIndicator, RelativeSource={RelativeSource AncestorType=DataGrid}}" Margin="5,0,0,0"/></StackPanel></Button></DataGridTextColumn.Header></DataGridTextColumn>
+        <DataGridTextColumn Binding="{Binding StockReservado, StringFormat={}{0:0.######}}" Width="92" ElementStyle="{StaticResource KontaxCenteredCellTextStyle}" HeaderStyle="{StaticResource InventoryCenteredColumnHeaderStyle}"><DataGridTextColumn.Header><Button Style="{StaticResource InventoryCenteredSortHeaderStyle}" Command="{Binding DataContext.SortInventoryCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{x:Static inventoryModels:InventarioCatalogoOrden.Reservado}"><StackPanel Orientation="Horizontal"><TextBlock Text="RESERV."/><TextBlock Text="{Binding DataContext.ReservedSortIndicator, RelativeSource={RelativeSource AncestorType=DataGrid}}" Margin="5,0,0,0"/></StackPanel></Button></DataGridTextColumn.Header></DataGridTextColumn>
+        <DataGridTextColumn Binding="{Binding StockDisponible, StringFormat={}{0:0.######}}" Width="96" ElementStyle="{StaticResource InventoryEmphasizedCellTextStyle}" HeaderStyle="{StaticResource InventoryCenteredColumnHeaderStyle}"><DataGridTextColumn.Header><Button Style="{StaticResource InventoryCenteredSortHeaderStyle}" Command="{Binding DataContext.SortInventoryCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{x:Static inventoryModels:InventarioCatalogoOrden.Disponible}"><StackPanel Orientation="Horizontal"><TextBlock Text="DISPON."/><TextBlock Text="{Binding DataContext.AvailableSortIndicator, RelativeSource={RelativeSource AncestorType=DataGrid}}" Margin="5,0,0,0"/></StackPanel></Button></DataGridTextColumn.Header></DataGridTextColumn>
+         <DataGridTextColumn Binding="{Binding CostoPromedio, StringFormat={}{0:C2}}" Width="116" ElementStyle="{StaticResource KontaxCenteredCellTextStyle}" HeaderStyle="{StaticResource InventoryCenteredColumnHeaderStyle}" Visibility="{Binding Data.CanViewCosts, Source={StaticResource InventoryDataContextProxy}, Converter={StaticResource BooleanToVisibilityConverter}}"><DataGridTextColumn.Header><Button Style="{StaticResource InventoryCenteredSortHeaderStyle}" Command="{Binding DataContext.SortInventoryCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{x:Static inventoryModels:InventarioCatalogoOrden.CostoPromedio}"><StackPanel Orientation="Horizontal"><TextBlock Text="COSTO PROM."/><TextBlock Text="{Binding DataContext.AverageCostSortIndicator, RelativeSource={RelativeSource AncestorType=DataGrid}}" Margin="5,0,0,0"/></StackPanel></Button></DataGridTextColumn.Header></DataGridTextColumn>
+         <DataGridTextColumn Binding="{Binding Valor, StringFormat={}{0:C2}}" Width="104" ElementStyle="{StaticResource InventoryEmphasizedCellTextStyle}" HeaderStyle="{StaticResource InventoryCenteredColumnHeaderStyle}" Visibility="{Binding Data.CanViewCosts, Source={StaticResource InventoryDataContextProxy}, Converter={StaticResource BooleanToVisibilityConverter}}"><DataGridTextColumn.Header><Button Style="{StaticResource InventoryCenteredSortHeaderStyle}" Command="{Binding DataContext.SortInventoryCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{x:Static inventoryModels:InventarioCatalogoOrden.Valor}"><StackPanel Orientation="Horizontal"><TextBlock Text="VALOR"/><TextBlock Text="{Binding DataContext.ValueSortIndicator, RelativeSource={RelativeSource AncestorType=DataGrid}}" Margin="5,0,0,0"/></StackPanel></Button></DataGridTextColumn.Header></DataGridTextColumn>
+       <DataGridTemplateColumn Header="ACCIONES" Width="142" HeaderStyle="{StaticResource InventoryCenteredColumnHeaderStyle}"><DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center"><Button Style="{StaticResource InventorySecondaryActionStyle}" Command="{Binding DataContext.ViewDetailCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" ToolTip="Ver existencias"><materialDesign:PackIcon Kind="EyeOutline" Foreground="White"/></Button><Button Margin="6,0,0,0" Style="{StaticResource InventoryActionStyle}" Command="{Binding DataContext.OpenKardexCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" ToolTip="Ver Kardex"><materialDesign:PackIcon Kind="ChartTimelineVariant" Foreground="White"/></Button><Button Margin="6,0,0,0" Style="{StaticResource InventoryPurpleActionStyle}" Command="{Binding DataContext.OpenInitialWarehouseCorrectionCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}" ToolTip="Corregir bodega inicial"><materialDesign:PackIcon Kind="SwapHorizontal" Foreground="White"/></Button></StackPanel></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+     </DataGrid.Columns>
+    </DataGrid>
+     <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding HasItems, Converter={StaticResource InverseBooleanToVisibilityConverter}}"><materialDesign:PackIcon Style="{StaticResource KontaxEmptyListIconStyle}"/><TextBlock Text="No se encontraron registros" Style="{StaticResource KontaxEmptyListTextStyle}"/><Button Content="Limpiar filtros" Command="{Binding ClearFiltersCommand}" Margin="0,14,0,0" Style="{StaticResource NeutralButtonStyle}"/></StackPanel>
+     <Grid Grid.Row="2" Margin="14,10" MinHeight="38"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="18"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding PaginationText}" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/><StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="POR PÁGINA" Margin="0,0,7,0" VerticalAlignment="Center" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource MutedTextBrush}"/><ComboBox Width="82" ItemsSource="{Binding PageSizes}" SelectedItem="{Binding PageSize}" Style="{StaticResource ModernComboBoxStyle}"/></StackPanel><StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center"><Button Style="{StaticResource InventoryPageButtonStyle}" Command="{Binding PreviousPageCommand}" ToolTip="Página anterior"><materialDesign:PackIcon Kind="ChevronLeft" Width="17" Height="17"/></Button><ItemsControl ItemsSource="{Binding VisiblePages}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate><DataTemplate><Button Content="{Binding Text}" Margin="4,0,0,0" Command="{Binding DataContext.GoToPageCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}"><Button.Style><Style TargetType="Button" BasedOn="{StaticResource InventoryPageButtonStyle}"><Style.Triggers><DataTrigger Binding="{Binding IsCurrent}" Value="True"><Setter Property="Background" Value="{DynamicResource PrimaryButtonBackgroundBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource PrimaryButtonBackgroundBrush}"/><Setter Property="Foreground" Value="White"/></DataTrigger><DataTrigger Binding="{Binding IsSeparator}" Value="True"><Setter Property="IsEnabled" Value="False"/><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/></DataTrigger></Style.Triggers></Style></Button.Style></Button></DataTemplate></ItemsControl.ItemTemplate></ItemsControl><Button Margin="4,0,0,0" Style="{StaticResource InventoryPageButtonStyle}" Command="{Binding NextPageCommand}" ToolTip="Página siguiente"><materialDesign:PackIcon Kind="ChevronRight" Width="17" Height="17"/></Button></StackPanel></Grid>
+   </Grid>
+  </Border>
+
+  <!-- Consulta de existencias: identidad, valoración y trazabilidad física. -->
+  <Border Grid.RowSpan="7" Panel.ZIndex="20" Background="{DynamicResource OverlayBrush}"
+          Visibility="{Binding IsDetailOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+   <Border Style="{StaticResource InventoryDialogContainerStyle}">
+    <Grid>
+     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="16"/><RowDefinition Height="Auto"/><RowDefinition Height="16"/><RowDefinition Height="*"/><RowDefinition Height="16"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+
+     <Grid>
+      <Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+      <Border Width="52" Height="52" CornerRadius="14" ToolTip="{Binding SelectedDetail.TipoControl}">
+       <Border.Style><Style TargetType="Border"><Setter Property="Background" Value="#15803D"/><Style.Triggers><DataTrigger Binding="{Binding SelectedDetail.TipoControl}" Value="LOTE"><Setter Property="Background" Value="#0F766E"/></DataTrigger><DataTrigger Binding="{Binding SelectedDetail.TipoControl}" Value="SERIE"><Setter Property="Background" Value="#4F46E5"/></DataTrigger><DataTrigger Binding="{Binding SelectedDetail.TipoControl}" Value="LOTE Y SERIE"><Setter Property="Background" Value="#7E22CE"/></DataTrigger></Style.Triggers></Style></Border.Style>
+       <materialDesign:PackIcon Width="27" Height="27" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <materialDesign:PackIcon.Style><Style TargetType="materialDesign:PackIcon"><Setter Property="Kind" Value="PackageVariant"/><Style.Triggers><DataTrigger Binding="{Binding SelectedDetail.TipoControl}" Value="LOTE"><Setter Property="Kind" Value="ArchiveOutline"/></DataTrigger><DataTrigger Binding="{Binding SelectedDetail.TipoControl}" Value="SERIE"><Setter Property="Kind" Value="Barcode"/></DataTrigger><DataTrigger Binding="{Binding SelectedDetail.TipoControl}" Value="LOTE Y SERIE"><Setter Property="Kind" Value="PackageVariantClosedCheck"/></DataTrigger></Style.Triggers></Style></materialDesign:PackIcon.Style>
+       </materialDesign:PackIcon>
+      </Border>
+      <StackPanel Grid.Column="2" VerticalAlignment="Center">
+       <TextBlock Text="EXISTENCIAS DEL PRODUCTO" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrandProBrush}"/>
+       <TextBlock Text="{Binding SelectedDetail.NombreConMarca}" Margin="0,3,0,0" FontSize="21" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/>
+       <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+        <Border Padding="6,2" CornerRadius="6" Background="#475569" Visibility="{Binding SelectedDetail.TieneCategoria, Converter={StaticResource BooleanToVisibilityConverter}}"><TextBlock Text="{Binding SelectedDetail.Categoria}" FontSize="9" FontWeight="SemiBold" Foreground="White"/></Border>
+        <TextBlock Text=" · " Foreground="{DynamicResource MutedTextBrush}" Visibility="{Binding SelectedDetail.MostrarSeparadorCategoriaModelo, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+        <TextBlock Text="{Binding SelectedDetail.Modelo}" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" Visibility="{Binding SelectedDetail.TieneModelo, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+       </StackPanel>
+       <ItemsControl ItemsSource="{Binding SelectedDetail.Presentaciones}" Margin="0,5,0,0">
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+         <DataTemplate>
+          <Border Padding="7,3" Margin="0,0,6,0" CornerRadius="8" ToolTip="{Binding EtiquetaInventario}">
+           <Border.Style><Style TargetType="Border"><Setter Property="Background" Value="#2563EB"/><Style.Triggers><DataTrigger Binding="{Binding EsBase}" Value="True"><Setter Property="Background" Value="{DynamicResource PrimaryDarkBrush}"/></DataTrigger></Style.Triggers></Style></Border.Style>
+           <TextBlock Text="{Binding EtiquetaInventario}" Foreground="White" FontSize="9" FontWeight="Bold"/>
+          </Border>
+         </DataTemplate>
+        </ItemsControl.ItemTemplate>
+       </ItemsControl>
+      </StackPanel>
+      <Button Grid.Column="3" Command="{Binding ClosePanelsCommand}" Style="{StaticResource InventoryDialogCloseButtonStyle}"><materialDesign:PackIcon Kind="Close" Foreground="White"/></Button>
+     </Grid>
+
+     <UniformGrid Grid.Row="2" Columns="5">
+      <Border Style="{StaticResource InventorySummaryCard}"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Style="{StaticResource InventoryDetailMetricIconStyle}" Background="#2563EB"><materialDesign:PackIcon Kind="PackageVariant" Width="20" Height="20" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="STOCK ACTUAL" Style="{StaticResource InventoryDetailMetricLabelStyle}"/><Viewbox Margin="0,5,0,0" Height="21" HorizontalAlignment="Left" StretchDirection="DownOnly"><TextBlock Text="{Binding SelectedDetail.StockActual, StringFormat={}{0:0.######}}" Style="{StaticResource InventoryDetailMetricValueStyle}"/></Viewbox></StackPanel></Grid></Border>
+      <Border Style="{StaticResource InventorySummaryCard}"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Style="{StaticResource InventoryDetailMetricIconStyle}" Background="#F59E0B"><materialDesign:PackIcon Kind="PackageVariantClosed" Width="20" Height="20" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="RESERVADO" Style="{StaticResource InventoryDetailMetricLabelStyle}"/><Viewbox Margin="0,5,0,0" Height="21" HorizontalAlignment="Left" StretchDirection="DownOnly"><TextBlock Text="{Binding SelectedDetail.StockReservado, StringFormat={}{0:0.######}}" Style="{StaticResource InventoryDetailMetricValueStyle}"/></Viewbox></StackPanel></Grid></Border>
+      <Border Style="{StaticResource InventorySummaryCard}"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Style="{StaticResource InventoryDetailMetricIconStyle}" Background="{DynamicResource PrimaryDarkBrush}"><materialDesign:PackIcon Kind="PackageCheck" Width="20" Height="20" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="DISPONIBLE" Style="{StaticResource InventoryDetailMetricLabelStyle}"/><Viewbox Margin="0,5,0,0" Height="21" HorizontalAlignment="Left" StretchDirection="DownOnly"><TextBlock Text="{Binding SelectedDetail.StockDisponible, StringFormat={}{0:0.######}}" Style="{StaticResource InventoryDetailMetricValueStyle}"/></Viewbox></StackPanel></Grid></Border>
+       <Border Style="{StaticResource InventorySummaryCard}" Visibility="{Binding CanViewCosts, Converter={StaticResource BooleanToVisibilityConverter}}"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Style="{StaticResource InventoryDetailMetricIconStyle}" Background="#7C3AED"><materialDesign:PackIcon Kind="CalculatorVariantOutline" Width="20" Height="20" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="COSTO PROM." Style="{StaticResource InventoryDetailMetricLabelStyle}"/><Viewbox Margin="0,5,0,0" Height="21" HorizontalAlignment="Left" StretchDirection="DownOnly"><TextBlock Text="{Binding SelectedDetail.CostoPromedio, StringFormat={}{0:C2}}" Style="{StaticResource InventoryDetailMetricValueStyle}"/></Viewbox></StackPanel></Grid></Border>
+       <Border Style="{StaticResource InventorySummaryCard}" Visibility="{Binding CanViewCosts, Converter={StaticResource BooleanToVisibilityConverter}}"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Style="{StaticResource InventoryDetailMetricIconStyle}" Background="#0F766E"><materialDesign:PackIcon Kind="CashMultiple" Width="20" Height="20" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="VALOR" Style="{StaticResource InventoryDetailMetricLabelStyle}"/><Viewbox Margin="0,5,0,0" Height="21" HorizontalAlignment="Left" StretchDirection="DownOnly"><TextBlock Text="{Binding SelectedDetail.ValorInventario, StringFormat={}{0:C2}}" Style="{StaticResource InventoryDetailMetricValueStyle}"/></Viewbox></StackPanel></Grid></Border>
+     </UniformGrid>
+
+     <TabControl Grid.Row="4" Style="{StaticResource InventoryDetailTabControlStyle}" ItemContainerStyle="{StaticResource InventoryDetailTabItemStyle}" SelectedIndex="{Binding SelectedDetailTabIndex, Mode=TwoWay}">
+      <TabControl.Resources>
+       <Style x:Key="KontaxDataGridStyle" TargetType="DataGrid" BasedOn="{StaticResource InventoryDetailDataGridStyle}"/>
+      </TabControl.Resources>
+      <TabItem>
+       <TabItem.Header><StackPanel Orientation="Horizontal"><Border Width="27" Height="27" CornerRadius="7" Background="#2563EB"><materialDesign:PackIcon Kind="Warehouse" Width="15" Height="15" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="BODEGAS" Margin="8,0,5,0" VerticalAlignment="Center"/><TextBlock Text="{Binding SelectedDetail.Bodegas.Count, StringFormat={}({0})}" FontWeight="Bold" VerticalAlignment="Center"/></StackPanel></TabItem.Header>
+       <Grid>
+          <DataGrid x:Name="InventoryWarehousesGrid" ItemsSource="{Binding SelectedDetail.Bodegas}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource KontaxDataGridStyle}" ColumnHeaderStyle="{StaticResource InventoryDetailColumnHeaderStyle}" CellStyle="{StaticResource InventoryDetailCellStyle}" BorderThickness="0" GridLinesVisibility="None" MinRowHeight="44" CanUserAddRows="False" CanUserReorderColumns="False" CanUserResizeColumns="True" CanUserSortColumns="True">
+         <DataGrid.Columns><DataGridTextColumn Header="BODEGA" Binding="{Binding Bodega}" Width="*" MinWidth="150"/><DataGridTextColumn Header="STOCK" Binding="{Binding StockActual, StringFormat={}{0:0.######}}" Width="100" MinWidth="72" ElementStyle="{StaticResource InventoryEmphasizedCellTextStyle}" HeaderStyle="{StaticResource InventoryDetailCenteredColumnHeaderStyle}"/><DataGridTextColumn Header="RESERV." Binding="{Binding StockReservado, StringFormat={}{0:0.######}}" Width="95" MinWidth="72" ElementStyle="{StaticResource KontaxCenteredCellTextStyle}" HeaderStyle="{StaticResource InventoryDetailCenteredColumnHeaderStyle}"/><DataGridTextColumn Header="DISPON." Binding="{Binding Disponible, StringFormat={}{0:0.######}}" Width="95" MinWidth="72" ElementStyle="{StaticResource InventoryEmphasizedCellTextStyle}" HeaderStyle="{StaticResource InventoryDetailCenteredColumnHeaderStyle}"/><DataGridTextColumn Header="MÍNIMO" Binding="{Binding StockMinimo, StringFormat={}{0:0.######}}" Width="90" MinWidth="72" ElementStyle="{StaticResource KontaxCenteredCellTextStyle}" HeaderStyle="{StaticResource InventoryDetailCenteredColumnHeaderStyle}"/><DataGridTextColumn Header="UBICACIÓN" Binding="{Binding Ubicacion}" Width="145" MinWidth="100"/></DataGrid.Columns>
+        </DataGrid>
+         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding SelectedDetail.TieneBodegas, Converter={StaticResource InverseBooleanToVisibilityConverter}}"><materialDesign:PackIcon Style="{StaticResource KontaxEmptyListIconStyle}"/><TextBlock Text="No se encontraron registros" Style="{StaticResource InventoryDetailEmptyTextStyle}"/></StackPanel>
+       </Grid>
+      </TabItem>
+      <TabItem Visibility="{Binding SelectedDetail.ManejaLotes, Converter={StaticResource BooleanToVisibilityConverter}}">
+       <TabItem.Header><StackPanel Orientation="Horizontal"><Border Width="27" Height="27" CornerRadius="7" Background="#0F766E"><materialDesign:PackIcon Kind="ArchiveOutline" Width="15" Height="15" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="LOTES" Margin="8,0,5,0" VerticalAlignment="Center"/><TextBlock Text="{Binding SelectedDetail.Lotes.Count, StringFormat={}({0})}" FontWeight="Bold" VerticalAlignment="Center"/></StackPanel></TabItem.Header>
+        <Grid><DataGrid ItemsSource="{Binding SelectedDetail.Lotes}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource KontaxDataGridStyle}" ColumnHeaderStyle="{StaticResource InventoryDetailColumnHeaderStyle}" MinRowHeight="44" CanUserAddRows="False" CanUserReorderColumns="False" CanUserResizeColumns="True" CanUserSortColumns="True"><DataGrid.Columns><DataGridTextColumn Header="LOTE" Binding="{Binding Numero}" Width="*" MinWidth="120"/><DataGridTextColumn Header="BODEGA" Binding="{Binding Bodega}" Width="*" MinWidth="140"/><DataGridTextColumn Header="STOCK" Binding="{Binding StockActual, StringFormat={}{0:0.######}}" Width="90" MinWidth="72" ElementStyle="{StaticResource KontaxCenteredCellTextStyle}" HeaderStyle="{StaticResource InventoryDetailCenteredColumnHeaderStyle}"/><DataGridTextColumn Header="RESERV." Binding="{Binding StockReservado, StringFormat={}{0:0.######}}" Width="90" MinWidth="72" ElementStyle="{StaticResource KontaxCenteredCellTextStyle}" HeaderStyle="{StaticResource InventoryDetailCenteredColumnHeaderStyle}"/><DataGridTextColumn Header="DISPON." Binding="{Binding Disponible, StringFormat={}{0:0.######}}" Width="90" MinWidth="72" ElementStyle="{StaticResource InventoryEmphasizedCellTextStyle}" HeaderStyle="{StaticResource InventoryDetailCenteredColumnHeaderStyle}"/><DataGridTextColumn Header="ELABORACIÓN" Binding="{Binding Elaboracion, StringFormat=dd/MM/yyyy}" Width="110" MinWidth="95" ElementStyle="{StaticResource KontaxCenteredCellTextStyle}" HeaderStyle="{StaticResource InventoryDetailCenteredColumnHeaderStyle}"/><DataGridTextColumn Header="CADUCIDAD" Binding="{Binding Caducidad, StringFormat=dd/MM/yyyy}" Width="110" MinWidth="95" ElementStyle="{StaticResource KontaxCenteredCellTextStyle}" HeaderStyle="{StaticResource InventoryDetailCenteredColumnHeaderStyle}"/></DataGrid.Columns></DataGrid><StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding SelectedDetail.TieneLotes, Converter={StaticResource InverseBooleanToVisibilityConverter}}"><materialDesign:PackIcon Style="{StaticResource KontaxEmptyListIconStyle}"/><TextBlock Text="No se encontraron registros" Style="{StaticResource InventoryDetailEmptyTextStyle}"/></StackPanel></Grid>
+      </TabItem>
+      <TabItem Visibility="{Binding SelectedDetail.ManejaSeries, Converter={StaticResource BooleanToVisibilityConverter}}">
+       <TabItem.Header><StackPanel Orientation="Horizontal"><Border Width="27" Height="27" CornerRadius="7" Background="#7C3AED"><materialDesign:PackIcon Kind="Barcode" Width="15" Height="15" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="SERIES" Margin="8,0,5,0" VerticalAlignment="Center"/><TextBlock Text="{Binding SelectedDetail.Series.Count, StringFormat={}({0})}" FontWeight="Bold" VerticalAlignment="Center"/></StackPanel></TabItem.Header>
+        <Grid><DataGrid ItemsSource="{Binding SelectedDetail.Series}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource KontaxDataGridStyle}" ColumnHeaderStyle="{StaticResource InventoryDetailColumnHeaderStyle}" MinRowHeight="44" CanUserAddRows="False" CanUserReorderColumns="False" CanUserResizeColumns="True" CanUserSortColumns="True"><DataGrid.Columns><DataGridTextColumn Header="SERIE" Binding="{Binding Numero}" Width="*" MinWidth="140"/><DataGridTextColumn Header="BODEGA" Binding="{Binding Bodega}" Width="*" MinWidth="140"/><DataGridTextColumn Header="LOTE" Binding="{Binding Lote}" Width="150" MinWidth="110"/><DataGridTemplateColumn Header="ESTADO" Width="125" MinWidth="105" SortMemberPath="Estado" HeaderStyle="{StaticResource InventoryDetailCenteredColumnHeaderStyle}"><DataGridTemplateColumn.CellTemplate><DataTemplate><Border Padding="9,4" CornerRadius="8" HorizontalAlignment="Center" VerticalAlignment="Center"><Border.Style><Style TargetType="Border"><Setter Property="Background" Value="#64748B"/><Style.Triggers><DataTrigger Binding="{Binding Estado}" Value="DISPONIBLE"><Setter Property="Background" Value="{DynamicResource PrimaryDarkBrush}"/></DataTrigger><DataTrigger Binding="{Binding Estado}" Value="RESERVADA"><Setter Property="Background" Value="#F59E0B"/></DataTrigger><DataTrigger Binding="{Binding Estado}" Value="VENDIDA"><Setter Property="Background" Value="#2563EB"/></DataTrigger><DataTrigger Binding="{Binding Estado}" Value="BAJA"><Setter Property="Background" Value="#DC2626"/></DataTrigger></Style.Triggers></Style></Border.Style><TextBlock Text="{Binding EstadoTexto}" FontSize="9" FontWeight="Bold" Foreground="White"/></Border></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn></DataGrid.Columns></DataGrid><StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding SelectedDetail.TieneSeries, Converter={StaticResource InverseBooleanToVisibilityConverter}}"><materialDesign:PackIcon Style="{StaticResource KontaxEmptyListIconStyle}"/><TextBlock Text="No se encontraron registros" Style="{StaticResource InventoryDetailEmptyTextStyle}"/></StackPanel></Grid>
+      </TabItem>
+      <TabItem>
+       <TabItem.Header><StackPanel Orientation="Horizontal"><Border Width="27" Height="27" CornerRadius="7" Background="{DynamicResource PrimaryDarkBrush}"><materialDesign:PackIcon Kind="History" Width="15" Height="15" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="MOVIMIENTOS RECIENTES" Margin="8,0,5,0" VerticalAlignment="Center"/><TextBlock Text="{Binding SelectedDetail.MovimientosRecientes.Count, StringFormat={}({0})}" FontWeight="Bold" VerticalAlignment="Center"/></StackPanel></TabItem.Header>
+       <Grid>
+        <DataGrid ItemsSource="{Binding SelectedDetail.MovimientosRecientes}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource KontaxDataGridStyle}" ColumnHeaderStyle="{StaticResource InventoryDetailColumnHeaderStyle}" MinRowHeight="44" CanUserAddRows="False" CanUserReorderColumns="False" CanUserResizeColumns="True" CanUserSortColumns="True">
+         <DataGrid.Columns>
+          <DataGridTextColumn Header="FECHA" Binding="{Binding Fecha, StringFormat=dd/MM/yyyy HH:mm}" Width="125" MinWidth="110" ElementStyle="{StaticResource KontaxCenteredCellTextStyle}" HeaderStyle="{StaticResource InventoryDetailCenteredColumnHeaderStyle}"/>
+          <DataGridTextColumn Header="MOVIMIENTO" Binding="{Binding Tipo}" Width="145" MinWidth="110"/>
+          <DataGridTextColumn Header="DOCUMENTO" Binding="{Binding Documento}" Width="135" MinWidth="105"/>
+          <DataGridTextColumn Header="BODEGA" Binding="{Binding Bodega}" Width="*" MinWidth="140"/>
+          <DataGridTemplateColumn Header="ENTRADA" Width="95" MinWidth="82" SortMemberPath="EntradaBase" HeaderStyle="{StaticResource InventoryDetailCenteredColumnHeaderStyle}">
+           <DataGridTemplateColumn.CellTemplate><DataTemplate><Grid HorizontalAlignment="Center" VerticalAlignment="Center"><StackPanel Orientation="Horizontal" Visibility="{Binding EsEntrada, Converter={StaticResource BooleanToVisibilityConverter}}" ToolTip="Cantidad base que ingresó al inventario"><materialDesign:PackIcon Kind="ArrowDownBold" Width="15" Height="15" Margin="0,0,5,0" Foreground="{DynamicResource PrimaryDarkBrush}" VerticalAlignment="Center"/><TextBlock Style="{StaticResource InventoryMovementValueStyle}" Foreground="{DynamicResource PrimaryDarkBrush}"><Run Text="+"/><Run Text="{Binding EntradaBase, StringFormat={}{0:0.######}, Mode=OneWay}"/></TextBlock></StackPanel><TextBlock Text="—" Style="{StaticResource InventoryMovementValueStyle}" Foreground="{DynamicResource MutedTextBrush}" Visibility="{Binding EsEntrada, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/></Grid></DataTemplate></DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="SALIDA" Width="95" MinWidth="82" SortMemberPath="SalidaBase" HeaderStyle="{StaticResource InventoryDetailCenteredColumnHeaderStyle}">
+           <DataGridTemplateColumn.CellTemplate><DataTemplate><Grid HorizontalAlignment="Center" VerticalAlignment="Center"><StackPanel Orientation="Horizontal" Visibility="{Binding EsSalida, Converter={StaticResource BooleanToVisibilityConverter}}" ToolTip="Cantidad base que salió del inventario"><materialDesign:PackIcon Kind="ArrowUpBold" Width="15" Height="15" Margin="0,0,5,0" Foreground="#DC2626" VerticalAlignment="Center"/><TextBlock Style="{StaticResource InventoryMovementValueStyle}" Foreground="#DC2626"><Run Text="−"/><Run Text="{Binding SalidaBase, StringFormat={}{0:0.######}, Mode=OneWay}"/></TextBlock></StackPanel><TextBlock Text="—" Style="{StaticResource InventoryMovementValueStyle}" Foreground="{DynamicResource MutedTextBrush}" Visibility="{Binding EsSalida, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/></Grid></DataTemplate></DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTextColumn Header="SALDO" Binding="{Binding StockNuevo, StringFormat={}{0:0.######}}" Width="90" MinWidth="72" ElementStyle="{StaticResource InventoryEmphasizedCellTextStyle}" HeaderStyle="{StaticResource InventoryDetailCenteredColumnHeaderStyle}"/>
+         </DataGrid.Columns>
+        </DataGrid>
+         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding SelectedDetail.TieneMovimientosRecientes, Converter={StaticResource InverseBooleanToVisibilityConverter}}"><materialDesign:PackIcon Style="{StaticResource KontaxEmptyListIconStyle}"/><TextBlock Text="No se encontraron registros" Style="{StaticResource InventoryDetailEmptyTextStyle}"/></StackPanel>
+       </Grid>
+      </TabItem>
+     </TabControl>
+
+     <Grid Grid.Row="6">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+      <TextBlock Text="Consulta informativa: esta ventana no modifica las existencias." VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
+      <Button Grid.Column="1" Command="{Binding OpenKardexCommand}" CommandParameter="{Binding SelectedItem}" Style="{StaticResource InventoryDialogPrimaryButtonStyle}" HorizontalAlignment="Right"><StackPanel Orientation="Horizontal"><materialDesign:PackIcon Kind="ChartTimelineVariant" Width="18" Height="18" Foreground="White"/><TextBlock Text="Ver Kardex completo" Margin="8,0,0,0" Foreground="White"/></StackPanel></Button>
+     </Grid>
+    </Grid>
+   </Border>
+  </Border>
+
+  <!-- Kardex paginado -->
+  <inventoryViews:InventoryKardexPanel Grid.RowSpan="7" Panel.ZIndex="21"
+                                       Visibility="{Binding IsKardexOpen, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+   <!-- Flujos operativos aprobados en Productos V1 -->
+   <Border Grid.RowSpan="7" Panel.ZIndex="30"
+           Background="{DynamicResource OverlayBrush}"
+           Visibility="{Binding IsProductOperationOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+    <Border Margin="18"
+            Background="{DynamicResource ElevatedSurfaceBrush}"
+            BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="1">
+     <Border.Effect><DropShadowEffect BlurRadius="35" ShadowDepth="0" Opacity="0.32"/></Border.Effect>
+      <ContentControl>
+       <ContentControl.Style>
+        <Style TargetType="ContentControl">
+         <Setter Property="Content" Value="{x:Null}"/>
+         <Style.Triggers>
+          <DataTrigger Binding="{Binding IsProductOperationOpen}" Value="True">
+           <Setter Property="Content" Value="{Binding ProductOperations}"/>
+          </DataTrigger>
+         </Style.Triggers>
+        </Style>
+       </ContentControl.Style>
+       <ContentControl.ContentTemplate>
+        <DataTemplate><productViews:ProductFormView/></DataTemplate>
+       </ContentControl.ContentTemplate>
+      </ContentControl>
+    </Border>
+   </Border>
+
+    <!-- Corrección controlada de la bodega asignada al inventario inicial. -->
+    <Border Grid.RowSpan="7" Panel.ZIndex="23"
+            Background="{DynamicResource OverlayBrush}"
+            Visibility="{Binding IsInitialWarehouseCorrectionOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+     <Border Style="{StaticResource InventoryDialogContainerStyle}">
+      <Grid>
+       <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="10"/>
+        <RowDefinition Height="*"/>
+        <RowDefinition Height="10"/>
+        <RowDefinition Height="Auto"/>
+       </Grid.RowDefinitions>
+
+       <!-- Cabecera alineada con Existencias y Kardex. -->
+       <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="46"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="12"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <Border Width="46" Height="46" CornerRadius="12" Background="{DynamicResource PrimaryDarkBrush}" ToolTip="Corregir bodega inicial">
+         <materialDesign:PackIcon Kind="SwapHorizontal" Width="24" Height="24" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
+        <StackPanel Grid.Column="2" VerticalAlignment="Center">
+         <TextBlock Text="CORRECCIÓN DE INVENTARIO INICIAL" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrandProBrush}"/>
+         <TextBlock Text="{Binding SelectedDetail.NombreConMarca}" Margin="0,2,0,0" FontSize="19" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/>
+         <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+          <Border Padding="6,2" CornerRadius="6" Background="#475569" Visibility="{Binding SelectedDetail.TieneCategoria, Converter={StaticResource BooleanToVisibilityConverter}}"><TextBlock Text="{Binding SelectedDetail.Categoria}" FontSize="9" FontWeight="SemiBold" Foreground="White"/></Border>
+          <TextBlock Text=" · " Foreground="{DynamicResource MutedTextBrush}" Visibility="{Binding SelectedDetail.MostrarSeparadorCategoriaModelo, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+          <TextBlock Text="{Binding SelectedDetail.Modelo}" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" Visibility="{Binding SelectedDetail.TieneModelo, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+          <TextBlock Text="  ·  " Foreground="{DynamicResource MutedTextBrush}"/>
+          <TextBlock Text="{Binding SelectedDetail.PresentacionesTexto}" MaxWidth="430" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis"/>
+         </StackPanel>
+        </StackPanel>
+        <Border Grid.Column="3" Padding="10,7" CornerRadius="9"
+                Background="{DynamicResource WarningSoftBrush}"
+                BorderBrush="#F59E0B" BorderThickness="1"
+                VerticalAlignment="Center"
+                ToolTip="Solo se mueve la cantidad disponible del inventario inicial. Las unidades reservadas permanecen en la bodega de origen.">
+         <StackPanel Orientation="Horizontal">
+          <materialDesign:PackIcon Kind="AlertOutline" Width="17" Height="17"
+                                   Foreground="#D97706" VerticalAlignment="Center"/>
+          <TextBlock Text="Solo stock disponible · reservas excluidas"
+                     Margin="7,0,0,0" FontSize="10" FontWeight="SemiBold"
+                     Foreground="{DynamicResource PrimaryTextBrush}"
+                     VerticalAlignment="Center"/>
+         </StackPanel>
+        </Border>
+        <Button Grid.Column="5" Command="{Binding ClosePanelsCommand}" Style="{StaticResource InventoryDialogCloseButtonStyle}"><materialDesign:PackIcon Kind="Close" Foreground="White"/></Button>
+       </Grid>
+
+       <ScrollViewer x:Name="CorrectionContentScroll" Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,6,0" CanContentScroll="False">
+        <StackPanel>
+          <Border Padding="11,9" CornerRadius="12" Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+          <Grid>
+           <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="18"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+           <StackPanel><TextBlock Text="BODEGA EQUIVOCADA *" Style="{StaticResource InventoryFieldLabelStyle}"/><ComboBox ItemsSource="{Binding CorrectionSourceWarehouses}" SelectedItem="{Binding TransferSource}" DisplayMemberPath="Display" Style="{StaticResource ModernComboBoxStyle}"/></StackPanel>
+           <StackPanel Grid.Column="2"><TextBlock Text="BODEGA CORRECTA *" Style="{StaticResource InventoryFieldLabelStyle}"/><ComboBox ItemsSource="{Binding CorrectionTargetWarehouses}" SelectedItem="{Binding TransferTarget}" DisplayMemberPath="Display" Style="{StaticResource ModernComboBoxStyle}"/></StackPanel>
+          </Grid>
+         </Border>
+
+          <UniformGrid Margin="-3,5,-3,0" Columns="4">
+          <Border Style="{StaticResource InventoryCorrectionSummaryCardStyle}"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Style="{StaticResource InventoryCorrectionMetricIconStyle}" Background="#2563EB"><materialDesign:PackIcon Kind="PackageVariant" Width="18" Height="18" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="STOCK ACTUAL" Style="{StaticResource InventoryDetailMetricLabelStyle}"/><Viewbox Margin="0,3,0,0" Height="18" HorizontalAlignment="Left" StretchDirection="DownOnly"><TextBlock Text="{Binding CorrectionSourceStock, StringFormat={}{0:0.######}}" Style="{StaticResource InventoryDetailMetricValueStyle}"/></Viewbox></StackPanel></Grid></Border>
+          <Border Style="{StaticResource InventoryCorrectionSummaryCardStyle}"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Style="{StaticResource InventoryCorrectionMetricIconStyle}" Background="{DynamicResource PrimaryDarkBrush}"><materialDesign:PackIcon Kind="PackageCheck" Width="18" Height="18" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="DISPONIBLE" Style="{StaticResource InventoryDetailMetricLabelStyle}"/><Viewbox Margin="0,3,0,0" Height="18" HorizontalAlignment="Left" StretchDirection="DownOnly"><TextBlock Text="{Binding CorrectionAvailableStock, StringFormat={}{0:0.######}}" Style="{StaticResource InventoryDetailMetricValueStyle}" Foreground="{DynamicResource PrimaryDarkBrush}"/></Viewbox></StackPanel></Grid></Border>
+          <Border Style="{StaticResource InventoryCorrectionSummaryCardStyle}"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Style="{StaticResource InventoryCorrectionMetricIconStyle}" Background="#7C3AED"><materialDesign:PackIcon Kind="SwapHorizontal" Width="18" Height="18" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="A MOVER" Style="{StaticResource InventoryDetailMetricLabelStyle}"/><Viewbox Margin="0,3,0,0" Height="18" HorizontalAlignment="Left" StretchDirection="DownOnly"><TextBlock Text="{Binding CorrectionQuantityToMove, StringFormat={}{0:0.######}}" Style="{StaticResource InventoryDetailMetricValueStyle}" Foreground="#7C3AED"/></Viewbox></StackPanel></Grid></Border>
+          <Border Style="{StaticResource InventoryCorrectionSummaryCardStyle}"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border><Border.Style><Style TargetType="Border" BasedOn="{StaticResource InventoryCorrectionMetricIconStyle}"><Setter Property="Background" Value="#D97706"/><Style.Triggers><DataTrigger Binding="{Binding CorrectionExceedsAvailable}" Value="True"><Setter Property="Background" Value="#DC2626"/></DataTrigger></Style.Triggers></Style></Border.Style><materialDesign:PackIcon Kind="PackageVariantClosed" Width="18" Height="18" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="PERMANECE" Style="{StaticResource InventoryDetailMetricLabelStyle}"/><Viewbox Margin="0,3,0,0" Height="18" HorizontalAlignment="Left" StretchDirection="DownOnly"><TextBlock Text="{Binding CorrectionRemainingStock, StringFormat={}{0:0.######}}"><TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource InventoryDetailMetricValueStyle}"><Setter Property="Foreground" Value="#D97706"/><Style.Triggers><DataTrigger Binding="{Binding CorrectionExceedsAvailable}" Value="True"><Setter Property="Foreground" Value="#DC2626"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock></Viewbox></StackPanel></Grid></Border>
+         </UniformGrid>
+
+          <Border Margin="0,5,0,0" Padding="11,9" CornerRadius="12" Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+          <StackPanel>
+           <StackPanel Visibility="{Binding CorrectionUsesNormalControl, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <TextBlock Text="CANTIDAD A MOVER *" Style="{StaticResource InventoryFieldLabelStyle}"/>
+            <TextBox Text="{Binding CorrectionQuantity, UpdateSourceTrigger=PropertyChanged}" Width="190" HorizontalAlignment="Left" TextAlignment="Center" Style="{StaticResource ModernTextBoxStyle}" behaviors:DecimalInputBehavior.IsEnabled="True" behaviors:DecimalInputBehavior.DecimalPlaces="6" behaviors:DecimalInputBehavior.UpdateSourceWhileTyping="True" behaviors:DecimalInputBehavior.ClearZeroOnFocus="True"/>
+            <TextBlock Text="Cantidad expresada en la unidad base." Style="{StaticResource InventoryFieldHelpStyle}"/>
+           </StackPanel>
+
+           <StackPanel Visibility="{Binding CorrectionUsesLotsOnly, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <TextBlock Text="DISTRIBUCIÓN POR LOTES *" Style="{StaticResource InventoryFieldLabelStyle}"/>
+            <Border Margin="0,2,0,0" CornerRadius="11" Background="{DynamicResource InputSecondaryBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" ClipToBounds="True">
+             <Grid>
+              <DataGrid ItemsSource="{Binding CorrectionLots}" AutoGenerateColumns="False" Style="{StaticResource InventoryCorrectionDataGridStyle}" PreviewMouseWheel="CorrectionGrid_PreviewMouseWheel">
+               <DataGrid.Columns>
+                <DataGridTextColumn Header="LOTE" Binding="{Binding Number}" IsReadOnly="True" Width="*" MinWidth="170"/>
+                <DataGridTextColumn Header="DISPONIBLE" Binding="{Binding Available, StringFormat={}{0:0.######}}" IsReadOnly="True" Width="145" ElementStyle="{StaticResource InventoryEmphasizedCellTextStyle}" HeaderStyle="{StaticResource InventoryDetailCenteredColumnHeaderStyle}"/>
+                <DataGridTemplateColumn Header="A MOVER" Width="160" HeaderStyle="{StaticResource InventoryDetailCenteredColumnHeaderStyle}"><DataGridTemplateColumn.CellTemplate><DataTemplate><TextBox Text="{Binding Quantity, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource InventoryCorrectionGridInputStyle}" behaviors:DecimalInputBehavior.IsEnabled="True" behaviors:DecimalInputBehavior.DecimalPlaces="6" behaviors:DecimalInputBehavior.UpdateSourceWhileTyping="True" behaviors:DecimalInputBehavior.ClearZeroOnFocus="True"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+               </DataGrid.Columns>
+              </DataGrid>
+              <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False" Visibility="{Binding HasCorrectionLots, Converter={StaticResource InverseBooleanToVisibilityConverter}}"><materialDesign:PackIcon Kind="ArchiveOutline" Width="34" Height="34" Foreground="{DynamicResource MutedTextBrush}" HorizontalAlignment="Center"/><TextBlock Text="No existen lotes disponibles en esta bodega" Margin="0,7,0,0" FontSize="10" FontStyle="Italic" FontWeight="SemiBold" Foreground="{DynamicResource MutedTextBrush}"/></StackPanel>
+             </Grid>
+            </Border>
+           </StackPanel>
+
+           <StackPanel Visibility="{Binding CorrectionUsesSeries, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <TextBlock Text="SERIES A MOVER *" Style="{StaticResource InventoryFieldLabelStyle}"/>
+            <Border Margin="0,2,0,0" CornerRadius="11" Background="{DynamicResource InputSecondaryBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" ClipToBounds="True">
+             <Grid>
+              <DataGrid ItemsSource="{Binding CorrectionSeries}" AutoGenerateColumns="False" Style="{StaticResource InventoryCorrectionDataGridStyle}" PreviewMouseWheel="CorrectionGrid_PreviewMouseWheel">
+               <DataGrid.Columns>
+                <DataGridTemplateColumn Header="SELECCIONAR" Width="110" HeaderStyle="{StaticResource InventoryDetailCenteredColumnHeaderStyle}"><DataGridTemplateColumn.CellTemplate><DataTemplate><CheckBox IsChecked="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource KontaxCheckBoxStyle}" HorizontalAlignment="Center" VerticalAlignment="Center" ToolTip="Seleccionar esta serie"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                <DataGridTextColumn Header="SERIE" Binding="{Binding Number}" IsReadOnly="True" Width="*" MinWidth="180"/>
+                <DataGridTextColumn Header="LOTE" Binding="{Binding Lot}" IsReadOnly="True" Width="*" MinWidth="150"/>
+               </DataGrid.Columns>
+              </DataGrid>
+              <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False" Visibility="{Binding HasCorrectionSeries, Converter={StaticResource InverseBooleanToVisibilityConverter}}"><materialDesign:PackIcon Kind="Barcode" Width="34" Height="34" Foreground="{DynamicResource MutedTextBrush}" HorizontalAlignment="Center"/><TextBlock Text="No existen series disponibles en esta bodega" Margin="0,7,0,0" FontSize="10" FontStyle="Italic" FontWeight="SemiBold" Foreground="{DynamicResource MutedTextBrush}"/></StackPanel>
+             </Grid>
+            </Border>
+           </StackPanel>
+
+           <StackPanel Margin="0,8,0,0">
+            <TextBlock Text="MOTIVO DE LA CORRECCIÓN *" Style="{StaticResource InventoryFieldLabelStyle}"/>
+            <TextBox Text="{Binding TransferReason, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     Height="68" MaxLength="500" AcceptsReturn="True"
+                     TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                     VerticalContentAlignment="Top"
+                     Background="{DynamicResource InputBackgroundBrush}"
+                     Foreground="{DynamicResource TextPrimaryBrush}"
+                     CaretBrush="{DynamicResource FocusBorderBrush}"
+                     SelectionBrush="{DynamicResource PrimaryDarkBrush}"
+                     Style="{StaticResource ModernTextBoxStyle}"/>
+           </StackPanel>
+          </StackPanel>
+         </Border>
+        </StackPanel>
+       </ScrollViewer>
+
+       <Border Grid.Row="4" Style="{StaticResource InventoryCorrectionFooterStyle}">
+        <Grid>
+         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+         <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><materialDesign:PackIcon Kind="InformationOutline" Width="17" Height="17" Foreground="{DynamicResource MutedTextBrush}"/><TextBlock Text="No modifica el costo promedio del producto." Margin="7,0,0,0" VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}"/></StackPanel>
+         <StackPanel Grid.Column="1" Orientation="Horizontal">
+          <Button Command="{Binding ClosePanelsCommand}" Style="{StaticResource InventoryDialogCancelButtonStyle}" Margin="0,0,10,0"><StackPanel Orientation="Horizontal"><materialDesign:PackIcon Kind="Close" Width="18" Height="18" Foreground="White" VerticalAlignment="Center"/><TextBlock Text="Cancelar" Margin="8,0,0,0" Foreground="White" FontWeight="SemiBold" VerticalAlignment="Center"/></StackPanel></Button>
+          <Button Command="{Binding SaveInitialWarehouseCorrectionCommand}" Style="{StaticResource InventoryDialogPrimaryButtonStyle}" IsEnabled="{Binding IsTransferSaving, Converter={StaticResource BooleanInverterConverter}}"><StackPanel Orientation="Horizontal"><materialDesign:PackIcon Kind="CheckBold" Width="17" Height="17" Foreground="White"/><TextBlock Text="Confirmar corrección" Margin="8,0,0,0" Foreground="White"/></StackPanel></Button>
+         </StackPanel>
+        </Grid>
+       </Border>
+      </Grid>
+     </Border>
+    </Border>
+
+ </Grid>
+</UserControl>

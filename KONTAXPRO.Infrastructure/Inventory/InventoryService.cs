@@ -8,19 +8,22 @@ using KONTAXPRO.Domain.Entities.Catalogos;
 using KONTAXPRO.Domain.Entities.Seguridad;
 using KONTAXPRO.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace KONTAXPRO.Infrastructure.Inventory;
 
-public sealed class InventoryService(
+public sealed partial class InventoryService(
     IDbContextFactory<KontaxDbContext> dbContextFactory) : IInventoryService
 {
     public async Task<List<MotivoOperacionInventarioDto>> ObtenerMotivosOperacionAsync(
-        long empresaId, string tipoOperacion,
+        long empresaId, long usuarioId, string tipoOperacion,
         CancellationToken cancellationToken = default)
     {
         var tipo = MotivoOperacionInventarioRules.NormalizarTipo(tipoOperacion);
         await using var context =
             await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        await InventorySecurity.RequireCompanyAccessAsync(context, usuarioId,
+            empresaId, cancellationToken);
         return await context.MotivosOperacionInventario.AsNoTracking()
             .Where(x => x.Estado == 1 && x.TipoOperacion == tipo &&
                         (x.EmpresaId == null || x.EmpresaId == empresaId))
@@ -82,11 +85,24 @@ public sealed class InventoryService(
 
     public async Task<EstadoControlInventarioDto?> ObtenerEstadoControlAsync(
         long empresaId,
+        long usuarioId,
         long productoId,
         CancellationToken cancellationToken = default)
     {
         await using var context =
             await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        await InventorySecurity.RequireCompanyAccessAsync(context, usuarioId,
+            empresaId, cancellationToken);
+        var authorizedWarehouses = context
+            .UsuariosEmpresasEstablecimientos.AsNoTracking()
+            .Where(x => x.UsuarioEmpresa!.UsuarioId == usuarioId &&
+                x.UsuarioEmpresa.EmpresaId == empresaId &&
+                x.UsuarioEmpresa.Estado == 1)
+            .SelectMany(x => context.Bodegas.Where(b =>
+                b.EstablecimientoId == x.EstablecimientoId && b.Estado == 1)
+                .Select(b => b.Id));
+        var canViewCosts = await InventorySecurity.HasPermissionAsync(context,
+            usuarioId, empresaId, "INVENTARIO_VER_COSTO", cancellationToken);
         var producto = await context.Productos.AsNoTracking()
             .SingleOrDefaultAsync(x => x.Id == productoId &&
                 x.EmpresaId == empresaId, cancellationToken);
@@ -100,7 +116,8 @@ public sealed class InventoryService(
             ManejaFechaCaducidad = producto.ManejaFechaCaducidad
         };
         var bodegas = await context.ProductosExistencias.AsNoTracking()
-            .Where(x => x.ProductoId == productoId)
+            .Where(x => x.ProductoId == productoId &&
+                authorizedWarehouses.Contains(x.BodegaId))
             .OrderBy(x => x.Bodega!.Nombre)
             .Select(x => new EstadoControlBodegaDto
             {
@@ -111,7 +128,8 @@ public sealed class InventoryService(
                 StockReservado = x.StockReservado
             }).ToListAsync(cancellationToken);
         var lotesDatos = await context.ProductosLotesExistencias.AsNoTracking()
-            .Where(x => x.Lote!.ProductoId == productoId)
+            .Where(x => x.Lote!.ProductoId == productoId &&
+                authorizedWarehouses.Contains(x.BodegaId))
             .Select(x => new
             {
                 x.BodegaId,
@@ -124,7 +142,10 @@ public sealed class InventoryService(
             }).ToListAsync(cancellationToken);
         var costosLotes = await context.MovimientosInventarioDetallesLotes
             .AsNoTracking()
-            .Where(x => x.ProductoLote!.ProductoId == productoId &&
+            .Where(x => canViewCosts &&
+                x.ProductoLote!.ProductoId == productoId &&
+                authorizedWarehouses.Contains(x.MovimientoInventarioDetalle!
+                    .MovimientoInventario!.BodegaId) &&
                 x.MovimientoInventarioDetalle!.MovimientoInventario!
                     .TipoMovimiento!.Naturaleza == "ENTRADA")
             .OrderByDescending(x => x.CreatedAt)
@@ -139,6 +160,7 @@ public sealed class InventoryService(
             .ToDictionary(x => x.Key, x => (decimal?)x.First().CostoUnitarioBase);
         var series = await context.ProductosSeries.AsNoTracking()
             .Where(x => x.ProductoId == productoId &&
+                authorizedWarehouses.Contains(x.BodegaId) &&
                 x.EstadoSerie!.Codigo == "DISPONIBLE")
             .Select(x => new
             {
@@ -153,7 +175,8 @@ public sealed class InventoryService(
                 }
             }).ToListAsync(cancellationToken);
         resultado.SeriesProducto = await context.ProductosSeries.AsNoTracking()
-            .Where(x => x.ProductoId == productoId)
+            .Where(x => x.ProductoId == productoId &&
+                authorizedWarehouses.Contains(x.BodegaId))
             .Select(x => x.NumeroSerie)
             .ToListAsync(cancellationToken);
         foreach (var bodega in bodegas)
@@ -515,8 +538,9 @@ public sealed class InventoryService(
 
         await using var context =
             await dbContextFactory.CreateDbContextAsync(cancellationToken);
-        await using var transaction =
-            await context.Database.BeginTransactionAsync(cancellationToken);
+        await using var transaction = await context.Database
+            .BeginTransactionAsync(System.Data.IsolationLevel.Serializable,
+                cancellationToken);
         try
         {
             await ExigirPermisoAsync(context, request.UsuarioId,
@@ -533,6 +557,8 @@ public sealed class InventoryService(
             if (!bodegaValida)
                 throw new InvalidOperationException(
                     "La bodega no pertenece al establecimiento y empresa activos.");
+            await ExigirAccesoEstablecimientoAsync(context, request.UsuarioId,
+                request.EmpresaId, request.EstablecimientoId, cancellationToken);
 
             var numero = await ObtenerSiguienteNumeroAsync(context,
                 request.EmpresaId, request.EstablecimientoId,
@@ -610,6 +636,10 @@ public sealed class InventoryService(
                     CreatedAt = now,
                     UpdatedAt = now
                 });
+                // El siguiente detalle del mismo producto debe observar el
+                // stock y costo ya aplicados por esta línea dentro de la
+                // misma transacción.
+                await context.SaveChangesAsync(cancellationToken);
             }
 
             await context.SaveChangesAsync(cancellationToken);
@@ -627,6 +657,13 @@ public sealed class InventoryService(
             await transaction.RollbackAsync(cancellationToken);
             return InventoryOperationResult.Fail(
                 "No fue posible registrar el ajuste por un conflicto de integridad o concurrencia.");
+        }
+        catch (PostgresException ex) when (ex.SqlState ==
+            PostgresErrorCodes.SerializationFailure)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return InventoryOperationResult.Fail(
+                "El inventario cambió simultáneamente. Actualiza la información e intenta nuevamente.");
         }
     }
 
@@ -647,8 +684,9 @@ public sealed class InventoryService(
 
         await using var context =
             await dbContextFactory.CreateDbContextAsync(cancellationToken);
-        await using var transaction =
-            await context.Database.BeginTransactionAsync(cancellationToken);
+        await using var transaction = await context.Database
+            .BeginTransactionAsync(System.Data.IsolationLevel.Serializable,
+                cancellationToken);
         try
         {
             await ExigirPermisoAsync(context, request.UsuarioId,
@@ -824,6 +862,11 @@ public sealed class InventoryService(
 
         await using var context =
             await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        await ExigirPermisoAsync(context, filtro.UsuarioId,
+            filtro.EmpresaId, "INVENTARIO_VER_KARDEX", cancellationToken);
+        var canViewCosts = await InventorySecurity.HasPermissionAsync(context,
+            filtro.UsuarioId, filtro.EmpresaId, "INVENTARIO_VER_COSTO",
+            cancellationToken);
         var query = context.MovimientosInventarioDetalles
             .AsNoTracking()
             .Where(x => x.ProductoId == filtro.ProductoId &&
@@ -861,6 +904,8 @@ public sealed class InventoryService(
             .Select(x => new KardexItemDto
             {
                 MovimientoId = x.MovimientoInventarioId,
+                ProductoId = x.ProductoId,
+                Producto = x.Producto!.Nombre,
                 Fecha = x.MovimientoInventario!.FechaMovimiento,
                 NumeroMovimiento = x.MovimientoInventario.NumeroMovimiento,
                 Tipo = x.MovimientoInventario.TipoMovimiento!.Codigo,
@@ -878,10 +923,12 @@ public sealed class InventoryService(
                     ? x.CantidadBase : 0,
                 StockAnterior = x.StockAnterior,
                 StockNuevo = x.StockNuevo,
-                CostoUnitario = x.CostoUnitarioBase,
-                CostoTotal = x.CostoTotal,
-                CostoPromedioAnterior = x.CostoPromedioAnterior,
-                CostoPromedioNuevo = x.CostoPromedioNuevo,
+                CostoUnitario = canViewCosts ? x.CostoUnitarioBase : 0,
+                CostoTotal = canViewCosts ? x.CostoTotal : 0,
+                CostoPromedioAnterior = canViewCosts
+                    ? x.CostoPromedioAnterior : 0,
+                CostoPromedioNuevo = canViewCosts
+                    ? x.CostoPromedioNuevo : 0,
                 Usuario = x.MovimientoInventario.Usuario!.NombreCompleto,
                 Observacion = x.Observacion ?? x.MovimientoInventario.Observacion
             })
@@ -904,11 +951,15 @@ public sealed class InventoryService(
 
         await using var context =
             await dbContextFactory.CreateDbContextAsync(cancellationToken);
-        await using var transaction =
-            await context.Database.BeginTransactionAsync(cancellationToken);
+        await using var transaction = await context.Database
+            .BeginTransactionAsync(System.Data.IsolationLevel.Serializable,
+                cancellationToken);
 
         try
         {
+            await ExigirPermisoAsync(context, request.UsuarioId.Value,
+                request.EmpresaId, "INVENTARIO_AGREGAR_ENTRADA_INICIAL",
+                cancellationToken);
             var bodega = await context.Bodegas
                 .Include(x => x.Establecimiento)
                 .SingleOrDefaultAsync(
@@ -918,6 +969,22 @@ public sealed class InventoryService(
                     cancellationToken)
                 ?? throw new InvalidOperationException(
                     "La bodega no pertenece a la empresa activa.");
+            await ExigirAccesoEstablecimientoAsync(context,
+                request.UsuarioId.Value, request.EmpresaId,
+                bodega.EstablecimientoId, cancellationToken);
+
+            var productIds = request.Detalles.Select(x => x.ProductoId)
+                .Distinct().ToList();
+            var hasOperationalHistory = await context
+                .MovimientosInventarioDetalles.AsNoTracking()
+                .AnyAsync(x => productIds.Contains(x.ProductoId) &&
+                    x.MovimientoInventario!.EmpresaId == request.EmpresaId &&
+                    x.MovimientoInventario.Estado == "CONFIRMADO" &&
+                    x.MovimientoInventario.TipoMovimiento!.Codigo !=
+                        "INVENTARIO_INICIAL", cancellationToken);
+            if (hasOperationalHistory)
+                throw new InvalidOperationException(
+                    "El inventario inicial solo puede completarse antes de registrar movimientos operativos del producto.");
 
             var tipo = await context.TiposMovimientoInventario
                 .SingleAsync(x => x.Codigo == "INVENTARIO_INICIAL" &&
@@ -978,6 +1045,13 @@ public sealed class InventoryService(
             return InventoryOperationResult.Fail(
                 "No fue posible registrar el movimiento por un conflicto de integridad.");
         }
+        catch (PostgresException ex) when (ex.SqlState ==
+            PostgresErrorCodes.SerializationFailure)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return InventoryOperationResult.Fail(
+                "El inventario cambió simultáneamente. Actualiza la información e intenta nuevamente.");
+        }
     }
 
     internal static async Task<MovimientoInventarioDetalle> AddInitialDetailAsync(
@@ -989,7 +1063,9 @@ public sealed class InventoryService(
         bool esBonificacion = false,
         decimal? ultimoPrecioCompraUnitarioBase = null,
         decimal? factorConversionHistorico = null,
-        IReadOnlyDictionary<string, long>? seriesReutilizables = null)
+        IReadOnlyDictionary<string, long>? seriesReutilizables = null,
+        bool actualizarUltimoCostoEfectivo = true,
+        bool actualizarConfiguracionExistencia = true)
     {
         if (request.Cantidad <= 0)
             throw new InvalidOperationException(
@@ -1049,8 +1125,11 @@ public sealed class InventoryService(
             };
             context.ProductosExistencias.Add(existence);
         }
-        existence.Ubicacion = Normalize(request.Ubicacion);
-        existence.StockMinimo = request.StockMinimo;
+        if (actualizarConfiguracionExistencia)
+        {
+            existence.Ubicacion = Normalize(request.Ubicacion);
+            existence.StockMinimo = request.StockMinimo;
+        }
         existence.UpdatedAt = now;
 
         var stockBefore = existence.StockActual;
@@ -1072,15 +1151,14 @@ public sealed class InventoryService(
         }
 
         var averageBefore = cost.CostoPromedio;
-        var totalStockAfter = totalStockBefore + baseQuantity;
-        var averageAfter = totalStockAfter == 0
-            ? 0
-            : ((totalStockBefore * averageBefore) + request.CostoTotal) /
-              totalStockAfter;
+        var averageAfter = KONTAXPRO.Application.Inventory.InventoryCostRules
+            .CalculateAverageAfterEntry(totalStockBefore, averageBefore,
+                baseQuantity, request.CostoTotal);
 
         existence.StockActual += baseQuantity;
         existence.UpdatedAt = now;
-        cost.UltimoCostoEfectivo = unitCost;
+        if (actualizarUltimoCostoEfectivo)
+            cost.UltimoCostoEfectivo = unitCost;
         if (ultimoPrecioCompraUnitarioBase.HasValue)
             cost.UltimoPrecioCompra = ultimoPrecioCompraUnitarioBase.Value;
         cost.CostoPromedio = averageAfter;
@@ -1131,6 +1209,12 @@ public sealed class InventoryService(
             if (lotes.Sum(x => x.CantidadBase) != baseQuantity)
                 throw new InvalidOperationException(
                     "La suma de cantidades de los lotes debe coincidir con la cantidad base.");
+            var numerosLote = lotes.Select(x => x.NumeroLote.Trim()
+                    .ToUpperInvariant()).ToList();
+            if (numerosLote.Count != numerosLote
+                    .Distinct(StringComparer.OrdinalIgnoreCase).Count())
+                throw new InvalidOperationException(
+                    "Un lote no puede repetirse dentro de la misma entrada.");
 
             foreach (var loteRequest in lotes)
             {
@@ -1251,6 +1335,9 @@ public sealed class InventoryService(
                 })
                 .Where(x => x.NumeroSerie.Length > 0)
                 .ToList();
+            if (normalized.Count != (int)baseQuantity)
+                throw new InvalidOperationException(
+                    $"Debe indicar una serie válida por cada unidad de '{product.Nombre}'.");
             if (normalized.Count != normalized
                     .Select(x => x.NumeroSerie)
                     .Distinct(StringComparer.OrdinalIgnoreCase).Count())
@@ -1319,10 +1406,14 @@ public sealed class InventoryService(
             throw new InvalidOperationException(
                 $"'{product.Nombre}' no maneja series.");
         }
+        // Centraliza la aplicación incremental: cuando un documento contiene
+        // varias líneas del mismo producto, la siguiente línea consulta el
+        // resultado confirmado por la anterior sin abandonar la transacción.
+        await context.SaveChangesAsync(cancellationToken);
         return detail;
     }
 
-    private static async Task<ProductoPresentacion>
+    internal static async Task<ProductoPresentacion>
         AddAdjustmentOutputDetailAsync(
             KontaxDbContext context,
             MovimientoInventario movement,
@@ -1541,6 +1632,25 @@ public sealed class InventoryService(
         if (!autorizado)
             throw new InvalidOperationException(
                 $"El usuario no posee el permiso {permiso}.");
+    }
+
+    private static async Task ExigirAccesoEstablecimientoAsync(
+        KontaxDbContext context,
+        long usuarioId,
+        long empresaId,
+        long establecimientoId,
+        CancellationToken cancellationToken)
+    {
+        var autorizado = await context.UsuariosEmpresasEstablecimientos
+            .AsNoTracking().AnyAsync(x =>
+                x.UsuarioEmpresa!.UsuarioId == usuarioId &&
+                x.UsuarioEmpresa.EmpresaId == empresaId &&
+                x.UsuarioEmpresa.Estado == 1 &&
+                x.EstablecimientoId == establecimientoId,
+                cancellationToken);
+        if (!autorizado)
+            throw new InvalidOperationException(
+                "El usuario no tiene acceso al establecimiento de la bodega seleccionada.");
     }
 
     private static async Task<MotivoOperacionInventario>

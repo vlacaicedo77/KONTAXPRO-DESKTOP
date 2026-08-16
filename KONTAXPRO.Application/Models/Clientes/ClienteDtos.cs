@@ -29,6 +29,15 @@ public enum ClienteCreditoFiltro
     SinCredito
 }
 
+public enum ClienteCatalogoOrden
+{
+    Identificacion,
+    RazonSocial,
+    Clasificacion,
+    Credito,
+    Estado
+}
+
 public enum EstadoVerificacionCliente
 {
     Verificado,
@@ -44,6 +53,9 @@ public sealed class ClienteCatalogoQuery
     public ClienteEstadoFiltro Estado { get; init; }
     public ClienteVerificacionFiltro Verificacion { get; init; }
     public ClienteCreditoFiltro Credito { get; init; }
+    public ClienteCatalogoOrden Orden { get; init; } =
+        ClienteCatalogoOrden.RazonSocial;
+    public bool OrdenDescendente { get; init; }
     public int Pagina { get; init; } = 1;
     public int TamanoPagina { get; init; } = 25;
 }

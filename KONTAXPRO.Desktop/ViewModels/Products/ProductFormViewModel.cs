@@ -37,6 +37,7 @@ public partial class ProductFormViewModel : ObservableObject
     public event Action<long>? ExistingProductRequested;
     public event Action? PresentationAdded;
     public event Action? InitialFocusRequested;
+    public event Action? InventoryOperationFocusRequested;
     public ObservableCollection<ProductoSugerenciaDto>
     SugerenciasProductos
     { get; }
@@ -237,6 +238,7 @@ public partial class ProductFormViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(MostrarCapturaInventarioInicial))]
     [NotifyPropertyChangedFor(nameof(MostrarCancelarEntradaInicial))]
+    [NotifyPropertyChangedFor(nameof(MostrarConfiguracionAvanzadaInventario))]
     private bool mostrarEntradaInicialExistente;
 
     [ObservableProperty]
@@ -546,6 +548,8 @@ public partial class ProductFormViewModel : ObservableObject
 
     public bool MostrarCapturaInventarioInicial =>
         IsEditing ? MostrarEntradaInicialExistente : RegistrarInventarioInicial;
+    public bool MostrarConfiguracionAvanzadaInventario =>
+        IsEditing && !MostrarEntradaInicialExistente;
 
     public bool MostrarConfiguracionCaducidad =>
         MostrarConfiguracionInventario &&
@@ -830,6 +834,8 @@ public partial class ProductFormViewModel : ObservableObject
         if (ReferenceEquals(sender, InventariosIniciales))
         {
             OnPropertyChanged(nameof(CostoBaseInventarioInicial));
+            OnPropertyChanged(nameof(CostoBaseReferenciaPrecios));
+            OnPropertyChanged(nameof(CostoPresentacionPrecio));
             OnPropertyChanged(nameof(TieneEntradaInicialPendiente));
             OnPropertyChanged(nameof(MostrarCancelarEntradaInicial));
             ActualizarReferenciasPrecios();
@@ -880,6 +886,9 @@ public partial class ProductFormViewModel : ObservableObject
             InitialFocusRequested?.Invoke();
         }
     }
+
+    public void SolicitarFocoInventarioOperativo() =>
+        InventoryOperationFocusRequested?.Invoke();
 
     public async Task NuevoDesdeCompraAsync(
         string? codigoBarras,
@@ -1626,6 +1635,7 @@ public partial class ProductFormViewModel : ObservableObject
             nameof(TextoAyudaCodigoBarras));
         OnPropertyChanged(nameof(PuedeConfigurarPrecios));
         OnPropertyChanged(nameof(MostrarCapturaInventarioInicial));
+        OnPropertyChanged(nameof(MostrarConfiguracionAvanzadaInventario));
         OnPropertyChanged(nameof(MostrarOpcionInventarioInicial));
         OnPropertyChanged(nameof(MostrarAvisoCreacionDesdeCompra));
         ActualizarReferenciasPrecios();
@@ -2163,6 +2173,7 @@ public partial class ProductFormViewModel : ObservableObject
         if (string.IsNullOrWhiteSpace(value))
             return;
         CargarPrecios(ObtenerPrecios(value));
+        OnPropertyChanged(nameof(CostoPresentacionPrecio));
     }
 
     [RelayCommand]
@@ -2321,6 +2332,8 @@ public partial class ProductFormViewModel : ObservableObject
     partial void OnCantidadPresentacionesInicialChanged(decimal value)
     {
         OnPropertyChanged(nameof(CostoBaseInventarioInicial));
+        OnPropertyChanged(nameof(CostoBaseReferenciaPrecios));
+        OnPropertyChanged(nameof(CostoPresentacionPrecio));
         ActualizarReferenciasPrecios();
         NotificarDistribucionInventario();
         OnPropertyChanged(nameof(ResumenInventarioInicial));
@@ -2329,6 +2342,8 @@ public partial class ProductFormViewModel : ObservableObject
     partial void OnCostoPresentacionInicialChanged(decimal value)
     {
         OnPropertyChanged(nameof(CostoBaseInventarioInicial));
+        OnPropertyChanged(nameof(CostoBaseReferenciaPrecios));
+        OnPropertyChanged(nameof(CostoPresentacionPrecio));
         ActualizarReferenciasPrecios();
         OnPropertyChanged(nameof(ResumenInventarioInicial));
     }
@@ -2338,7 +2353,12 @@ public partial class ProductFormViewModel : ObservableObject
         OnPropertyChanged(nameof(FactorInicial));
         OnPropertyChanged(nameof(CantidadBaseInicial));
         OnPropertyChanged(nameof(CostoTotalInicial));
+        OnPropertyChanged(nameof(CostoUnitarioBaseInicial));
+        OnPropertyChanged(nameof(CostoBaseInventarioInicial));
+        OnPropertyChanged(nameof(CostoBaseReferenciaPrecios));
+        OnPropertyChanged(nameof(CostoPresentacionPrecio));
         OnPropertyChanged(nameof(ResumenInventarioInicial));
+        ActualizarReferenciasPrecios();
         NotificarDistribucionInventario();
     }
 
@@ -2411,6 +2431,7 @@ public partial class ProductFormViewModel : ObservableObject
                 new KardexFiltro
                 {
                     EmpresaId = ObtenerEmpresaId(),
+                    UsuarioId = _currentSession.UsuarioId,
                     ProductoId = _productoId.Value,
                     EstablecimientoId = _currentSession.EstablecimientoId
                 });
@@ -2463,7 +2484,7 @@ public partial class ProductFormViewModel : ObservableObject
         MensajeError = null;
         _estadoControlAjuste = _productoId.HasValue
             ? await _inventoryService.ObtenerEstadoControlAsync(
-                ObtenerEmpresaId(), _productoId.Value)
+                ObtenerEmpresaId(), _currentSession.UsuarioId, _productoId.Value)
             : null;
         AjusteManejaFechaCaducidad =
             _estadoControlAjuste?.ManejaFechaCaducidad == true;
@@ -3137,7 +3158,7 @@ public partial class ProductFormViewModel : ObservableObject
         try
         {
             var estado = await _inventoryService.ObtenerEstadoControlAsync(
-                ObtenerEmpresaId(), _productoId.Value);
+                ObtenerEmpresaId(), _currentSession.UsuarioId, _productoId.Value);
             if (estado is null)
             {
                 MensajeError = "No fue posible cargar el estado de control.";
@@ -3566,7 +3587,7 @@ public partial class ProductFormViewModel : ObservableObject
     {
         if (!_productoId.HasValue) return;
         var estado = await _inventoryService.ObtenerEstadoControlAsync(
-            ObtenerEmpresaId(), _productoId.Value);
+            ObtenerEmpresaId(), _currentSession.UsuarioId, _productoId.Value);
         LotesCorreccion.Clear();
         SeriesCorreccion.Clear();
         if (estado is null) return;
@@ -3596,7 +3617,7 @@ public partial class ProductFormViewModel : ObservableObject
             ? AjusteMotivoId
             : destino == MotivosConversion ? ConversionMotivoId : CorreccionMotivoId;
         var items = await _inventoryService.ObtenerMotivosOperacionAsync(
-            ObtenerEmpresaId(), tipoOperacion);
+            ObtenerEmpresaId(), _currentSession.UsuarioId, tipoOperacion);
         destino.Clear();
         foreach (var item in items)
             destino.Add(item);

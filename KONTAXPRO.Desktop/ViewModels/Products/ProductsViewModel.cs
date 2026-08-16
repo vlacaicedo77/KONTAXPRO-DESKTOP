@@ -4,10 +4,13 @@ using CommunityToolkit.Mvvm.Input;
 using KONTAXPRO.Application.Interfaces;
 using KONTAXPRO.Application.Models.Productos;
 using KONTAXPRO.Application.Session;
+using KONTAXPRO.Desktop.Services;
 
 namespace KONTAXPRO.Desktop.ViewModels.Products;
 
-public partial class ProductsViewModel : ObservableObject
+public partial class ProductsViewModel : ObservableObject,
+    IAsyncNavigationTarget,
+    IDisposable
 {
     private readonly IProductService _productService;
     private readonly CurrentSession _currentSession;
@@ -19,6 +22,9 @@ public partial class ProductsViewModel : ObservableObject
     private CancellationTokenSource? _loadCancellationTokenSource;
     private long _loadSequence;
     private bool _suppressReload;
+    private readonly object _initializationLock = new();
+    private Task? _initializationTask;
+    private bool _disposed;
 
     public ProductFormViewModel ProductForm { get; }
 
@@ -160,7 +166,18 @@ public partial class ProductsViewModel : ObservableObject
         ProductForm.ExistingProductRequested += OnExistingProductRequested;
     }
 
-    public Task InitializeAsync() => CargarProductosAsync();
+    public Task InitializeAsync(
+        CancellationToken cancellationToken = default)
+    {
+        lock (_initializationLock)
+        {
+            if (_disposed)
+                return Task.CompletedTask;
+
+            return _initializationTask ??=
+                CargarProductosAsync(cancellationToken);
+        }
+    }
 
     [RelayCommand]
     private Task RecargarAsync() => CargarProductosAsync();
@@ -371,6 +388,9 @@ public partial class ProductsViewModel : ObservableObject
     private async Task CargarProductosAsync(
         CancellationToken cancellationToken = default)
     {
+        if (_disposed)
+            return;
+
         var empresaId = ObtenerEmpresaId();
         if (empresaId <= 0)
         {
@@ -617,6 +637,23 @@ public partial class ProductsViewModel : ObservableObject
     }
 
     private long ObtenerEmpresaId() => _currentSession.EmpresaId ?? 0;
+
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        _searchDebounceCancellationTokenSource?.Cancel();
+        _searchDebounceCancellationTokenSource?.Dispose();
+        _searchDebounceCancellationTokenSource = null;
+        _loadCancellationTokenSource?.Cancel();
+        _loadCancellationTokenSource?.Dispose();
+        _loadCancellationTokenSource = null;
+        ProductForm.CloseRequested -= OnProductFormCloseRequested;
+        ProductForm.ProductSaved -= OnProductSaved;
+        ProductForm.ExistingProductRequested -= OnExistingProductRequested;
+    }
 }
 
 public partial class ProductoListadoItemViewModel(
@@ -626,9 +663,19 @@ public partial class ProductoListadoItemViewModel(
     public long Id => Item.Id;
     public string Codigo => Item.Codigo;
     public string Nombre => Item.Nombre;
+    public string? Marca => Item.Marca;
     public string NombreConMarca => Item.NombreConMarca;
+    public string ControlVisual => Item.ControlVisual;
     public string? Modelo => Item.Modelo;
     public string? Categoria => Item.Categoria;
+    public bool TieneCategoria => !string.IsNullOrWhiteSpace(Categoria);
+    public bool TieneModelo => !string.IsNullOrWhiteSpace(Modelo);
+    public bool MostrarSeparadorCategoriaModelo =>
+        TieneCategoria && TieneModelo;
+    public string CategoriaModeloTexto =>
+        TieneCategoria && TieneModelo
+            ? $"{Categoria} · {Modelo}"
+            : Categoria ?? Modelo ?? string.Empty;
     public string UnidadBase => Item.UnidadBase;
     public string TarifaImpuesto => Item.TarifaImpuesto;
     public decimal StockDisponible => Item.StockDisponible;
@@ -643,11 +690,22 @@ public partial class ProductoListadoItemViewModel(
     public string ListaPrecioBaseCodigo => Item.ListaPrecioBaseCodigo;
     public IReadOnlyList<ProductoPrecioBaseListaDto> PreciosBasePorLista =>
         Item.PreciosBasePorLista;
+    public IReadOnlyList<ProductoPrecioPresentacionDto> PreciosPorPresentacion =>
+        Item.PreciosPorPresentacion;
+    public ProductoPrecioPresentacionDto? PrecioPresentacionPrincipal =>
+        Item.PrecioPresentacionPrincipal;
+    public ProductoPrecioFinalListaDto? PrecioPrincipalFinal =>
+        Item.PrecioPrincipalFinal;
+    public string CondicionTributaria => Item.CondicionTributaria;
     public int CantidadPresentaciones => Item.CantidadPresentaciones;
     public IReadOnlyList<string> PresentacionesComerciales =>
         Item.PresentacionesComerciales;
     public IReadOnlyList<string> PresentacionesVisibles =>
         Item.PresentacionesVisibles;
+    public IReadOnlyList<ProductoPresentacionCatalogoDto>
+        PresentacionesDetalleVisibles => Item.PresentacionesDetalleVisibles;
+    public IReadOnlyList<ProductoPresentacionCatalogoDto>
+        PresentacionesDetalleRestantes => Item.PresentacionesDetalle.Skip(3).ToList();
     public string PresentacionesVisiblesTexto =>
         string.Join(" · ", Item.PresentacionesVisibles);
     public string PresentacionesCompletasTexto =>
@@ -668,6 +726,9 @@ public partial class ProductoListadoItemViewModel(
 
     [ObservableProperty]
     private bool isPresentacionesPopupOpen;
+
+    [ObservableProperty]
+    private bool isPreciosPopupOpen;
 }
 
 public sealed record EstadoCatalogoItemViewModel(

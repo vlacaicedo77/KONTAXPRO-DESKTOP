@@ -13,13 +13,8 @@ public sealed class ComprasTraceabilityViewSmokeTests
     [Fact]
     public void ComplementaryEditors_CanBeMeasuredWhenOpened()
     {
-        Exception? failure = null;
-        var thread = new Thread(() =>
+        var failure = WpfTestHost.Run(() =>
         {
-            try
-            {
-                var app = new App();
-                app.InitializeComponent();
                 var view = new ComprasView
                 {
                     Width = 1280,
@@ -29,15 +24,7 @@ public sealed class ComprasTraceabilityViewSmokeTests
                 view.Measure(new Size(1280, 820));
                 view.Arrange(new Rect(0, 0, 1280, 820));
                 view.UpdateLayout();
-            }
-            catch (Exception ex)
-            {
-                failure = ex;
-            }
         });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
         Assert.Null(failure);
     }
 

@@ -2,6 +2,16 @@ using KONTAXPRO.Application.Models.Inventario;
 
 namespace KONTAXPRO.Application.Models.Tesoreria;
 
+public enum OperacionSinSustentoCatalogoOrden
+{
+    Fecha,
+    Operacion,
+    Beneficiario,
+    Fondo,
+    Total,
+    Estado
+}
+
 public sealed class OperacionSinSustentoRequest
 {
     public long? OperacionSustituidaId { get; set; }
@@ -29,6 +39,9 @@ public sealed class OperacionSinSustentoCatalogoRequest
     public string? Busqueda { get; set; }
     public string Estado { get; set; } = "TODAS";
     public string Tipo { get; set; } = "TODOS";
+    public OperacionSinSustentoCatalogoOrden Orden { get; set; } =
+        OperacionSinSustentoCatalogoOrden.Fecha;
+    public bool OrdenDescendente { get; set; } = true;
     public int Pagina { get; set; } = 1;
     public int TamanoPagina { get; set; } = 50;
 }

@@ -1,0 +1,39 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {
+      "KONTAXPRO.Application/1.0.0": {
+        "dependencies": {
+          "KONTAXPRO.Domain": "1.0.0"
+        },
+        "runtime": {
+          "KONTAXPRO.Application.dll": {}
+        }
+      },
+      "KONTAXPRO.Domain/1.0.0": {
+        "runtime": {
+          "KONTAXPRO.Domain.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "KONTAXPRO.Application/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "KONTAXPRO.Domain/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

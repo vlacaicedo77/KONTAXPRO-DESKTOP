@@ -161,9 +161,35 @@ public sealed class ClienteService(
             .Select(x => new { x.Codigo, x.Nombre })
             .SingleOrDefaultAsync(cancellationToken);
 
-        var rows = await query
-            .OrderBy(x => x.Tercero.RazonSocial)
+        var baseListCode = baseList?.Codigo ?? "A";
+        var orderedQuery = (request.Orden, request.OrdenDescendente) switch
+        {
+            (ClienteCatalogoOrden.Identificacion, false) => query
+                .OrderBy(x => x.Tercero.NumeroIdentificacion),
+            (ClienteCatalogoOrden.Identificacion, true) => query
+                .OrderByDescending(x => x.Tercero.NumeroIdentificacion),
+            (ClienteCatalogoOrden.Clasificacion, false) => query.OrderBy(x =>
+                x.Configuracion == null || x.Configuracion.ListaPrecio == null
+                    ? baseListCode : x.Configuracion.ListaPrecio.Codigo),
+            (ClienteCatalogoOrden.Clasificacion, true) => query
+                .OrderByDescending(x =>
+                    x.Configuracion == null || x.Configuracion.ListaPrecio == null
+                        ? baseListCode : x.Configuracion.ListaPrecio.Codigo),
+            (ClienteCatalogoOrden.Credito, false) => query.OrderBy(x =>
+                x.Configuracion == null || x.Configuracion.CreditoHabilitado),
+            (ClienteCatalogoOrden.Credito, true) => query.OrderByDescending(x =>
+                x.Configuracion == null || x.Configuracion.CreditoHabilitado),
+            (ClienteCatalogoOrden.Estado, false) => query
+                .OrderBy(x => x.Tercero.EstadoCliente),
+            (ClienteCatalogoOrden.Estado, true) => query
+                .OrderByDescending(x => x.Tercero.EstadoCliente),
+            (ClienteCatalogoOrden.RazonSocial, true) => query
+                .OrderByDescending(x => x.Tercero.RazonSocial),
+            _ => query.OrderBy(x => x.Tercero.RazonSocial)
+        };
+        var rows = await orderedQuery
             .ThenBy(x => x.Tercero.NumeroIdentificacion)
+            .ThenBy(x => x.Tercero.Id)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(x => new

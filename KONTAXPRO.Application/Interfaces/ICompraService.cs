@@ -9,6 +9,8 @@ public interface ICompraService
         string? estado = null,
         int pagina = 1,
         int tamanoPagina = 25,
+        CompraCatalogoOrden orden = CompraCatalogoOrden.Fecha,
+        bool ordenDescendente = true,
         CancellationToken cancellationToken = default);
 
     Task<CompraDetalleDto?> ObtenerDetalleAsync(

@@ -15,7 +15,10 @@ using KONTAXPRO.Desktop.ViewModels.Proveedores;
 
 namespace KONTAXPRO.Desktop.ViewModels.Compras;
 
-public partial class ComprasViewModel : ObservableObject, IDisposable
+public partial class ComprasViewModel : ObservableObject,
+    IAsyncNavigationTarget,
+    IRouteNavigationTarget,
+    IDisposable
 {
     private readonly ICompraService _purchaseService;
     private readonly ICompraImportacionService _importService;
@@ -26,6 +29,11 @@ public partial class ComprasViewModel : ObservableObject, IDisposable
     private readonly IMessageDialogService _dialogs;
     private readonly INotificationService _notifications;
     private CancellationTokenSource? _operationCancellation;
+    private CancellationTokenSource? _catalogCancellation;
+    private long _catalogLoadVersion;
+    private readonly object _initializationLock = new();
+    private Task? _initializationTask;
+    private bool _disposed;
     private FacturaCompraXmlDto? _invoice;
     private Guid? _importId;
     private long? _supplierId;
@@ -83,6 +91,11 @@ public partial class ComprasViewModel : ObservableObject, IDisposable
     public ProveedorFormViewModel ProveedorForm { get; }
 
     [ObservableProperty] private bool isLoading;
+    [ObservableProperty] private bool isXmlPickerOpen;
+    [ObservableProperty] private bool isXmlDragActive;
+    [ObservableProperty] private bool xmlPickerHasError;
+    [ObservableProperty] private string xmlPickerMessage =
+        "Arrastra aquí una factura electrónica en formato XML";
     [ObservableProperty] private bool isImportWizardOpen;
     [ObservableProperty] private bool isProductFormOpen;
     [ObservableProperty] private bool isSupplierFormOpen;
@@ -98,6 +111,9 @@ public partial class ComprasViewModel : ObservableObject, IDisposable
     [ObservableProperty] private int tamanoPagina = 25;
     [ObservableProperty] private int totalItems;
     [ObservableProperty] private int totalPaginas;
+    [ObservableProperty] private CompraCatalogoOrden ordenCompras =
+        CompraCatalogoOrden.Fecha;
+    [ObservableProperty] private bool ordenComprasDescendente = true;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(EmptyStateTitle))]
     private string? statusMessage;
@@ -293,6 +309,18 @@ public partial class ComprasViewModel : ObservableObject, IDisposable
             return $"Mostrando {inicio:N0}–{fin:N0} de {TotalItems:N0} compras";
         }
     }
+    public string IndicadorFecha => IndicadorOrdenCompras(
+        CompraCatalogoOrden.Fecha);
+    public string IndicadorDocumento => IndicadorOrdenCompras(
+        CompraCatalogoOrden.Documento);
+    public string IndicadorProveedor => IndicadorOrdenCompras(
+        CompraCatalogoOrden.Proveedor);
+    public string IndicadorTotal => IndicadorOrdenCompras(
+        CompraCatalogoOrden.Total);
+    public string IndicadorPendientes => IndicadorOrdenCompras(
+        CompraCatalogoOrden.Pendientes);
+    public string IndicadorEstado => IndicadorOrdenCompras(
+        CompraCatalogoOrden.Estado);
     public string EmptyStateTitle => StatusMessage ==
         "No fue posible cargar las compras."
             ? StatusMessage
@@ -342,11 +370,75 @@ public partial class ComprasViewModel : ObservableObject, IDisposable
         _session.EmpresaActivaChanged += OnCompanyChanged;
     }
 
-    public Task InitializeAsync() => LoadAsync();
+    public Task InitializeAsync(
+        CancellationToken cancellationToken = default)
+    {
+        lock (_initializationLock)
+        {
+            if (_disposed) return Task.CompletedTask;
+            return _initializationTask ??= LoadAsync(cancellationToken);
+        }
+    }
+
+    public async Task NavigateToRouteAsync(
+        string route,
+        CancellationToken cancellationToken = default)
+    {
+        if (_disposed) return;
+
+        switch (route)
+        {
+            case "Compras/Manual":
+                if (!IsManualFormOpen)
+                {
+                    CloseWorkspacesForNavigation();
+                    await OpenManualAsync();
+                }
+                break;
+            case "Compras/Xml":
+                if (!IsImportWizardOpen)
+                {
+                    CloseWorkspacesForNavigation();
+                    OpenXmlPicker();
+                }
+                break;
+            case "Compras/Recepcion":
+                CloseWorkspacesForNavigation();
+                if (SelectedStatus != "PENDIENTE_RECEPCION")
+                {
+                    SelectedStatus = "PENDIENTE_RECEPCION";
+                    PaginaActual = 1;
+                    await LoadAsync(cancellationToken);
+                }
+                break;
+            default:
+                CloseWorkspacesForNavigation();
+                if (SelectedStatus != "TODAS")
+                {
+                    SelectedStatus = "TODAS";
+                    PaginaActual = 1;
+                    await LoadAsync(cancellationToken);
+                }
+                break;
+        }
+    }
 
     public async Task ImportXmlAsync(string filePath)
     {
-        if (!File.Exists(filePath)) return;
+        if (!File.Exists(filePath))
+        {
+            ShowXmlPickerError("No fue posible encontrar el archivo seleccionado.");
+            return;
+        }
+        if (!string.Equals(Path.GetExtension(filePath), ".xml",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            ShowXmlPickerError("Selecciona un archivo con extensión .xml.");
+            return;
+        }
+
+        XmlPickerHasError = false;
+        XmlPickerMessage = $"Validando {Path.GetFileName(filePath)}...";
         CancelOperation();
         var token = _operationCancellation!.Token;
         IsLoading = true;
@@ -359,12 +451,14 @@ public partial class ComprasViewModel : ObservableObject, IDisposable
             if (!result.Exito || result.Factura is null ||
                 !result.ImportacionId.HasValue)
             {
+                ShowXmlPickerError(result.Mensaje);
                 await _dialogs.ShowErrorAsync("XML no aceptado",
                     result.Mensaje);
                 return;
             }
             if (result.EsDuplicado)
             {
+                ShowXmlPickerError(result.Mensaje);
                 await _dialogs.ShowErrorAsync("Comprobante duplicado",
                     result.Mensaje);
                 return;
@@ -394,6 +488,7 @@ public partial class ComprasViewModel : ObservableObject, IDisposable
             DueDate = null;
             await LoadFormCatalogsAsync();
             ImportStep = 1;
+            IsXmlPickerOpen = false;
             IsImportWizardOpen = true;
             await ResolveLinesAsync(token);
             NotifyWizardState();
@@ -404,6 +499,8 @@ public partial class ComprasViewModel : ObservableObject, IDisposable
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine(ex);
+            ShowXmlPickerError(
+                "No fue posible procesar el archivo seleccionado.");
             await _dialogs.ShowErrorAsync("No se pudo importar",
                 "No fue posible procesar el archivo seleccionado.");
         }
@@ -411,10 +508,34 @@ public partial class ComprasViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private async Task SelectXmlAsync()
+    private void SelectXml() => OpenXmlPicker();
+
+    [RelayCommand]
+    private async Task BrowseXmlAsync()
     {
         if (SelectXmlRequested is not null)
             await SelectXmlRequested.Invoke();
+    }
+
+    [RelayCommand]
+    private void CloseXmlPicker()
+    {
+        if (IsLoading) return;
+        IsXmlPickerOpen = false;
+        IsXmlDragActive = false;
+        ResetXmlPickerMessage();
+    }
+
+    public void SetXmlDragActive(bool active)
+    {
+        if (!IsLoading)
+            IsXmlDragActive = active;
+    }
+
+    public Task AcceptXmlFileAsync(string filePath)
+    {
+        IsXmlDragActive = false;
+        return ImportXmlAsync(filePath);
     }
 
     [RelayCommand]
@@ -1169,21 +1290,31 @@ public partial class ComprasViewModel : ObservableObject, IDisposable
         IsProductFormOpen = true;
     }
 
-    private async Task LoadAsync()
+    private async Task LoadAsync(
+        CancellationToken cancellationToken = default)
     {
+        if (_disposed) return;
+        _catalogCancellation?.Cancel();
+        _catalogCancellation?.Dispose();
+        _catalogCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken);
+        var token = _catalogCancellation.Token;
+        var version = Interlocked.Increment(ref _catalogLoadVersion);
         IsLoading = true;
         try
         {
             var status = SelectedStatus == "TODAS" ? null : SelectedStatus;
             var result = await _purchaseService.ObtenerCatalogoAsync(
-                SearchText, status, PaginaActual, TamanoPagina);
+                SearchText, status, PaginaActual, TamanoPagina,
+                OrdenCompras, OrdenComprasDescendente, token);
+            if (version != Volatile.Read(ref _catalogLoadVersion)) return;
             TotalItems = result.TotalFiltrado;
             TotalPaginas = TotalItems == 0 ? 0 :
                 (int)Math.Ceiling(TotalItems / (double)TamanoPagina);
             if (TotalPaginas > 0 && PaginaActual > TotalPaginas)
             {
                 PaginaActual = TotalPaginas;
-                await LoadAsync();
+                await LoadAsync(cancellationToken);
                 return;
             }
             Compras.Clear();
@@ -1198,12 +1329,54 @@ public partial class ComprasViewModel : ObservableObject, IDisposable
             StatusMessage = Compras.Count == 0
                 ? "No existen compras con los filtros seleccionados." : null;
         }
+        catch (OperationCanceledException) { }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine(ex);
             StatusMessage = "No fue posible cargar las compras.";
         }
-        finally { IsLoading = false; }
+        finally
+        {
+            if (version == Volatile.Read(ref _catalogLoadVersion))
+                IsLoading = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task OrdenarComprasAsync(CompraCatalogoOrden orden)
+    {
+        if (OrdenCompras == orden)
+            OrdenComprasDescendente = !OrdenComprasDescendente;
+        else
+        {
+            OrdenCompras = orden;
+            OrdenComprasDescendente = false;
+        }
+
+        PaginaActual = 1;
+        NotificarIndicadoresOrdenCompras();
+        await LoadAsync();
+    }
+
+    private void CloseWorkspacesForNavigation()
+    {
+        IsManualFormOpen = false;
+        IsReceiptFormOpen = false;
+        IsReceiptCancelFormOpen = false;
+        IsCancelFormOpen = false;
+        IsTraceabilityEditorOpen = false;
+        IsProductFormOpen = false;
+        IsSupplierFormOpen = false;
+        IsManualSupplierFormOpen = false;
+        IsXmlPickerOpen = false;
+        IsXmlDragActive = false;
+        ResetXmlPickerMessage();
+        if (IsImportWizardOpen)
+        {
+            CancelOperation();
+            IsImportWizardOpen = false;
+            ResetImport();
+        }
     }
 
     private async Task LoadFormCatalogsAsync()
@@ -1422,6 +1595,21 @@ public partial class ComprasViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(TextoPaginacion));
     }
 
+    private string IndicadorOrdenCompras(CompraCatalogoOrden orden) =>
+        OrdenCompras != orden
+            ? string.Empty
+            : OrdenComprasDescendente ? "▼" : "▲";
+
+    private void NotificarIndicadoresOrdenCompras()
+    {
+        OnPropertyChanged(nameof(IndicadorFecha));
+        OnPropertyChanged(nameof(IndicadorDocumento));
+        OnPropertyChanged(nameof(IndicadorProveedor));
+        OnPropertyChanged(nameof(IndicadorTotal));
+        OnPropertyChanged(nameof(IndicadorPendientes));
+        OnPropertyChanged(nameof(IndicadorEstado));
+    }
+
     private void NotifyWizardState()
     {
         OnPropertyChanged(nameof(StepTitle));
@@ -1469,6 +1657,30 @@ public partial class ComprasViewModel : ObservableObject, IDisposable
         ImportReceiptObservation = null;
         _importReceiptPrepared = false;
         ImportStep = 1;
+    }
+
+    private void OpenXmlPicker()
+    {
+        if (_disposed || IsLoading) return;
+        CloseWorkspacesForNavigation();
+        ResetXmlPickerMessage();
+        IsXmlPickerOpen = true;
+    }
+
+    private void ResetXmlPickerMessage()
+    {
+        XmlPickerHasError = false;
+        XmlPickerMessage =
+            "Arrastra aquí una factura electrónica en formato XML";
+    }
+
+    private void ShowXmlPickerError(string? message)
+    {
+        IsXmlPickerOpen = true;
+        XmlPickerHasError = true;
+        XmlPickerMessage = string.IsNullOrWhiteSpace(message)
+            ? "El archivo XML no pudo ser procesado."
+            : message;
     }
 
     private void PrepareImportReceipt()
@@ -1522,7 +1734,7 @@ public partial class ComprasViewModel : ObservableObject, IDisposable
         try
         {
             var state = await _inventoryService.ObtenerEstadoControlAsync(
-                _session.EmpresaId.Value, line.ProductId);
+                _session.EmpresaId.Value, _session.UsuarioId, line.ProductId);
             if (state is not null)
             {
                 foreach (var group in state.Bodegas
@@ -2047,6 +2259,10 @@ public partial class ComprasViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
+        _catalogCancellation?.Cancel();
+        _catalogCancellation?.Dispose();
         CancelOperation();
         _operationCancellation?.Dispose();
         ClearImportLines();
@@ -2376,7 +2592,7 @@ public partial class CompraManualLineViewModel : ObservableObject
     [ObservableProperty] private CompraPresentacionItemDto? selectedPresentation;
     [ObservableProperty] private string productSearchText = string.Empty;
     [ObservableProperty] private bool showProductSuggestions;
-    [ObservableProperty] private decimal quantity = 1m;
+    [ObservableProperty] private decimal quantity;
     [ObservableProperty] private decimal unitPrice;
     [ObservableProperty] private decimal discount;
     [ObservableProperty] private decimal tax;
@@ -2397,6 +2613,7 @@ public partial class CompraManualLineViewModel : ObservableObject
     }
 
     public decimal Total => Quantity * UnitPrice - Discount + Tax;
+    public bool HasDescription => !string.IsNullOrWhiteSpace(Description);
     public bool HasSelectedPresentation => SelectedPresentation is not null;
     public bool ProductSearchHasNoMatches => IsInventory &&
         SelectedPresentation is null && ProductSearchText.Trim().Length >= 2 &&
@@ -2423,6 +2640,7 @@ public partial class CompraManualLineViewModel : ObservableObject
     {
         if (suggestion is null) return;
         SelectedPresentation = suggestion;
+        Description = BuildCanonicalDescription(suggestion);
         SelectedDescriptionSuggestion = null;
         DescriptionSuggestions.Clear();
         ShowDescriptionSuggestions = false;
@@ -2455,6 +2673,33 @@ public partial class CompraManualLineViewModel : ObservableObject
         finally { _updatingProductSearch = false; }
     }
 
+    [RelayCommand]
+    private void ClearDescription()
+    {
+        _updatingProductSearch = true;
+        try
+        {
+            Description = string.Empty;
+            SelectedDescriptionSuggestion = null;
+            SelectedPresentation = null;
+            ProductSearchText = string.Empty;
+            ProductSuggestions.Clear();
+            DescriptionSuggestions.Clear();
+            ShowProductSuggestions = false;
+            ShowDescriptionSuggestions = false;
+            Quantity = 0m;
+            UnitPrice = 0m;
+            Discount = 0m;
+            Tax = 0m;
+            IsBonus = false;
+            SelectedTaxRate = null;
+            SelectedAccountingAccount = null;
+            OnPropertyChanged(nameof(HasSelectedPresentation));
+            OnPropertyChanged(nameof(ProductSearchHasNoMatches));
+        }
+        finally { _updatingProductSearch = false; }
+    }
+
     partial void OnSelectedPresentationChanged(CompraPresentacionItemDto? value)
     {
         OnPropertyChanged(nameof(HasSelectedPresentation));
@@ -2476,13 +2721,14 @@ public partial class CompraManualLineViewModel : ObservableObject
             ShowProductSuggestions = false;
         }
         finally { _updatingProductSearch = false; }
-        if (value is not null && string.IsNullOrWhiteSpace(Description))
-            Description = value.Producto;
+        if (string.IsNullOrWhiteSpace(Description))
+            Description = BuildCanonicalDescription(value);
         UpdateSuggestedTax();
     }
 
     partial void OnDescriptionChanged(string value)
     {
+        OnPropertyChanged(nameof(HasDescription));
         var uppercase = value.ToUpperInvariant();
         if (!string.Equals(value, uppercase, StringComparison.Ordinal))
         {
@@ -2497,6 +2743,13 @@ public partial class CompraManualLineViewModel : ObservableObject
         }
         RefreshDescriptionSuggestions(value);
     }
+
+    private static string BuildCanonicalDescription(
+        CompraPresentacionItemDto presentation) =>
+        string.IsNullOrWhiteSpace(presentation.Presentacion)
+            ? presentation.Producto.Trim().ToUpperInvariant()
+            : $"{presentation.Producto.Trim()} · {presentation.Presentacion.Trim()}"
+                .ToUpperInvariant();
 
     partial void OnProductSearchTextChanged(string value)
     {

@@ -81,12 +81,34 @@ public sealed class ProductService(
                     : x.CategoriaProducto.Nombre,
                 Marca = x.Marca == null ? null : x.Marca.Nombre,
                 UnidadBase = x.UnidadMedidaBase!.Abreviatura,
+                TipoProducto = x.TipoProducto,
+                TipoControl = x.ManejaLotes
+                    ? (x.ManejaSeries ? "LOTE Y SERIE" : "LOTE")
+                    : (x.ManejaSeries ? "SERIE" : "NORMAL"),
                 TarifaImpuesto = x.Impuestos
                     .Where(i => i.Estado == 1 &&
                                 i.TarifaImpuesto!.Estado == 1)
                     .OrderBy(i => i.TarifaImpuestoId)
                     .Select(i => i.TarifaImpuesto!.Nombre)
                     .FirstOrDefault() ?? string.Empty,
+                TipoCalculoImpuesto = x.Impuestos
+                    .Where(i => i.Estado == 1 &&
+                                i.TarifaImpuesto!.Estado == 1)
+                    .OrderBy(i => i.TarifaImpuestoId)
+                    .Select(i => i.TarifaImpuesto!.TipoCalculo)
+                    .FirstOrDefault() ?? "NINGUNO",
+                PorcentajeImpuesto = x.Impuestos
+                    .Where(i => i.Estado == 1 &&
+                                i.TarifaImpuesto!.Estado == 1)
+                    .OrderBy(i => i.TarifaImpuestoId)
+                    .Select(i => i.TarifaImpuesto!.Porcentaje)
+                    .FirstOrDefault(),
+                ValorEspecificoImpuesto = x.Impuestos
+                    .Where(i => i.Estado == 1 &&
+                                i.TarifaImpuesto!.Estado == 1)
+                    .OrderBy(i => i.TarifaImpuestoId)
+                    .Select(i => i.TarifaImpuesto!.ValorEspecifico)
+                    .FirstOrDefault(),
                 StockDisponible = x.Existencias
                     .Where(e => e.Bodega!.Estado == 1 &&
                                 e.Bodega.Establecimiento!.Estado == 1 &&
@@ -228,11 +250,15 @@ public sealed class ProductService(
                             x.Estado == 1 && x.PermiteVenta)
                 .OrderBy(x => x.ProductoId)
                 .ThenByDescending(x => x.EsPresentacionBase)
+                .ThenBy(x => x.FactorConversion)
                 .ThenBy(x => x.Nombre)
                 .Select(x => new PresentacionComercialCatalogoProjection
                 {
+                    PresentacionId = x.Id,
                     ProductoId = x.ProductoId,
-                    Nombre = x.Nombre
+                    Nombre = x.Nombre,
+                    FactorConversion = x.FactorConversion,
+                    EsBase = x.EsPresentacionBase
                 })
                 .ToListAsync(cancellationToken);
             var nombresPorProducto = presentaciones
@@ -246,6 +272,20 @@ public sealed class ProductService(
             {
                 producto.PresentacionesComerciales =
                     nombresPorProducto.GetValueOrDefault(producto.Id) ?? [];
+                producto.PresentacionesDetalle = presentaciones
+                    .Where(x => x.ProductoId == producto.Id)
+                    .Select(x => new ProductoPresentacionCatalogoDto
+                    {
+                        Nombre = x.Nombre,
+                        FactorConversion = x.FactorConversion,
+                        EsBase = x.EsBase
+                    })
+                    .ToList();
+                var visibles = Math.Min(3, producto.PresentacionesDetalle.Count);
+                for (var i = 0; i < visibles; i++)
+                    producto.PresentacionesDetalle[i].MostrarSeparador =
+                        i < visibles - 1 ||
+                        producto.PresentacionesDetalle.Count > visibles;
                 producto.CantidadPresentaciones =
                     producto.PresentacionesComerciales.Count;
             }
@@ -256,7 +296,7 @@ public sealed class ProductService(
                 where presentacion.EmpresaId == request.EmpresaId &&
                       productosIds.Contains(presentacion.ProductoId) &&
                       presentacion.Estado == 1 &&
-                      presentacion.EsPresentacionBase
+                      presentacion.PermiteVenta
                 from lista in context.ListasPrecio.AsNoTracking()
                     .Where(x => x.EmpresaId == request.EmpresaId &&
                                 x.Estado == 1)
@@ -278,6 +318,9 @@ public sealed class ProductService(
                 select new PrecioBaseListaCatalogoProjection
                 {
                     ProductoId = presentacion.ProductoId,
+                    PresentacionId = presentacion.Id,
+                    PresentacionNombre = presentacion.Nombre,
+                    EsPresentacionBase = presentacion.EsPresentacionBase,
                     ListaCodigo = lista.Codigo,
                     ListaNombre = lista.Nombre,
                     Orden = lista.Orden,
@@ -294,27 +337,80 @@ public sealed class ProductService(
                 })
                 .ToListAsync(cancellationToken);
 
-            foreach (var grupo in configuracionesPrecio
+            foreach (var grupoProducto in configuracionesPrecio
                          .GroupBy(x => x.ProductoId))
             {
-                var configuracionBase = grupo.FirstOrDefault(x =>
-                    x.EsListaBase);
-                var precioBase = configuracionBase is null
-                    ? null
-                    : CalcularPrecioBaseLista(configuracionBase, null);
-                var precios = grupo
-                    .OrderBy(x => x.Orden)
-                    .ThenBy(x => x.ListaCodigo)
+                var producto = productosPagina.First(x =>
+                    x.Id == grupoProducto.Key);
+                var preciosPresentaciones = grupoProducto
+                    .GroupBy(x => new
+                    {
+                        x.PresentacionId,
+                        x.PresentacionNombre,
+                        x.FactorConversion,
+                        x.EsPresentacionBase
+                    })
+                    .OrderByDescending(x => x.Key.EsPresentacionBase)
+                    .ThenBy(x => x.Key.FactorConversion)
+                    .ThenBy(x => x.Key.PresentacionNombre)
+                    .Select(grupoPresentacion =>
+                    {
+                        var configuracionBase = grupoPresentacion
+                            .FirstOrDefault(x => x.EsListaBase);
+                        var precioListaBase = configuracionBase is null
+                            ? null
+                            : CalcularPrecioBaseLista(
+                                configuracionBase,
+                                null);
+                        var precios = grupoPresentacion
+                            .OrderBy(x => x.Orden)
+                            .ThenBy(x => x.ListaCodigo)
+                            .Select(x =>
+                            {
+                                var precioNeto = CalcularPrecioBaseLista(
+                                    x,
+                                    precioListaBase);
+                                return new ProductoPrecioFinalListaDto
+                                {
+                                    ListaCodigo = x.ListaCodigo,
+                                    ListaNombre = x.ListaNombre,
+                                    Orden = x.Orden,
+                                    PrecioNeto = precioNeto,
+                                    PrecioFinal = precioNeto.HasValue
+                                        ? ProductoNuevoRules
+                                            .CalcularPrecioFinalConImpuesto(
+                                                precioNeto.Value,
+                                                producto.TipoCalculoImpuesto,
+                                                producto.PorcentajeImpuesto,
+                                                producto.ValorEspecificoImpuesto,
+                                                grupoPresentacion.Key
+                                                    .FactorConversion)
+                                        : null
+                                };
+                            })
+                            .ToList();
+                        return new ProductoPrecioPresentacionDto
+                        {
+                            Nombre = grupoPresentacion.Key.PresentacionNombre,
+                            FactorConversion = grupoPresentacion.Key
+                                .FactorConversion,
+                            EsBase = grupoPresentacion.Key.EsPresentacionBase,
+                            Precios = precios
+                        };
+                    })
+                    .ToList();
+                producto.PreciosPorPresentacion = preciosPresentaciones;
+                var presentacionBase = preciosPresentaciones
+                    .FirstOrDefault(x => x.EsBase);
+                producto.PreciosBasePorLista = presentacionBase?.Precios
                     .Select(x => new ProductoPrecioBaseListaDto
                     {
                         ListaCodigo = x.ListaCodigo,
                         ListaNombre = x.ListaNombre,
                         Orden = x.Orden,
-                        Precio = CalcularPrecioBaseLista(x, precioBase)
+                        Precio = x.PrecioNeto
                     })
-                    .ToList();
-                var producto = productosPagina.First(x => x.Id == grupo.Key);
-                producto.PreciosBasePorLista = precios;
+                    .ToList() ?? [];
             }
         }
 
@@ -537,8 +633,9 @@ public sealed class ProductService(
 
         await using var context =
             await dbContextFactory.CreateDbContextAsync(cancellationToken);
-        await using var transaction =
-            await context.Database.BeginTransactionAsync(cancellationToken);
+        await using var transaction = await context.Database
+            .BeginTransactionAsync(System.Data.IsolationLevel.Serializable,
+                cancellationToken);
 
         try
         {
@@ -1260,7 +1357,12 @@ public sealed class ProductService(
             Categoria = x.Categoria,
             Marca = x.Marca,
             UnidadBase = x.UnidadBase,
+            TipoProducto = x.TipoProducto,
+            TipoControl = x.TipoControl,
             TarifaImpuesto = x.TarifaImpuesto,
+            TipoCalculoImpuesto = x.TipoCalculoImpuesto,
+            PorcentajeImpuesto = x.PorcentajeImpuesto,
+            ValorEspecificoImpuesto = x.ValorEspecificoImpuesto,
             StockDisponible = x.StockDisponible,
             StockMinimo = x.StockMinimo,
             TieneStockBajo = x.TieneStockBajo,
@@ -1303,7 +1405,12 @@ public sealed class ProductService(
         public string? Categoria { get; init; }
         public string? Marca { get; init; }
         public string UnidadBase { get; init; } = string.Empty;
+        public string TipoProducto { get; init; } = "PRODUCTO";
+        public string TipoControl { get; init; } = "NORMAL";
         public string TarifaImpuesto { get; init; } = string.Empty;
+        public string TipoCalculoImpuesto { get; init; } = "NINGUNO";
+        public decimal? PorcentajeImpuesto { get; init; }
+        public decimal? ValorEspecificoImpuesto { get; init; }
         public decimal StockDisponible { get; init; }
         public decimal StockMinimo { get; init; }
         public bool TieneStockBajo { get; init; }
@@ -1320,13 +1427,19 @@ public sealed class ProductService(
 
     private sealed class PresentacionComercialCatalogoProjection
     {
+        public long PresentacionId { get; init; }
         public long ProductoId { get; init; }
         public string Nombre { get; init; } = string.Empty;
+        public decimal FactorConversion { get; init; }
+        public bool EsBase { get; init; }
     }
 
     private sealed class PrecioBaseListaCatalogoProjection
     {
         public long ProductoId { get; init; }
+        public long PresentacionId { get; init; }
+        public string PresentacionNombre { get; init; } = string.Empty;
+        public bool EsPresentacionBase { get; init; }
         public string ListaCodigo { get; init; } = string.Empty;
         public string ListaNombre { get; init; } = string.Empty;
         public int Orden { get; init; }

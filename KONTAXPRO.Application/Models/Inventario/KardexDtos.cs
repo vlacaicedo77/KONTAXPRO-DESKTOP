@@ -3,6 +3,7 @@ namespace KONTAXPRO.Application.Models.Inventario;
 public sealed class KardexFiltro
 {
     public long EmpresaId { get; set; }
+    public long UsuarioId { get; set; }
     public long ProductoId { get; set; }
     public long? EstablecimientoId { get; set; }
     public long? BodegaId { get; set; }
@@ -16,6 +17,8 @@ public sealed class KardexFiltro
 public sealed class KardexItemDto
 {
     public long MovimientoId { get; set; }
+    public long ProductoId { get; set; }
+    public string Producto { get; set; } = string.Empty;
     public DateTime Fecha { get; set; }
     public string NumeroMovimiento { get; set; } = string.Empty;
     public string Tipo { get; set; } = string.Empty;
@@ -35,4 +38,16 @@ public sealed class KardexItemDto
     public decimal CostoPromedioNuevo { get; set; }
     public string Usuario { get; set; } = string.Empty;
     public string? Observacion { get; set; }
+    public bool EsEntrada => EntradaBase > 0;
+    public bool EsSalida => SalidaBase > 0;
+    public string Naturaleza => EsEntrada ? "ENTRADA" : "SALIDA";
+    public string DocumentoVisual => string.IsNullOrWhiteSpace(Documento)
+        ? NumeroMovimiento
+        : Documento;
+    public string MovimientoVisual => string.IsNullOrWhiteSpace(NumeroMovimiento)
+        ? Tipo
+        : $"{Tipo} · {NumeroMovimiento}";
+    public string ObservacionVisual => string.IsNullOrWhiteSpace(Observacion)
+        ? "Sin observaciones"
+        : Observacion;
 }

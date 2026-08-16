@@ -1,0 +1,183 @@
+<UserControl x:Class="KONTAXPRO.Desktop.Views.Inventory.InventoryKardexPanel"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+ xmlns:behaviors="clr-namespace:KONTAXPRO.Desktop.Behaviors"
+ xmlns:desktop="clr-namespace:KONTAXPRO.Desktop"
+ x:Name="KardexRoot"
+ Background="Transparent">
+ <UserControl.Resources>
+  <desktop:BindingProxy x:Key="KardexDataContextProxy" Data="{Binding}"/>
+  <Style x:Key="KardexDateFieldStyle" TargetType="Border">
+   <Setter Property="Height" Value="42"/><Setter Property="CornerRadius" Value="9"/>
+   <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/><Setter Property="BorderThickness" Value="1"/>
+   <Style.Triggers><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource FocusBorderBrush}"/><Setter Property="BorderThickness" Value="2"/></Trigger></Style.Triggers>
+  </Style>
+  <Style x:Key="KardexDateInputStyle" TargetType="TextBox">
+   <Setter Property="Padding" Value="10,0"/><Setter Property="VerticalContentAlignment" Value="Center"/><Setter Property="TextAlignment" Value="Center"/>
+   <Setter Property="FontSize" Value="12"/><Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/><Setter Property="CaretBrush" Value="{DynamicResource FocusBorderBrush}"/>
+   <Setter Property="BorderThickness" Value="0"/><Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+  </Style>
+  <Style x:Key="KardexFilterLabelStyle" TargetType="TextBlock"><Setter Property="Margin" Value="1,0,0,6"/><Setter Property="FontSize" Value="10"/><Setter Property="FontWeight" Value="Bold"/><Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/></Style>
+  <Style x:Key="KardexDateClearButtonStyle" TargetType="Button">
+   <Setter Property="Width" Value="24"/><Setter Property="Height" Value="24"/><Setter Property="Padding" Value="0"/>
+   <Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}"/>
+   <Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/><Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border x:Name="Surface" Background="{TemplateBinding Background}" CornerRadius="6"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="{DynamicResource DangerSoftBrush}"/><Setter Property="Foreground" Value="#DC2626"/></Trigger><Trigger Property="IsPressed" Value="True"><Setter Property="Opacity" Value="0.72"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+  </Style>
+  <Style x:Key="KardexNatureChoiceStyle" TargetType="RadioButton">
+   <Setter Property="Height" Value="42"/><Setter Property="MinWidth" Value="104"/><Setter Property="Padding" Value="12,0"/><Setter Property="Margin" Value="0,0,6,0"/>
+   <Setter Property="Background" Value="{DynamicResource InputSecondaryBackgroundBrush}"/><Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+   <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="Cursor" Value="Hand"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="RadioButton"><Border x:Name="ChoiceSurface" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="9"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><ControlTemplate.Triggers><MultiTrigger><MultiTrigger.Conditions><Condition Property="IsMouseOver" Value="True"/><Condition Property="IsChecked" Value="False"/></MultiTrigger.Conditions><Setter TargetName="ChoiceSurface" Property="Background" Value="{DynamicResource InfoSoftBrush}"/><Setter TargetName="ChoiceSurface" Property="BorderBrush" Value="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}"/></MultiTrigger><Trigger Property="IsChecked" Value="True"><Setter TargetName="ChoiceSurface" Property="Background" Value="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}"/><Setter TargetName="ChoiceSurface" Property="BorderBrush" Value="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}"/><Setter Property="Foreground" Value="White"/></Trigger><Trigger Property="IsPressed" Value="True"><Setter TargetName="ChoiceSurface" Property="Opacity" Value="0.78"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+  </Style>
+  <Style x:Key="KardexHeaderStyle" TargetType="DataGridColumnHeader" BasedOn="{StaticResource KontaxDataGridColumnHeaderStyle}">
+   <Setter Property="BorderThickness" Value="0"/><Setter Property="FontSize" Value="9"/>
+   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="DataGridColumnHeader"><Grid Background="{TemplateBinding Background}"><ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center"/><Thumb x:Name="PART_LeftHeaderGripper" Width="5" HorizontalAlignment="Left" Cursor="SizeWE"><Thumb.Template><ControlTemplate TargetType="Thumb"><Border Background="Transparent"/></ControlTemplate></Thumb.Template></Thumb><Thumb x:Name="PART_RightHeaderGripper" Width="5" HorizontalAlignment="Right" Cursor="SizeWE"><Thumb.Template><ControlTemplate TargetType="Thumb"><Border Background="Transparent"/></ControlTemplate></Thumb.Template></Thumb></Grid></ControlTemplate></Setter.Value></Setter>
+  </Style>
+  <Style x:Key="KardexCenteredHeaderStyle" TargetType="DataGridColumnHeader" BasedOn="{StaticResource KardexHeaderStyle}"><Setter Property="HorizontalContentAlignment" Value="Center"/></Style>
+  <Style x:Key="KardexCellStyle" TargetType="DataGridCell" BasedOn="{StaticResource KontaxDataGridCellStyle}"><Setter Property="BorderThickness" Value="0"/></Style>
+  <Style x:Key="KardexCenteredTextStyle" TargetType="TextBlock" BasedOn="{StaticResource KontaxCenteredCellTextStyle}"><Setter Property="FontSize" Value="10"/></Style>
+  <Style x:Key="KardexValueTextStyle" TargetType="TextBlock" BasedOn="{StaticResource KardexCenteredTextStyle}"><Setter Property="FontWeight" Value="Bold"/></Style>
+  <Style x:Key="KardexMovementValueStyle" TargetType="TextBlock" BasedOn="{StaticResource KardexCenteredTextStyle}"><Setter Property="FontSize" Value="12"/><Setter Property="FontWeight" Value="ExtraBold"/></Style>
+  <Style x:Key="KardexDetailLabelStyle" TargetType="TextBlock"><Setter Property="FontSize" Value="9"/><Setter Property="FontWeight" Value="Bold"/><Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}"/></Style>
+  <Style x:Key="KardexDetailValueStyle" TargetType="TextBlock"><Setter Property="Margin" Value="0,4,0,0"/><Setter Property="FontSize" Value="11"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/><Setter Property="TextTrimming" Value="CharacterEllipsis"/></Style>
+  <Style x:Key="KardexDetailCollapseButtonStyle" TargetType="Button">
+   <Setter Property="Width" Value="30"/><Setter Property="Height" Value="30"/><Setter Property="Padding" Value="0"/>
+   <Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/><Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border x:Name="Surface" Background="{TemplateBinding Background}" CornerRadius="7"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="{DynamicResource SuccessSoftBrush}"/><Setter Property="Foreground" Value="{DynamicResource PrimaryDarkBrush}"/></Trigger><Trigger Property="IsPressed" Value="True"><Setter Property="Opacity" Value="0.72"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+  </Style>
+  <Style x:Key="KardexPageButtonStyle" TargetType="Button" BasedOn="{StaticResource NeutralButtonStyle}"><Setter Property="MinWidth" Value="34"/><Setter Property="Height" Value="34"/><Setter Property="Padding" Value="9,0"/></Style>
+ </UserControl.Resources>
+
+ <Border Background="{DynamicResource OverlayBrush}">
+  <Border Style="{StaticResource InventoryDialogContainerStyle}">
+   <Grid>
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="14"/><RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="*"/><RowDefinition Height="12"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+
+    <Grid>
+     <Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="12"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+     <Border Width="52" Height="52" CornerRadius="14" Background="#2563EB"><materialDesign:PackIcon Kind="ChartTimelineVariant" Width="27" Height="27" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+     <StackPanel Grid.Column="2" VerticalAlignment="Center">
+      <TextBlock Text="KARDEX DEL PRODUCTO" FontSize="9" FontWeight="Bold" Foreground="#2563EB"/>
+      <TextBlock Text="{Binding SelectedItem.NombreConMarca}" Margin="0,3,0,0" FontSize="21" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}"/>
+      <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+       <Border Padding="6,2" CornerRadius="6" Background="#475569" Visibility="{Binding SelectedItem.TieneCategoria, Converter={StaticResource BooleanToVisibilityConverter}}"><TextBlock Text="{Binding SelectedItem.Categoria}" FontSize="9" FontWeight="SemiBold" Foreground="White"/></Border>
+       <TextBlock Text=" · " Foreground="{DynamicResource MutedTextBrush}" Visibility="{Binding SelectedItem.MostrarSeparadorCategoriaModelo, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+       <TextBlock Text="{Binding SelectedItem.Modelo}" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" Visibility="{Binding SelectedItem.TieneModelo, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+       <TextBlock Text="  ·  " Foreground="{DynamicResource MutedTextBrush}"/>
+       <TextBlock Text="{Binding SelectedItem.PresentacionesTexto}" MaxWidth="430" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis"/>
+      </StackPanel>
+     </StackPanel>
+     <Border Grid.Column="3" Padding="10,6" CornerRadius="9" Background="{DynamicResource InputSecondaryBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" VerticalAlignment="Center"><StackPanel Orientation="Horizontal"><materialDesign:PackIcon Kind="Warehouse" Width="15" Height="15" Foreground="{DynamicResource BrandProBrush}"/><TextBlock Text="{Binding KardexWarehouseText}" Margin="7,0,0,0" MaxWidth="210" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis"/></StackPanel></Border>
+     <ProgressBar Grid.Column="3" Width="90" Height="4" HorizontalAlignment="Right" VerticalAlignment="Bottom" IsIndeterminate="True" Visibility="{Binding IsKardexLoading, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+     <Button Grid.Column="5" Command="{Binding ClosePanelsCommand}" Style="{StaticResource InventoryDialogCloseButtonStyle}"><materialDesign:PackIcon Kind="Close" Foreground="White"/></Button>
+    </Grid>
+
+    <Border Grid.Row="2" Padding="14,12" CornerRadius="13" Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+     <Grid>
+      <Grid.ColumnDefinitions><ColumnDefinition Width="175"/><ColumnDefinition Width="10"/><ColumnDefinition Width="175"/><ColumnDefinition Width="16"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="8"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+      <StackPanel>
+       <TextBlock Text="DESDE" Style="{StaticResource KardexFilterLabelStyle}"/>
+       <Border Style="{StaticResource KardexDateFieldStyle}">
+        <Grid>
+         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="30"/><ColumnDefinition Width="34"/></Grid.ColumnDefinitions>
+         <TextBox x:Name="KardexFromInput" Grid.Column="0" Text="{Binding KardexFromText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Language="es-EC" MaxLength="10" ToolTip="Formato: dd/mm/aaaa" behaviors:DateInputBehavior.IsEnabled="True" Style="{StaticResource KardexDateInputStyle}" materialDesign:HintAssist.Hint="dd/mm/aaaa"/>
+         <Button Grid.Column="1" Command="{Binding ClearKardexFromCommand}" Style="{StaticResource KardexDateClearButtonStyle}" ToolTip="Borrar fecha" Visibility="{Binding Text, ElementName=KardexFromInput, Converter={StaticResource StringToVisibilityConverter}}"><materialDesign:PackIcon Kind="Close" Width="14" Height="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/></Button>
+         <materialDesign:PackIcon Grid.Column="2" Kind="CalendarMonthOutline" Width="17" Height="17" Foreground="{DynamicResource MutedTextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+        </Grid>
+       </Border>
+      </StackPanel>
+      <StackPanel Grid.Column="2">
+       <TextBlock Text="HASTA" Style="{StaticResource KardexFilterLabelStyle}"/>
+       <Border Style="{StaticResource KardexDateFieldStyle}">
+        <Grid>
+         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="30"/><ColumnDefinition Width="34"/></Grid.ColumnDefinitions>
+         <TextBox x:Name="KardexToInput" Grid.Column="0" Text="{Binding KardexToText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Language="es-EC" MaxLength="10" ToolTip="Formato: dd/mm/aaaa" behaviors:DateInputBehavior.IsEnabled="True" Style="{StaticResource KardexDateInputStyle}" materialDesign:HintAssist.Hint="dd/mm/aaaa"/>
+         <Button Grid.Column="1" Command="{Binding ClearKardexToCommand}" Style="{StaticResource KardexDateClearButtonStyle}" ToolTip="Borrar fecha" Visibility="{Binding Text, ElementName=KardexToInput, Converter={StaticResource StringToVisibilityConverter}}"><materialDesign:PackIcon Kind="Close" Width="14" Height="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/></Button>
+         <materialDesign:PackIcon Grid.Column="2" Kind="CalendarMonthOutline" Width="17" Height="17" Foreground="{DynamicResource MutedTextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+        </Grid>
+       </Border>
+      </StackPanel>
+      <StackPanel Grid.Column="4"><TextBlock Text="MOVIMIENTOS" Style="{StaticResource KardexFilterLabelStyle}"/><StackPanel Orientation="Horizontal"><RadioButton GroupName="KardexNatureChoice" Command="{Binding SelectKardexNatureCommand}" CommandParameter="TODAS" Tag="#2563EB" IsChecked="{Binding IsKardexAll, Mode=OneWay}" Style="{StaticResource KardexNatureChoiceStyle}"><StackPanel Orientation="Horizontal"><materialDesign:PackIcon Kind="SwapVertical" Width="15" Height="15"/><TextBlock Text="TODOS" Margin="6,0,0,0"/><materialDesign:PackIcon Kind="CheckCircle" Width="14" Height="14" Margin="7,0,0,0" Visibility="{Binding IsKardexAll, Converter={StaticResource BooleanToVisibilityConverter}}"/></StackPanel></RadioButton><RadioButton GroupName="KardexNatureChoice" Command="{Binding SelectKardexNatureCommand}" CommandParameter="ENTRADA" Tag="{DynamicResource PrimaryDarkBrush}" IsChecked="{Binding IsKardexEntry, Mode=OneWay}" Style="{StaticResource KardexNatureChoiceStyle}"><StackPanel Orientation="Horizontal"><materialDesign:PackIcon Kind="ArrowDownBold" Width="15" Height="15"/><TextBlock Text="ENTRADA" Margin="6,0,0,0"/><materialDesign:PackIcon Kind="CheckCircle" Width="14" Height="14" Margin="7,0,0,0" Visibility="{Binding IsKardexEntry, Converter={StaticResource BooleanToVisibilityConverter}}"/></StackPanel></RadioButton><RadioButton GroupName="KardexNatureChoice" Command="{Binding SelectKardexNatureCommand}" CommandParameter="SALIDA" Tag="#DC2626" IsChecked="{Binding IsKardexExit, Mode=OneWay}" Style="{StaticResource KardexNatureChoiceStyle}"><StackPanel Orientation="Horizontal"><materialDesign:PackIcon Kind="ArrowUpBold" Width="15" Height="15"/><TextBlock Text="SALIDA" Margin="6,0,0,0"/><materialDesign:PackIcon Kind="CheckCircle" Width="14" Height="14" Margin="7,0,0,0" Visibility="{Binding IsKardexExit, Converter={StaticResource BooleanToVisibilityConverter}}"/></StackPanel></RadioButton></StackPanel></StackPanel>
+      <Button Grid.Column="6" Command="{Binding ClearKardexFiltersCommand}" VerticalAlignment="Bottom" Style="{StaticResource NeutralButtonStyle}" ToolTip="Restablecer filtros"><StackPanel Orientation="Horizontal"><materialDesign:PackIcon Kind="FilterRemoveOutline" Width="17" Height="17"/><TextBlock Text="Limpiar" Margin="7,0,0,0"/></StackPanel></Button>
+      <Button Grid.Column="8" Command="{Binding ApplyKardexFiltersCommand}" VerticalAlignment="Bottom" Style="{StaticResource PrimaryButtonStyle}"><StackPanel Orientation="Horizontal"><materialDesign:PackIcon Kind="FilterCheckOutline" Width="17" Height="17" Foreground="White"/><TextBlock Text="Aplicar" Margin="7,0,0,0" Foreground="White"/></StackPanel></Button>
+     </Grid>
+    </Border>
+
+    <Border Grid.Row="4" CornerRadius="13" Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" ClipToBounds="True">
+     <Grid>
+      <DataGrid x:Name="KardexGrid" ItemsSource="{Binding KardexItems}" SelectedItem="{Binding SelectedKardexItem, Mode=TwoWay}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource KontaxDataGridStyle}" ColumnHeaderStyle="{StaticResource KardexHeaderStyle}" CellStyle="{StaticResource KardexCellStyle}" BorderThickness="0" GridLinesVisibility="None" CanUserAddRows="False" CanUserReorderColumns="False" CanUserResizeColumns="True" CanUserSortColumns="False" RowDetailsVisibilityMode="VisibleWhenSelected" SelectionMode="Single" SelectionUnit="FullRow" MinRowHeight="48" ScrollViewer.CanContentScroll="True" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.ScrollUnit="Pixel">
+       <DataGrid.RowDetailsTemplate>
+        <DataTemplate>
+         <Border Margin="10,0,10,10" Padding="13,10" CornerRadius="10" Background="{DynamicResource InputSecondaryBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+           <Grid>
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="1.1*"/><ColumnDefinition Width="*"/><ColumnDefinition Width=".65*"/><ColumnDefinition Width="1.1*"/><ColumnDefinition Width="1.1*"/><ColumnDefinition Width="1.1*"/></Grid.ColumnDefinitions>
+           <StackPanel><TextBlock Text="ORIGEN" Style="{StaticResource KardexDetailLabelStyle}"/><TextBlock Text="{Binding Origen}" Style="{StaticResource KardexDetailValueStyle}"/></StackPanel>
+           <StackPanel Grid.Column="1"><TextBlock Text="CANT. PRESENTACIÓN" Style="{StaticResource KardexDetailLabelStyle}"/><TextBlock Text="{Binding CantidadPresentacion, StringFormat={}{0:0.######}}" Style="{StaticResource KardexDetailValueStyle}"/></StackPanel>
+           <StackPanel Grid.Column="2"><TextBlock Text="FACTOR" Style="{StaticResource KardexDetailLabelStyle}"/><TextBlock Text="{Binding Factor, StringFormat={}{0:0.######}}" Style="{StaticResource KardexDetailValueStyle}"/></StackPanel>
+           <StackPanel Grid.Column="3"><TextBlock Text="STOCK" Style="{StaticResource KardexDetailLabelStyle}"/><TextBlock Style="{StaticResource KardexDetailValueStyle}"><Run Text="{Binding StockAnterior, StringFormat={}{0:0.######}}"/><Run Text="  →  "/><Run Text="{Binding StockNuevo, StringFormat={}{0:0.######}}"/></TextBlock></StackPanel>
+            <StackPanel Grid.Column="4" Visibility="{Binding DataContext.CanViewCosts, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}}"><TextBlock Text="COSTO PROMEDIO" Style="{StaticResource KardexDetailLabelStyle}"/><TextBlock Style="{StaticResource KardexDetailValueStyle}"><Run Text="{Binding CostoPromedioAnterior, StringFormat={}{0:C2}}"/><Run Text="  →  "/><Run Text="{Binding CostoPromedioNuevo, StringFormat={}{0:C2}}"/></TextBlock></StackPanel>
+            <StackPanel Grid.Column="5"><TextBlock Text="USUARIO" Style="{StaticResource KardexDetailLabelStyle}"/><TextBlock Text="{Binding Usuario}" Style="{StaticResource KardexDetailValueStyle}"/></StackPanel>
+             <Border Grid.Row="1" Grid.ColumnSpan="6" Margin="0,10,0,0" Padding="0,9,0,0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
+              <Grid>
+               <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="38"/></Grid.ColumnDefinitions>
+               <StackPanel><TextBlock Text="OBSERVACIÓN" Style="{StaticResource KardexDetailLabelStyle}"/><TextBlock Text="{Binding ObservacionVisual}" ToolTip="{Binding ObservacionVisual}" TextWrapping="Wrap" Style="{StaticResource KardexDetailValueStyle}"/></StackPanel>
+               <Button Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" Command="{Binding DataContext.CollapseKardexDetailCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" Style="{StaticResource KardexDetailCollapseButtonStyle}" ToolTip="Ocultar detalle"><materialDesign:PackIcon Kind="ChevronUp" Width="18" Height="18" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/></Button>
+              </Grid>
+             </Border>
+          </Grid>
+         </Border>
+        </DataTemplate>
+       </DataGrid.RowDetailsTemplate>
+       <DataGrid.Columns>
+        <DataGridTextColumn Binding="{Binding Fecha, StringFormat=dd/MM/yyyy HH:mm}" Width="126" MinWidth="116" ElementStyle="{StaticResource KardexCenteredTextStyle}" HeaderStyle="{StaticResource KardexCenteredHeaderStyle}"><DataGridTextColumn.Header><Button Style="{StaticResource KontaxCenteredSortHeaderStyle}" Command="{Binding DataContext.SortKardexByDateCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"><StackPanel Orientation="Horizontal"><TextBlock Text="FECHA"/><TextBlock Text="{Binding DataContext.KardexDateSortIndicator, RelativeSource={RelativeSource AncestorType=DataGrid}}" Margin="5,0,0,0"/></StackPanel></Button></DataGridTextColumn.Header></DataGridTextColumn>
+        <DataGridTemplateColumn Header="MOVIMIENTO" Width="185" MinWidth="145"><DataGridTemplateColumn.CellTemplate><DataTemplate><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="32"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Width="27" Height="27" CornerRadius="8" VerticalAlignment="Center"><Border.Style><Style TargetType="Border"><Setter Property="Background" Value="#DC2626"/><Style.Triggers><DataTrigger Binding="{Binding EsEntrada}" Value="True"><Setter Property="Background" Value="{DynamicResource PrimaryDarkBrush}"/></DataTrigger></Style.Triggers></Style></Border.Style><materialDesign:PackIcon Width="15" Height="15" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"><materialDesign:PackIcon.Style><Style TargetType="materialDesign:PackIcon"><Setter Property="Kind" Value="ArrowUpBold"/><Style.Triggers><DataTrigger Binding="{Binding EsEntrada}" Value="True"><Setter Property="Kind" Value="ArrowDownBold"/></DataTrigger></Style.Triggers></Style></materialDesign:PackIcon.Style></materialDesign:PackIcon></Border><StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="{Binding Tipo}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding NumeroMovimiento}" Margin="0,2,0,0" FontSize="9" Foreground="{DynamicResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis"/></StackPanel></Grid></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+        <DataGridTextColumn Header="DOCUMENTO" Binding="{Binding DocumentoVisual}" Width="125" MinWidth="105"/>
+        <DataGridTextColumn Header="BODEGA" Binding="{Binding Bodega}" Width="*" MinWidth="130"/>
+        <DataGridTextColumn Header="PRESENTACIÓN" Binding="{Binding Presentacion}" Width="125" MinWidth="105"/>
+        <DataGridTemplateColumn Header="ENTRADA" Width="95" MinWidth="82" HeaderStyle="{StaticResource KardexCenteredHeaderStyle}">
+         <DataGridTemplateColumn.CellTemplate>
+          <DataTemplate>
+           <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Visibility="{Binding EsEntrada, Converter={StaticResource BooleanToVisibilityConverter}}" ToolTip="Cantidad base que ingresó al inventario">
+             <materialDesign:PackIcon Kind="ArrowDownBold" Width="15" Height="15" Margin="0,0,5,0" Foreground="{DynamicResource PrimaryDarkBrush}" VerticalAlignment="Center"/>
+             <TextBlock Style="{StaticResource KardexMovementValueStyle}" Foreground="{DynamicResource PrimaryDarkBrush}"><Run Text="+"/><Run Text="{Binding EntradaBase, StringFormat={}{0:0.######}, Mode=OneWay}"/></TextBlock>
+            </StackPanel>
+            <TextBlock Text="—" Style="{StaticResource KardexMovementValueStyle}" Foreground="{DynamicResource MutedTextBrush}" Visibility="{Binding EsEntrada, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
+           </Grid>
+          </DataTemplate>
+         </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTemplateColumn Header="SALIDA" Width="95" MinWidth="82" HeaderStyle="{StaticResource KardexCenteredHeaderStyle}">
+         <DataGridTemplateColumn.CellTemplate>
+          <DataTemplate>
+           <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Visibility="{Binding EsSalida, Converter={StaticResource BooleanToVisibilityConverter}}" ToolTip="Cantidad base que salió del inventario">
+             <materialDesign:PackIcon Kind="ArrowUpBold" Width="15" Height="15" Margin="0,0,5,0" Foreground="#DC2626" VerticalAlignment="Center"/>
+             <TextBlock Style="{StaticResource KardexMovementValueStyle}" Foreground="#DC2626"><Run Text="−"/><Run Text="{Binding SalidaBase, StringFormat={}{0:0.######}, Mode=OneWay}"/></TextBlock>
+            </StackPanel>
+            <TextBlock Text="—" Style="{StaticResource KardexMovementValueStyle}" Foreground="{DynamicResource MutedTextBrush}" Visibility="{Binding EsSalida, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
+           </Grid>
+          </DataTemplate>
+         </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTextColumn Header="SALDO" Binding="{Binding StockNuevo, StringFormat={}{0:0.######}}" Width="85" MinWidth="72" ElementStyle="{StaticResource KardexValueTextStyle}" HeaderStyle="{StaticResource KardexCenteredHeaderStyle}"/>
+         <DataGridTextColumn Header="COSTO PROM." Binding="{Binding CostoPromedioNuevo, StringFormat={}{0:C2}}" Width="100" MinWidth="85" ElementStyle="{StaticResource KardexValueTextStyle}" HeaderStyle="{StaticResource KardexCenteredHeaderStyle}" Visibility="{Binding Data.CanViewCosts, Source={StaticResource KardexDataContextProxy}, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+       </DataGrid.Columns>
+      </DataGrid>
+       <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding HasKardexItems, Converter={StaticResource InverseBooleanToVisibilityConverter}}"><materialDesign:PackIcon Style="{StaticResource KontaxEmptyListIconStyle}"/><TextBlock Text="No se encontraron registros" Style="{StaticResource KontaxEmptyListTextStyle}"/><Button Content="Limpiar filtros" Command="{Binding ClearKardexFiltersCommand}" Margin="0,14,0,0" Style="{StaticResource NeutralButtonStyle}"/></StackPanel>
+     </Grid>
+    </Border>
+
+    <Grid Grid.Row="6">
+     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="18"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+     <TextBlock Text="{Binding KardexPaginationText}" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
+     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="POR PÁGINA" Margin="0,0,7,0" VerticalAlignment="Center" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource MutedTextBrush}"/><ComboBox Width="78" ItemsSource="{Binding PageSizes}" SelectedItem="{Binding KardexPageSize}" Style="{StaticResource ModernComboBoxStyle}"/></StackPanel>
+     <StackPanel Grid.Column="3" Orientation="Horizontal"><Button Style="{StaticResource KardexPageButtonStyle}" Command="{Binding KardexPreviousPageCommand}" ToolTip="Página anterior"><materialDesign:PackIcon Kind="ChevronLeft"/></Button><ItemsControl ItemsSource="{Binding KardexVisiblePages}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate><DataTemplate><Button Content="{Binding Text}" Margin="4,0,0,0" Command="{Binding DataContext.GoToKardexPageCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}"><Button.Style><Style TargetType="Button" BasedOn="{StaticResource KardexPageButtonStyle}"><Style.Triggers><DataTrigger Binding="{Binding IsCurrent}" Value="True"><Setter Property="Background" Value="{DynamicResource PrimaryButtonBackgroundBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource PrimaryButtonBackgroundBrush}"/><Setter Property="Foreground" Value="White"/></DataTrigger><DataTrigger Binding="{Binding IsSeparator}" Value="True"><Setter Property="IsEnabled" Value="False"/><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/></DataTrigger></Style.Triggers></Style></Button.Style></Button></DataTemplate></ItemsControl.ItemTemplate></ItemsControl><Button Margin="4,0,0,0" Style="{StaticResource KardexPageButtonStyle}" Command="{Binding KardexNextPageCommand}" ToolTip="Página siguiente"><materialDesign:PackIcon Kind="ChevronRight"/></Button></StackPanel>
+    </Grid>
+   </Grid>
+  </Border>
+ </Border>
+</UserControl>

@@ -4,7 +4,6 @@ using KONTAXPRO.Application.Interfaces;
 using KONTAXPRO.Application.Models.Compras;
 using KONTAXPRO.Application.Security;
 using KONTAXPRO.Application.Session;
-using KONTAXPRO.Domain.Entities.Inventario;
 using KONTAXPRO.Domain.Entities.Seguridad;
 using KONTAXPRO.Infrastructure.Inventory;
 using KONTAXPRO.Infrastructure.Persistence;
@@ -88,8 +87,7 @@ public sealed class CompraRecepcionService(
                     : CompraOperationResult.Fail(
                         "El identificador de operación ya fue utilizado.");
 
-            var purchase = await context.Compras
-                .FromSqlInterpolated(
+            var purchase = await context.Compras.FromSqlInterpolated(
                     $"SELECT c.*, c.xmin FROM s_compras.compras AS c WHERE c.id = {request.CompraId} AND c.empresa_id = {companyId} FOR UPDATE")
                 .SingleOrDefaultAsync(cancellationToken);
             if (purchase is null)
@@ -184,8 +182,7 @@ public sealed class CompraRecepcionService(
                 return CompraOperationResult.Fail(
                     "La recepción no tiene un movimiento de inventario asociado.");
 
-            var purchase = await context.Compras
-                .FromSqlInterpolated(
+            var purchase = await context.Compras.FromSqlInterpolated(
                     $"SELECT c.*, c.xmin FROM s_compras.compras AS c WHERE c.id = {receipt.CompraId} AND c.empresa_id = {companyId} FOR UPDATE")
                 .SingleAsync(cancellationToken);
             if (purchase.Estado == "ANULADA")
@@ -198,212 +195,69 @@ public sealed class CompraRecepcionService(
                 .SingleAsync(x => x.Id == receipt.MovimientoInventarioId &&
                                   x.EmpresaId == companyId,
                     cancellationToken);
-            if (original.Estado != "CONFIRMADO" ||
-                original.MovimientoReversoId.HasValue)
-                return CompraOperationResult.Fail(
-                    "El Kardex de la recepción ya fue anulado o revertido.");
-
             await context.Entry(receipt).Collection(x => x.Detalles)
                 .LoadAsync(cancellationToken);
-            var productIds = original.Detalles.Select(x => x.ProductoId)
-                .Distinct().ToList();
-            var hasLaterMovements = await context.MovimientosInventarioDetalles
-                .AsNoTracking().AnyAsync(x => productIds.Contains(x.ProductoId) &&
-                    x.MovimientoInventarioId != original.Id &&
-                    x.MovimientoInventario!.Estado == "CONFIRMADO" &&
-                    (x.MovimientoInventario.FechaMovimiento >
-                         original.FechaMovimiento ||
-                     (x.MovimientoInventario.FechaMovimiento ==
-                          original.FechaMovimiento &&
-                      x.MovimientoInventarioId > original.Id)),
-                    cancellationToken);
-            if (hasLaterMovements)
-                return CompraOperationResult.Fail(
-                    "No se puede revertir esta recepción porque uno de sus productos tiene movimientos posteriores. Revierte primero esas operaciones para conservar el Kardex y el costo promedio.");
 
             var now = DateTime.UtcNow;
-            var reverseType = await context.TiposMovimientoInventario
-                .SingleAsync(x => x.Codigo == "AJUSTE_SALIDA" && x.Estado == 1,
-                    cancellationToken);
-            var reverseNumber = await InventoryService.ObtenerSiguienteNumeroAsync(
-                context, companyId, receipt.EstablecimientoId,
-                "MOVIMIENTO_INVENTARIO", cancellationToken);
-            var reverse = new MovimientoInventario
-            {
-                EmpresaId = companyId,
-                NumeroMovimiento = reverseNumber,
-                TipoMovimientoId = reverseType.Id,
-                FechaMovimiento = now,
-                BodegaId = receipt.BodegaId,
-                OrigenTipoId = original.OrigenTipoId,
-                OrigenId = purchase.Id,
-                NumeroDocumento = purchase.NumeroDocumento,
-                Referencia = $"REVERSO {receipt.NumeroRecepcion}",
-                Observacion = reason,
-                UsuarioId = currentSession.UsuarioId,
-                Estado = "CONFIRMADO",
-                CreatedAt = now,
-                UpdatedAt = now
-            };
-            context.MovimientosInventario.Add(reverse);
-
-            var availableState = await context.EstadosSerie
-                .SingleAsync(x => x.Codigo == "DISPONIBLE" && x.Estado == 1,
-                    cancellationToken);
-            var retiredState = await context.EstadosSerie
-                .SingleAsync(x => x.Codigo == "BAJA" && x.Estado == 1,
-                    cancellationToken);
-
-            foreach (var productGroup in original.Detalles
-                         .OrderBy(x => x.Id).GroupBy(x => x.ProductoId))
-            {
-                var ordered = productGroup.OrderBy(x => x.Id).ToList();
-                var first = ordered[0];
-                var last = ordered[^1];
-                var existence = await context.ProductosExistencias
-                    .SingleAsync(x => x.ProductoId == productGroup.Key &&
-                                      x.BodegaId == receipt.BodegaId,
-                        cancellationToken);
-                if (Math.Abs(existence.StockActual - last.StockNuevo) >
-                        QuantityTolerance || existence.StockReservado > 0)
-                    return CompraOperationResult.Fail(
-                        "La existencia actual ya no coincide con el cierre de la recepción o tiene reservas. No es seguro revertirla.");
-
-                existence.StockActual = first.StockAnterior;
-                existence.UpdatedAt = now;
-                var cost = await context.ProductosCostos.SingleAsync(x =>
-                    x.ProductoId == productGroup.Key, cancellationToken);
-                if (Math.Abs(cost.CostoPromedio - last.CostoPromedioNuevo) >
-                    QuantityTolerance)
-                    return CompraOperationResult.Fail(
-                        "El costo promedio cambió después de la recepción. No es seguro revertirla.");
-                cost.CostoPromedio = first.CostoPromedioAnterior;
-                var firstReceiptDetail = receipt.Detalles
-                    .Where(x => x.ProductoId == productGroup.Key)
-                    .OrderBy(x => x.Id).FirstOrDefault();
-                var priorReceiptId = await context.ComprasRecepcionesDetalles
-                    .AsNoTracking()
-                    .Where(x => x.ProductoId == productGroup.Key &&
-                                x.CompraRecepcionId != receipt.Id &&
-                                x.CompraRecepcion!.Estado == "CONFIRMADA" &&
-                                (x.CompraRecepcion.FechaRecepcion <
-                                     receipt.FechaRecepcion ||
-                                 (x.CompraRecepcion.FechaRecepcion ==
-                                      receipt.FechaRecepcion &&
-                                  x.CompraRecepcionId < receipt.Id)))
-                    .OrderByDescending(x => x.CompraRecepcion!.FechaRecepcion)
-                    .ThenByDescending(x => x.CompraRecepcionId)
-                    .Select(x => (long?)x.CompraRecepcionId)
-                    .FirstOrDefaultAsync(cancellationToken);
-                var priorEffectiveCost = priorReceiptId.HasValue
-                    ? await context.ComprasRecepcionesDetalles.AsNoTracking()
-                        .Where(x => x.CompraRecepcionId == priorReceiptId &&
-                                    x.ProductoId == productGroup.Key)
-                        .GroupBy(_ => 1)
-                        .Select(x => x.Sum(y => y.CostoTotal) /
-                                     x.Sum(y => y.CantidadBase))
-                        .SingleAsync(cancellationToken)
-                    : 0m;
-                var priorPurchasePrice = await context
-                    .ComprasRecepcionesDetalles.AsNoTracking()
-                    .Where(x => x.ProductoId == productGroup.Key &&
-                                !x.EsBonificacion &&
-                                x.CompraRecepcionId != receipt.Id &&
-                                x.CompraRecepcion!.Estado == "CONFIRMADA" &&
-                                (x.CompraRecepcion.FechaRecepcion <
-                                     receipt.FechaRecepcion ||
-                                 (x.CompraRecepcion.FechaRecepcion ==
-                                      receipt.FechaRecepcion &&
-                                  x.CompraRecepcionId < receipt.Id)))
-                    .OrderByDescending(x => x.CompraRecepcion!.FechaRecepcion)
-                    .ThenByDescending(x => x.CompraRecepcionId)
-                    .ThenByDescending(x => x.Id)
-                    .Select(x => (decimal?)(x.CompraDetalle!.PrecioUnitarioCompra /
-                                             x.FactorConversion))
-                    .FirstOrDefaultAsync(cancellationToken) ?? 0m;
-                cost.UltimoPrecioCompra = firstReceiptDetail?
-                    .UltimoPrecioCompraAnterior ?? priorPurchasePrice;
-                cost.UltimoCostoEfectivo = firstReceiptDetail?
-                    .UltimoCostoEfectivoAnterior ?? priorEffectiveCost;
-                cost.UpdatedAt = now;
-
-                // Se deshace en orden LIFO para que cada snapshot anterior/nuevo
-                // conserve una cadena de Kardex coherente cuando el mismo
-                // producto o lote aparece en más de una línea de la recepción.
-                foreach (var source in ordered.AsEnumerable().Reverse())
+            var reverse = await InventoryReversalProcessor.ReverseAsync(
+                context, original, companyId, receipt.EstablecimientoId,
+                currentSession.UsuarioId, receipt.Id,
+                purchase.NumeroDocumento, $"REVERSO {receipt.NumeroRecepcion}",
+                reason, now,
+                async (productId, cost, token) =>
                 {
-                    var reversedDetail = new MovimientoInventarioDetalle
-                    {
-                        MovimientoInventario = reverse,
-                        ProductoId = source.ProductoId,
-                        ProductoPresentacionId = source.ProductoPresentacionId,
-                        CantidadPresentacion = source.CantidadPresentacion,
-                        FactorConversion = source.FactorConversion,
-                        CantidadBase = source.CantidadBase,
-                        CostoUnitarioBase = source.CostoUnitarioBase,
-                        CostoTotal = source.CostoTotal,
-                        StockAnterior = source.StockNuevo,
-                        StockNuevo = source.StockAnterior,
-                        CostoPromedioAnterior = source.CostoPromedioNuevo,
-                        CostoPromedioNuevo = source.CostoPromedioAnterior,
-                        EsBonificacion = source.EsBonificacion,
-                        Observacion = reason,
-                        CreatedAt = now,
-                        UpdatedAt = now
-                    };
-                    reverse.Detalles.Add(reversedDetail);
-                    foreach (var sourceLot in source.Lotes)
-                    {
-                        var lotExistence = await context.ProductosLotesExistencias
-                            .SingleAsync(x => x.LoteId == sourceLot.ProductoLoteId &&
-                                              x.BodegaId == receipt.BodegaId,
-                                cancellationToken);
-                        if (Math.Abs(lotExistence.StockActual -
-                                     sourceLot.StockLoteNuevo) >
-                                QuantityTolerance ||
-                            lotExistence.StockReservado > 0)
-                            return CompraOperationResult.Fail(
-                                "Un lote de la recepción ya cambió o tiene reservas. No es seguro revertirlo.");
-                        lotExistence.StockActual = sourceLot.StockLoteAnterior;
-                        lotExistence.UpdatedAt = now;
-                        reversedDetail.Lotes.Add(
-                            new MovimientoInventarioDetalleLote
-                            {
-                                ProductoLoteId = sourceLot.ProductoLoteId,
-                                CantidadBase = sourceLot.CantidadBase,
-                                StockLoteAnterior = sourceLot.StockLoteNuevo,
-                                StockLoteNuevo = sourceLot.StockLoteAnterior,
-                                CreatedAt = now
-                            });
-                    }
-                    foreach (var sourceSeries in source.Series)
-                    {
-                        var series = await context.ProductosSeries.SingleAsync(
-                            x => x.Id == sourceSeries.ProductoSerieId &&
-                                 x.BodegaId == receipt.BodegaId,
-                            cancellationToken);
-                        if (series.EstadoSerieId != availableState.Id)
-                            return CompraOperationResult.Fail(
-                                $"La serie '{series.NumeroSerie}' ya no está disponible en la bodega. Revierte primero su operación posterior.");
-                        series.EstadoSerieId = retiredState.Id;
-                        series.UpdatedAt = now;
-                        reversedDetail.Series.Add(
-                            new MovimientoInventarioDetalleSerie
-                            {
-                                ProductoSerieId = series.Id,
-                                CreatedAt = now
-                            });
-                    }
-                }
-            }
+                    var firstReceiptDetail = receipt.Detalles
+                        .Where(x => x.ProductoId == productId)
+                        .OrderBy(x => x.Id).FirstOrDefault();
+                    var priorReceiptId = await context
+                        .ComprasRecepcionesDetalles.AsNoTracking()
+                        .Where(x => x.ProductoId == productId &&
+                            x.CompraRecepcionId != receipt.Id &&
+                            x.CompraRecepcion!.Estado == "CONFIRMADA" &&
+                            (x.CompraRecepcion.FechaRecepcion <
+                                 receipt.FechaRecepcion ||
+                             (x.CompraRecepcion.FechaRecepcion ==
+                                  receipt.FechaRecepcion &&
+                              x.CompraRecepcionId < receipt.Id)))
+                        .OrderByDescending(x =>
+                            x.CompraRecepcion!.FechaRecepcion)
+                        .ThenByDescending(x => x.CompraRecepcionId)
+                        .Select(x => (long?)x.CompraRecepcionId)
+                        .FirstOrDefaultAsync(token);
+                    var priorEffectiveCost = priorReceiptId.HasValue
+                        ? await context.ComprasRecepcionesDetalles.AsNoTracking()
+                            .Where(x => x.CompraRecepcionId == priorReceiptId &&
+                                        x.ProductoId == productId)
+                            .GroupBy(_ => 1)
+                            .Select(x => x.Sum(y => y.CostoTotal) /
+                                         x.Sum(y => y.CantidadBase))
+                            .SingleAsync(token)
+                        : 0m;
+                    var priorPurchasePrice = await context
+                        .ComprasRecepcionesDetalles.AsNoTracking()
+                        .Where(x => x.ProductoId == productId &&
+                            !x.EsBonificacion &&
+                            x.CompraRecepcionId != receipt.Id &&
+                            x.CompraRecepcion!.Estado == "CONFIRMADA" &&
+                            (x.CompraRecepcion.FechaRecepcion <
+                                 receipt.FechaRecepcion ||
+                             (x.CompraRecepcion.FechaRecepcion ==
+                                  receipt.FechaRecepcion &&
+                              x.CompraRecepcionId < receipt.Id)))
+                        .OrderByDescending(x =>
+                            x.CompraRecepcion!.FechaRecepcion)
+                        .ThenByDescending(x => x.CompraRecepcionId)
+                        .ThenByDescending(x => x.Id)
+                        .Select(x => (decimal?)(
+                            x.CompraDetalle!.PrecioUnitarioCompra /
+                            x.FactorConversion))
+                        .FirstOrDefaultAsync(token) ?? 0m;
+                    cost.UltimoPrecioCompra = firstReceiptDetail?
+                        .UltimoPrecioCompraAnterior ?? priorPurchasePrice;
+                    cost.UltimoCostoEfectivo = firstReceiptDetail?
+                        .UltimoCostoEfectivoAnterior ?? priorEffectiveCost;
+                }, cancellationToken);
 
-            await context.SaveChangesAsync(cancellationToken);
-            original.Estado = "ANULADO";
-            original.AnuladoPorUsuarioId = currentSession.UsuarioId;
-            original.AnuladoAt = now;
-            original.MotivoAnulacion = reason;
-            original.MovimientoReversoId = reverse.Id;
-            original.UpdatedAt = now;
             receipt.Estado = "ANULADA";
             receipt.AnuladaPorUsuarioId = currentSession.UsuarioId;
             receipt.AnuladaAt = now;
@@ -419,9 +273,11 @@ public sealed class CompraRecepcionService(
                 .Where(x => inventoryDetailIds.Contains(x.CompraDetalleId) &&
                             x.CompraRecepcion!.Estado == "CONFIRMADA")
                 .GroupBy(x => x.CompraDetalleId)
-                .Select(x => new { Id = x.Key,
-                    Quantity = x.Sum(y => y.CantidadPresentacion) })
-                .ToDictionaryAsync(x => x.Id, x => x.Quantity,
+                .Select(x => new
+                {
+                    Id = x.Key,
+                    Quantity = x.Sum(y => y.CantidadPresentacion)
+                }).ToDictionaryAsync(x => x.Id, x => x.Quantity,
                     cancellationToken);
             var receivedAny = receivedByDetail.Values.Any(x =>
                 x > QuantityTolerance);
@@ -480,5 +336,4 @@ public sealed class CompraRecepcionService(
              x.Rol.RolesPermisos.Any(rp => rp.Permiso!.Codigo == permission &&
                                            rp.Permiso.Estado == 1)),
             cancellationToken);
-
 }
