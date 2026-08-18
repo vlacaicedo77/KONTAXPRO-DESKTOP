@@ -1,6 +1,8 @@
 ﻿using KONTAXPRO.Application.Interfaces;
 using KONTAXPRO.Application.Models;
 using KONTAXPRO.Application.Session;
+using KONTAXPRO.Domain.Entities.Configuracion;
+using KONTAXPRO.Domain.Entities.Inventario;
 using KONTAXPRO.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -48,7 +50,7 @@ public class UsuarioEmpresaService : IUsuarioEmpresaService
     }
 
     public async Task SeleccionarEmpresaAsync(
-    long usuarioEmpresaId)
+        long usuarioEmpresaId)
     {
         var empresaAnteriorId = _currentSession.EmpresaId;
         await using var context =
@@ -108,18 +110,20 @@ public class UsuarioEmpresaService : IUsuarioEmpresaService
                 .Distinct()
                 .ToList();
 
-        // Limpiar contexto operativo anterior
-        _currentSession.EstablecimientoId = null;
-        _currentSession.EstablecimientoCodigo = null;
-        _currentSession.EstablecimientoNombre = null;
+        var establecimientos = await context
+            .UsuariosEmpresasEstablecimientos
+            .AsNoTracking()
+            .Where(x =>
+                x.UsuarioEmpresaId == usuarioEmpresa.Id &&
+                x.Establecimiento != null &&
+                x.Establecimiento.Estado == 1)
+            .Select(x => x.Establecimiento!)
+            .OrderByDescending(x => x.EsMatriz)
+            .ThenBy(x => x.Codigo)
+            .ToListAsync();
+        _currentSession.CantidadEstablecimientosDisponibles =
+            establecimientos.Count;
 
-        _currentSession.PuntoEmisionId = null;
-        _currentSession.PuntoEmisionCodigo = null;
-        _currentSession.PuntoEmisionNombre = null;
-        _currentSession.BodegaId = null;
-        _currentSession.BodegaNombre = null;
-
-        // Cargar configuración predeterminada del usuario para la empresa
         var configuracion = await context.UsuariosConfiguracionesEmpresa
             .AsNoTracking()
             .Include(x => x.Establecimiento)
@@ -131,42 +135,178 @@ public class UsuarioEmpresaService : IUsuarioEmpresaService
                 context.UsuariosEmpresasEstablecimientos.Any(
                     acceso =>
                         acceso.UsuarioEmpresaId == usuarioEmpresa.Id &&
-                        acceso.EstablecimientoId == x.EstablecimientoId));
+                        acceso.EstablecimientoId == x.EstablecimientoId) &&
+                x.Establecimiento != null &&
+                x.Establecimiento.Estado == 1);
 
-        if (configuracion?.Establecimiento is not null)
+        var establecimiento = configuracion?.Establecimiento ??
+            establecimientos.FirstOrDefault();
+        PuntoEmision? punto = null;
+        Bodega? bodega = null;
+        if (establecimiento is not null)
         {
-            var establecimiento = configuracion.Establecimiento;
-
-            _currentSession.EstablecimientoId =
-                establecimiento.Id;
-
-            _currentSession.EstablecimientoCodigo =
-                establecimiento.Codigo;
-
-            _currentSession.EstablecimientoNombre =
-                establecimiento.Nombre;
-
-            if (configuracion.PuntoEmision is not null)
-            {
-                var puntoEmision = configuracion.PuntoEmision;
-
-                _currentSession.PuntoEmisionId =
-                    puntoEmision.Id;
-
-                _currentSession.PuntoEmisionCodigo =
-                    puntoEmision.Codigo;
-
-                _currentSession.PuntoEmisionNombre =
-                    puntoEmision.Nombre;
-            }
-
-            if (configuracion.Bodega is not null)
-            {
-                _currentSession.BodegaId = configuracion.Bodega.Id;
-                _currentSession.BodegaNombre = configuracion.Bodega.Nombre;
-            }
+            punto = configuracion?.PuntoEmision is { Estado: 1 } configuredPoint &&
+                configuredPoint.EstablecimientoId == establecimiento.Id
+                ? configuredPoint
+                : await context.PuntosEmision.AsNoTracking()
+                    .Where(x => x.EstablecimientoId == establecimiento.Id &&
+                        x.Estado == 1)
+                    .OrderBy(x => x.Codigo)
+                    .FirstOrDefaultAsync();
+            bodega = configuracion?.Bodega is { Estado: 1 } configuredWarehouse &&
+                configuredWarehouse.EstablecimientoId == establecimiento.Id
+                ? configuredWarehouse
+                : await context.Bodegas.AsNoTracking()
+                    .Where(x => x.EstablecimientoId == establecimiento.Id &&
+                        x.Estado == 1)
+                    .OrderBy(x => x.Codigo)
+                    .FirstOrDefaultAsync();
         }
 
+        AplicarContextoOperativo(establecimiento, punto, bodega);
+
         _currentSession.NotifyEmpresaActivaChanged(empresaAnteriorId);
+    }
+
+    public async Task<List<EstablecimientoDisponible>>
+        ObtenerEstablecimientosUsuarioAsync(
+            long usuarioId,
+            long empresaId)
+    {
+        await using var context =
+            await _dbContextFactory.CreateDbContextAsync();
+
+        return await context.UsuariosEmpresasEstablecimientos
+            .AsNoTracking()
+            .Where(x =>
+                x.UsuarioEmpresa != null &&
+                x.UsuarioEmpresa.UsuarioId == usuarioId &&
+                x.UsuarioEmpresa.EmpresaId == empresaId &&
+                x.UsuarioEmpresa.Estado == 1 &&
+                x.Establecimiento != null &&
+                x.Establecimiento.EmpresaId == empresaId &&
+                x.Establecimiento.Estado == 1)
+            .OrderByDescending(x => x.Establecimiento!.EsMatriz)
+            .ThenBy(x => x.Establecimiento!.Codigo)
+            .Select(x => new EstablecimientoDisponible
+            {
+                EstablecimientoId = x.EstablecimientoId,
+                Codigo = x.Establecimiento!.Codigo,
+                Nombre = x.Establecimiento.Nombre,
+                NombreComercial = x.Establecimiento.NombreComercial ??
+                    x.Establecimiento.Nombre,
+                Direccion = x.Establecimiento.Direccion,
+                EsMatriz = x.Establecimiento.EsMatriz
+            })
+            .ToListAsync();
+    }
+
+    public async Task SeleccionarEstablecimientoAsync(
+        long establecimientoId)
+    {
+        if (!_currentSession.EmpresaId.HasValue ||
+            _currentSession.UsuarioId <= 0)
+            throw new InvalidOperationException(
+                "Seleccione una empresa antes de cambiar de establecimiento.");
+
+        var empresaId = _currentSession.EmpresaId.Value;
+        var anteriorId = _currentSession.EstablecimientoId;
+        await using var context =
+            await _dbContextFactory.CreateDbContextAsync();
+
+        var acceso = await context.UsuariosEmpresasEstablecimientos
+            .AsNoTracking()
+            .Include(x => x.UsuarioEmpresa)
+            .Include(x => x.Establecimiento)
+            .SingleOrDefaultAsync(x =>
+                x.EstablecimientoId == establecimientoId &&
+                x.UsuarioEmpresa != null &&
+                x.UsuarioEmpresa.UsuarioId == _currentSession.UsuarioId &&
+                x.UsuarioEmpresa.EmpresaId == empresaId &&
+                x.UsuarioEmpresa.Estado == 1 &&
+                x.Establecimiento != null &&
+                x.Establecimiento.EmpresaId == empresaId &&
+                x.Establecimiento.Estado == 1)
+            ?? throw new InvalidOperationException(
+                "El establecimiento no está disponible para el usuario.");
+
+        var configuracion = await context.UsuariosConfiguracionesEmpresa
+            .SingleOrDefaultAsync(x =>
+                x.UsuarioId == _currentSession.UsuarioId &&
+                x.EmpresaId == empresaId);
+
+        PuntoEmision? punto = null;
+        if (configuracion?.EstablecimientoId == establecimientoId &&
+            configuracion.PuntoEmisionId.HasValue)
+            punto = await context.PuntosEmision.AsNoTracking()
+                .SingleOrDefaultAsync(x =>
+                    x.Id == configuracion.PuntoEmisionId.Value &&
+                    x.EstablecimientoId == establecimientoId &&
+                    x.Estado == 1);
+        punto ??= await context.PuntosEmision.AsNoTracking()
+            .Where(x => x.EstablecimientoId == establecimientoId &&
+                x.Estado == 1)
+            .OrderBy(x => x.Codigo)
+            .FirstOrDefaultAsync();
+
+        Bodega? bodega = null;
+        if (configuracion?.EstablecimientoId == establecimientoId &&
+            configuracion.BodegaId.HasValue)
+            bodega = await context.Bodegas.AsNoTracking()
+                .SingleOrDefaultAsync(x =>
+                    x.Id == configuracion.BodegaId.Value &&
+                    x.EstablecimientoId == establecimientoId &&
+                    x.Estado == 1);
+        bodega ??= await context.Bodegas.AsNoTracking()
+            .Where(x => x.EstablecimientoId == establecimientoId &&
+                x.Estado == 1)
+            .OrderBy(x => x.Codigo)
+            .FirstOrDefaultAsync();
+
+        var now = DateTime.UtcNow;
+        if (configuracion is null)
+        {
+            configuracion = new UsuarioConfiguracionEmpresa
+            {
+                UsuarioId = _currentSession.UsuarioId,
+                EmpresaId = empresaId,
+                CreatedAt = now
+            };
+            context.UsuariosConfiguracionesEmpresa.Add(configuracion);
+        }
+        configuracion.EstablecimientoId = establecimientoId;
+        configuracion.PuntoEmisionId = punto?.Id;
+        configuracion.BodegaId = bodega?.Id;
+        configuracion.UpdatedAt = now;
+        await context.SaveChangesAsync();
+
+        _currentSession.CantidadEstablecimientosDisponibles =
+            await context.UsuariosEmpresasEstablecimientos.AsNoTracking()
+                .CountAsync(x =>
+                    x.UsuarioEmpresaId == acceso.UsuarioEmpresaId &&
+                    x.Establecimiento != null &&
+                    x.Establecimiento.Estado == 1);
+        AplicarContextoOperativo(acceso.Establecimiento, punto, bodega);
+        _currentSession.NotifyEstablecimientoActivoChanged(anteriorId);
+    }
+
+    private void AplicarContextoOperativo(
+        Establecimiento? establecimiento,
+        PuntoEmision? punto,
+        Bodega? bodega)
+    {
+        _currentSession.EstablecimientoId = establecimiento?.Id;
+        _currentSession.EstablecimientoCodigo = establecimiento?.Codigo;
+        _currentSession.EstablecimientoNombre = establecimiento is null
+            ? null
+            : establecimiento.NombreComercial ?? establecimiento.Nombre;
+        _currentSession.PuntoEmisionId = punto?.Id;
+        _currentSession.PuntoEmisionCodigo = punto?.Codigo;
+        _currentSession.PuntoEmisionNombre = punto?.Nombre;
+        _currentSession.BodegaId = bodega?.Id;
+        _currentSession.BodegaNombre = bodega?.Nombre;
+        _currentSession.CajaId = null;
+        _currentSession.CajaNombre = null;
+        _currentSession.CajaSesionId = null;
     }
 }

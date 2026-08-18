@@ -25,6 +25,8 @@ public sealed class EstablecimientoConfiguration
             .HasColumnName("prefijo").HasMaxLength(16).IsRequired();
         builder.Property(x => x.Nombre)
             .HasColumnName("nombre").HasMaxLength(150).IsRequired();
+        builder.Property(x => x.NombreComercial)
+            .HasColumnName("nombre_comercial").HasMaxLength(300);
         builder.Property(x => x.Direccion)
             .HasColumnName("direccion").HasMaxLength(500).IsRequired();
         builder.Property(x => x.EsMatriz)

@@ -3,14 +3,16 @@ namespace KONTAXPRO.Application.Models.FacturacionElectronica;
 public sealed record MensajeSri(
     string? Codigo,
     string? Mensaje,
-    string? InformacionAdicional);
+    string? InformacionAdicional,
+    string? Tipo = null);
 
 public sealed record ResultadoSri(
     bool Exitoso,
     string Estado,
     string? NumeroAutorizacion,
     DateTime? FechaAutorizacion,
-    IReadOnlyList<MensajeSri> Mensajes);
+    IReadOnlyList<MensajeSri> Mensajes,
+    string? XmlAutorizado = null);
 
 public sealed record ArtefactoElectronico(
     long EmpresaId,

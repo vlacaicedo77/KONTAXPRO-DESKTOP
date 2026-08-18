@@ -7,6 +7,7 @@ public class Establecimiento
     public string Codigo { get; set; } = string.Empty;
     public string Prefijo { get; set; } = string.Empty;
     public string Nombre { get; set; } = string.Empty;
+    public string? NombreComercial { get; set; }
     public string Direccion { get; set; } = string.Empty;
     public bool EsMatriz { get; set; }
     public int Estado { get; set; } = 1;

@@ -1,2637 +1,2763 @@
-# KONTAXPRO Desktop — Implementar INVENTARIO / KARDEX V1
+# KONTAXPRO Desktop — Implementar VENTAS V1
 
-Quiero que continuemos con el desarrollo de **KONTAXPRO Desktop**.
+Continuemos con el desarrollo de **KONTAXPRO Desktop**.
 
-A esta altura ya están desarrollados y funcionales, entre otros, los módulos de:
+Hemos llegado a uno de los módulos centrales del sistema:
+
+> # VENTAS V1
+
+Actualmente ya existen y han evolucionado dentro del proyecto componentes importantes como:
 
 * Productos.
 * Clientes.
 * Proveedores.
 * Compras.
 * Operaciones sin comprobante.
-* Las estructuras y relaciones que hemos ido preparando para Contabilidad.
-* Configuración, seguridad, empresas, establecimientos, bodegas y demás componentes que ya existen en el proyecto.
+* Inventario / Kardex V1.
+* Configuración de firma electrónica.
+* Motor nativo de Facturación Electrónica SRI.
+* Configuración y creación de establecimientos/puntos de emisión según el estado actual del proyecto.
+* Seguridad.
+* Multiempresa.
+* Auditoría.
+* Configuración.
+* Estructuras y relaciones preparadas para Contabilidad.
+* Otros componentes que puedan haberse agregado o modificado durante el desarrollo.
 
-Ahora quiero implementar **INVENTARIO / KARDEX V1**.
+VENTAS debe integrarse con **todo lo que ya existe**.
 
-Este módulo es especialmente importante porque debe convertirse en el **motor central de movimientos y existencias de KONTAXPRO**, que posteriormente será utilizado también por Ventas, devoluciones, transferencias, ajustes, notas de crédito y otros procesos.
+No quiero crear una implementación paralela de Inventario, Clientes, Productos, precios, impuestos, secuenciales, firma electrónica, SRI, auditoría o Contabilidad.
 
-La filosofía sigue siendo:
+La filosofía continúa siendo:
 
-> **Robustez por dentro, simplicidad por fuera.**
-
-No quiero crear simplemente una pantalla para consultar stock. Quiero construir correctamente el subsistema de inventario sobre el cual se apoyarán Compras y, posteriormente, Ventas.
+> **ROBUSTEZ POR DENTRO, SIMPLICIDAD POR FUERA.**
 
 ---
 
-# 1. PRIMERO: ANALIZA EL ESTADO ACTUAL DEL PROYECTO
+# 1. REGLA OBLIGATORIA: EXPLORA PRIMERO EL PROYECTO ACTUAL
 
-Antes de modificar código:
+ANTES de diseñar tablas, DTOs, servicios, Views, ViewModels o migraciones:
 
-1. Lee el `AGENTS.md` de la raíz.
-2. Lee cualquier `AGENTS.md` adicional que corresponda a las carpetas/proyectos que vas a modificar.
-3. Revisa `/docs` y especialmente la documentación actual de:
+## EXPLORA EXHAUSTIVAMENTE EL ESTADO ACTUAL DEL REPOSITORIO.
+
+KONTAXPRO ha sufrido numerosos cambios y mejoras desde su arquitectura inicial.
+
+Por tanto:
+
+> **EL CÓDIGO ACTUAL Y LA DOCUMENTACIÓN ACTUAL SON LA FUENTE DE VERDAD.**
+
+No debes asumir que una estructura descrita meses atrás sigue vigente.
+
+Antes de modificar cualquier cosa:
+
+1. Lee `AGENTS.md` de la raíz.
+2. Busca otros `AGENTS.md` aplicables.
+3. Revisa `/docs`.
+4. Lee especialmente la documentación actual de:
 
    * Productos.
-   * Compras.
    * Clientes.
    * Proveedores.
-   * Operaciones sin comprobante.
-   * Contabilidad.
-   * Base de datos.
-   * Arquitectura.
-4. Revisa las migraciones actuales.
-5. Revisa las entidades actuales.
-6. Revisa DTOs, servicios, interfaces, repositorios, ViewModels, Views y pruebas existentes.
-7. Revisa cómo se están manejando actualmente:
-
-   * Empresa.
-   * Establecimiento.
-   * Punto de emisión.
-   * Bodega.
-   * Producto.
-   * Presentaciones.
-   * Existencias.
-   * Costos.
-   * Lotes.
-   * Series.
    * Compras.
-   * Estados de documentos.
+   * Inventario/Kardex.
    * Operaciones sin comprobante.
-   * Auditoría.
+   * Facturación Electrónica.
+   * Firma electrónica.
+   * Establecimientos.
+   * Puntos de emisión.
+   * Secuenciales.
    * Contabilidad.
-8. Revisa específicamente si ya existen:
+   * Seguridad.
+   * Auditoría.
+   * Configuración.
+5. Revisa:
 
-   * tablas de movimientos de inventario;
-   * cabecera/detalle de movimientos;
-   * existencias;
-   * existencias por lote;
-   * series;
-   * costos;
-   * tipos de movimiento;
-   * servicios relacionados con stock;
-   * lógica de actualización de inventario desde Compras.
+   * entidades;
+   * DbContext;
+   * configuraciones EF;
+   * migraciones;
+   * interfaces;
+   * servicios;
+   * repositories, si existen;
+   * DTOs;
+   * Commands/Results existentes;
+   * Views;
+   * ViewModels;
+   * DI;
+   * tests;
+   * navegación;
+   * permisos.
+6. Busca cualquier implementación existente relacionada con:
 
-**El código actual del repositorio es la fuente principal de verdad.**
+   * ventas;
+   * factura;
+   * proforma;
+   * cotización;
+   * pagos;
+   * listas de precios;
+   * descuentos;
+   * formas de pago;
+   * secuenciales;
+   * comprobantes electrónicos;
+   * operaciones contables;
+   * stock;
+   * lotes;
+   * series.
+7. Comprueba cómo trabaja actualmente:
 
-No quiero que regreses a una estructura antigua que haya quedado obsoleta en documentos previos.
+   * `CurrentSession`;
+   * EmpresaId;
+   * establecimiento;
+   * punto de emisión;
+   * bodega;
+   * usuario;
+   * permisos.
 
-Si algo ya existe y está correctamente diseñado, **reutilízalo y complétalo**.
+Si algo ya existe y está correctamente implementado:
 
-No crees estructuras paralelas con el mismo propósito.
+> **REUTILÍZALO.**
+
+No crees una segunda implementación.
 
 ---
 
-# 2. VERIFICA EL ESTADO ACTUAL ANTES DE EMPEZAR
+# 2. AUDITORÍA PREVIA
 
-Ejecuta:
+Antes de escribir código ejecuta:
 
 ```powershell
 dotnet build
 dotnet test
 ```
 
-Confirma el estado inicial.
+Identifica el estado inicial.
 
-Si existe algún error previo no relacionado con Inventario/Kardex, identifícalo antes de realizar cambios para no confundirlo posteriormente con una regresión.
+No confundas fallos preexistentes con regresiones provocadas por Ventas.
 
 ---
 
-# 3. OBJETIVO PRINCIPAL
+# 3. OBJETIVO FUNCIONAL
 
-Quiero que Inventario/Kardex sea el único mecanismo autorizado para producir cambios de existencias.
+VENTAS V1 debe permitir completar de forma robusta:
+
+```text
+CLIENTE
+   ↓
+PRODUCTOS / SERVICIOS
+   ↓
+PRESENTACIONES
+   ↓
+PRECIOS
+   ↓
+DESCUENTOS
+   ↓
+IMPUESTOS
+   ↓
+FORMA(S) DE PAGO
+   ↓
+CONFIRMAR VENTA
+   ↓
+────────────────────────────────
+   │              │             │
+   ▼              ▼             ▼
+INVENTARIO    CONTABILIDAD   FACTURA SRI
+   │                            │
+   ▼                            ▼
+KARDEX                      AUTORIZACIÓN
+                                │
+                                ▼
+                              RIDE
+                          cuando exista
+```
+
+VENTAS debe ser el **orquestador de la operación comercial**.
+
+No debe reconstruir internamente la lógica de otros módulos.
+
+---
+
+# 4. PRINCIPIO ARQUITECTÓNICO
+
+VENTAS no debe:
+
+* calcular directamente existencias si Inventario ya lo hace;
+* modificar stock directamente;
+* implementar nuevamente costo promedio;
+* crear nuevamente Clientes;
+* crear nuevamente Productos;
+* implementar nuevamente firma XAdES;
+* implementar nuevamente SOAP SRI;
+* generar secuenciales con otra lógica;
+* crear otro sistema de auditoría;
+* duplicar lógica contable;
+* duplicar permisos.
+
+Debe consumir los servicios existentes.
 
 Conceptualmente:
 
 ```text
-                   PRODUCTOS
-                       │
-                       ▼
-                INVENTARIO / KARDEX
-             ┌─────────┼─────────┐
-             │         │         │
-          COMPRAS    VENTAS    AJUSTES
-             │         │         │
-          ENTRADA     SALIDA    + / -
-             │         │         │
-             └─────────┼─────────┘
-                       ▼
-                 EXISTENCIAS
-                 COSTOS
-                 LOTES
-                 SERIES
-                 HISTORIAL
+SalesService / caso de uso Venta
+          │
+          ├── Clientes
+          ├── Productos
+          ├── Precios
+          ├── Inventario
+          ├── Facturación Electrónica
+          ├── Contabilidad
+          └── Auditoría
 ```
 
-Compras, Ventas u otros módulos **no deberían modificar el stock directamente**.
-
-Deben solicitar al motor de Inventario que registre la operación correspondiente.
+Adapta los nombres a la arquitectura ACTUAL.
 
 ---
 
-# 4. PRINCIPIO FUNDAMENTAL: MOVIMIENTOS INMUTABLES
+# 5. PRIMERO DETERMINA QUÉ YA EXISTE PARA VENTAS
 
-El Kardex debe representar hechos ocurridos.
-
-Una vez aplicado un movimiento al inventario:
-
-* no debe editarse silenciosamente;
-* no debe eliminarse físicamente para “corregir” stock;
-* no debe modificarse la cantidad histórica;
-* no debe modificarse el costo histórico.
-
-Si una operación necesita ser revertida:
+Antes de crear entidades nuevas busca si ya existen conceptos como:
 
 ```text
-MOVIMIENTO ORIGINAL
-        +
-MOVIMIENTO INVERSO / REVERSO
+Venta
+VentaDetalle
+DocumentoVenta
+Comprobante
+Transaccion
+Pago
+FormaPago
+Secuencial
+DocumentoElectronico
+CuentaPorCobrar
 ```
 
-deben dejar el historial consistente.
+Si existen:
 
-El movimiento original debe permanecer como evidencia.
+analiza si forman parte del diseño actual.
 
-Si ya existe una política equivalente en el proyecto, utiliza esa implementación.
+No crees:
+
+```text
+ventas_v2
+facturas_nuevas
+ventas_documentos_new
+```
+
+para evitar comprender la estructura existente.
 
 ---
 
-# 5. TODO MOVIMIENTO DE INVENTARIO DEBE TENER ORIGEN
+# 6. ALCANCE DE VENTAS V1
 
-Cada movimiento debe poder indicar de dónde provino.
+VENTAS V1 debe permitir como mínimo:
 
-Por ejemplo:
-
-```text
-COMPRA
-VENTA
-AJUSTE
-TRANSFERENCIA
-DEVOLUCION_COMPRA
-DEVOLUCION_VENTA
-SALDO_INICIAL
-OPERACION_SIN_COMPROBANTE
-CONVERSION
-OTRO
-```
-
-No necesariamente debes crear exactamente estos valores si ya existe un catálogo o enumeración equivalente.
-
-Adáptate a la arquitectura existente.
-
-Debe existir conceptualmente:
-
-```text
-OrigenTipo
-OrigenId
-```
-
-de modo que sea posible ir desde un movimiento de Kardex hasta el documento u operación que lo generó.
-
----
-
-# 6. MULTIEMPRESA
-
-KONTAXPRO es multiempresa.
-
-Todo cálculo y consulta de inventario debe respetar el ámbito de la empresa actual.
-
-Nunca debe ser posible:
-
-* consultar stock de otra empresa accidentalmente;
-* afectar bodegas de otra empresa;
-* mezclar movimientos;
-* mezclar costos;
-* mezclar lotes;
-* mezclar series.
-
-Utiliza los mecanismos actuales de `CurrentSession`, EmpresaId y autorización existentes.
-
-No inventes un segundo mecanismo de sesión.
+* crear una nueva venta;
+* seleccionar cliente;
+* utilizar consumidor final;
+* agregar productos;
+* agregar servicios;
+* buscar por código;
+* buscar por código de barras;
+* buscar por descripción;
+* seleccionar presentación;
+* manejar cantidades;
+* manejar precios;
+* descuentos;
+* IVA/impuestos;
+* lotes;
+* series;
+* disponibilidad de stock;
+* subtotales;
+* impuestos;
+* total;
+* formas de pago;
+* confirmar;
+* generar movimiento de inventario;
+* generar factura electrónica;
+* enviar al SRI;
+* consultar autorización;
+* almacenar estado;
+* consultar ventas realizadas;
+* abrir detalle de venta;
+* visualizar estado SRI;
+* reintentar/reconciliar comprobantes pendientes de forma segura.
 
 ---
 
-# 7. MULTIBODEGA
+# 7. NO CONSTRUIR TODAVÍA TODO EL ERP
 
-El inventario debe funcionar por bodega.
+VENTAS V1 no debe expandirse innecesariamente a:
 
-La existencia real debe poder conocerse como mínimo por:
+* módulo completo de Cuentas por Cobrar;
+* Caja avanzada;
+* arqueos;
+* cierres de caja;
+* conciliación bancaria;
+* CRM;
+* cotizaciones complejas;
+* pedidos;
+* comisiones;
+* promociones avanzadas;
+* fidelización;
+* notas de crédito completas;
+* devoluciones completas;
+* RIDE altamente configurable;
+* envío por WhatsApp.
 
-```text
-Producto + Bodega
-```
+Deja puntos de extensión cuando corresponda.
 
-y cuando corresponda:
+---
 
-```text
-Producto + Lote + Bodega
-```
+# 8. MODELO DE VENTA
 
-y:
+Revisa primero las estructuras actuales.
 
-```text
-Producto + Serie + Bodega
-```
-
-Una empresa puede tener:
+Conceptualmente una venta necesita preservar:
 
 ```text
 Empresa
- ├── Establecimiento matriz
- │    ├── Bodega principal
- │    └── Otra bodega
- │
- └── Sucursal
-      └── Bodega sucursal
+Establecimiento
+PuntoEmision
+Bodega
+Cliente
+Fecha
+Usuario
+
+TipoDocumento
+
+Secuencial
+NumeroDocumento
+ClaveAcceso
+
+Subtotal
+Descuento
+Impuestos
+Total
+
+EstadoNegocio
+EstadoSRI
+
+Observacion
 ```
 
-No asumir una sola bodega por empresa.
+y sus detalles.
+
+Pero:
+
+> NO CREES automáticamente estas columnas.
+
+Adapta la solución a lo que ya exista.
 
 ---
 
-# 8. UNIDAD BASE Y PRESENTACIONES
+# 9. DETALLE DE VENTA
 
-Este punto es crítico.
+Cada línea debe conservar históricamente la información necesaria.
 
-KONTAXPRO ya maneja productos con diferentes presentaciones y `factor_conversion`.
+Conceptualmente:
 
-El inventario debe mantenerse internamente en **cantidad base**.
+```text
+ProductoId
+PresentacionId
+Codigo
+Descripcion
+
+CantidadComercial
+FactorConversion
+CantidadBase
+
+PrecioUnitario
+Descuento
+Subtotal
+
+Impuestos
+Total
+
+Lote
+Serie
+```
+
+según corresponda.
+
+---
+
+# 10. SNAPSHOT HISTÓRICO
+
+Esto es muy importante.
+
+Una venta histórica no puede cambiar porque posteriormente cambió:
+
+* nombre del producto;
+* descripción;
+* código;
+* presentación;
+* factor de conversión;
+* precio;
+* tarifa tributaria.
+
+Debe preservarse en la venta la información histórica necesaria.
+
+Ejemplo:
+
+```text
+Hoy:
+CAJA X 10
+Factor = 10
+Precio = $25
+
+Dentro de 6 meses:
+CAJA X 12
+Factor = 12
+Precio = $30
+```
+
+La factura antigua debe continuar significando:
+
+```text
+CAJA X 10
+Factor 10
+Precio $25
+```
+
+No reconstruir documentos históricos leyendo exclusivamente la configuración actual de Producto.
+
+---
+
+# 11. CLIENTE
+
+Reutiliza Clientes V1.
+
+VENTAS debe permitir:
+
+```text
+buscar por identificación;
+buscar por nombres;
+buscar por razón social;
+seleccionar cliente;
+consumidor final.
+```
+
+No crear otro formulario de clientes salvo que exista una operación rápida integrada siguiendo los patrones actuales.
+
+---
+
+# 12. CONSUMIDOR FINAL
+
+Implementar según las reglas tributarias vigentes y según lo que ya haya preparado el motor SRI.
+
+No hardcodees reglas tributarias desde memoria.
+
+Reutiliza la implementación actual del motor de Facturación Electrónica.
+
+---
+
+# 13. PRODUCTOS
+
+Reutiliza Productos V1.
+
+La búsqueda debe ser rápida.
+
+Debe poder localizar por:
+
+```text
+Código interno
+Código de barras
+Descripción
+Modelo
+```
+
+según las capacidades actuales del módulo.
+
+---
+
+# 14. LECTOR DE CÓDIGO DE BARRAS
+
+VENTAS debe estar preparada para uso real en mostrador.
+
+Cuando el usuario escanee un código:
+
+```text
+Código encontrado
+    ↓
+Agregar producto
+```
+
+Si el mismo producto/presentación ya está en la venta y las reglas lo permiten:
+
+```text
+incrementar cantidad
+```
+
+en lugar de crear líneas innecesariamente duplicadas.
+
+Pero para productos con series/lotes pueden existir reglas distintas.
+
+---
+
+# 15. PRESENTACIONES
+
+Reutiliza exactamente la lógica actual de Productos e Inventario.
 
 Ejemplo:
 
 ```text
 Producto:
-IVERMEC 100 ML
-
-Presentación base:
-FRASCO
-Factor = 1
+AMOXICILINA
 
 Presentación:
-CAJA X 10
-Factor = 10
+CAJA X 12
+
+Factor:
+12
+
+Venta:
+2 cajas
+
+CantidadBase:
+24
 ```
 
-Si ingreso:
+Inventario debe recibir la cantidad base correcta.
 
-```text
-2 CAJAS X 10
-```
-
-el motor debe registrar:
-
-```text
-Cantidad comercial: 2
-Presentación: CAJA X 10
-Factor: 10
-Cantidad base: 20
-```
-
-La existencia debe aumentar en:
-
-```text
-20 unidades base
-```
-
-La información comercial puede conservarse para trazabilidad, pero el stock debe ser consistente en unidad base.
-
-Lo mismo aplicará posteriormente para Ventas.
+No vuelva a implementarse la conversión con una fórmula distinta.
 
 ---
 
-# 9. NO REDONDEAR INDEBIDAMENTE CANTIDADES
+# 16. PRODUCTOS QUE NO MANEJAN INVENTARIO
 
-Existen productos que pueden manejar cantidades decimales.
+Los servicios u otros ítems con:
 
-No uses `int` para cantidades de inventario.
+```text
+maneja_inventario = false
+```
 
-Respeta los tipos `decimal`/`numeric` definidos en la base.
+pueden venderse.
 
-No introduzcas `double` o `float` para cantidades ni valores monetarios.
+Pero:
 
-Revisa las precisiones actuales de PostgreSQL antes de decidir cualquier cambio.
+```text
+NO generan salida de Inventario.
+```
 
 ---
 
-# 10. EXISTENCIA ACTUAL
+# 17. LISTAS DE PRECIOS
 
-La existencia debería representar conceptualmente:
+Revisa el modelo actual.
+
+KONTAXPRO contempla conceptualmente:
+
+```text
+Precio A
+Precio B
+Precio C
+```
+
+o listas equivalentes.
+
+Reutiliza la implementación REAL actual.
+
+No recrees listas de precios.
+
+---
+
+# 18. LISTA DE PRECIO DEL CLIENTE
+
+Revisa Clientes y su relación comercial por empresa.
+
+Si actualmente existe una lista predeterminada del cliente:
+
+```text
+Cliente → Lista B
+```
+
+al seleccionar el cliente debe aplicarse automáticamente según las reglas existentes.
+
+El usuario con permiso podrá cambiarla cuando corresponda.
+
+---
+
+# 19. PRECIO MANUAL
+
+Analiza si actualmente existe política/permisos.
+
+No permitir que cualquier usuario modifique libremente precios si el sistema actual contempla control.
+
+Idealmente debe existir permiso granular equivalente a:
+
+```text
+VENTAS_MODIFICAR_PRECIO
+```
+
+si corresponde al modelo actual de seguridad.
+
+No hardcodear roles.
+
+---
+
+# 20. DESCUENTOS
+
+Soportar descuentos según las reglas actuales.
+
+Debe ser posible conceptualmente:
+
+```text
+descuento por línea
+```
+
+y si la arquitectura lo permite:
+
+```text
+descuento general
+```
+
+pero evita implementar mecanismos duplicados.
+
+---
+
+# 21. DESCUENTO Y PRECIO HISTÓRICO
+
+La venta debe conservar:
+
+```text
+precio original;
+descuento;
+precio efectivo.
+```
+
+según el modelo que resulte apropiado.
+
+El total histórico nunca debe depender del precio actual del producto.
+
+---
+
+# 22. IMPUESTOS
+
+Reutiliza catálogos tributarios existentes.
+
+Debe soportarse correctamente la realidad actual del proyecto:
+
+```text
+IVA 0
+IVA 5
+IVA 15
+```
+
+y cualquier otra tarifa vigente modelada.
+
+No hardcodees porcentajes en Views/ViewModels.
+
+---
+
+# 23. RIMPE / REGLAS TRIBUTARIAS
+
+Reutiliza las reglas existentes del motor de Facturación Electrónica y Empresa.
+
+No dupliques lógica tributaria dentro de Ventas.
+
+---
+
+# 24. CÁLCULO DE TOTALES
+
+Todos los cálculos deben utilizar:
+
+```text
+decimal
+```
+
+Nunca:
+
+```text
+double
+float
+```
+
+para dinero.
+
+Revisa las precisiones actuales.
+
+Evita redondeos intermedios incorrectos.
+
+La lógica de XML SRI y la lógica visual deben producir resultados coherentes.
+
+---
+
+# 25. MOTOR ÚNICO DE CÁLCULO
+
+No quiero:
+
+```text
+ViewModel calcula total
++
+SalesService calcula otro total
++
+XML Builder calcula otro total
+```
+
+con tres fórmulas diferentes.
+
+Debe existir una única lógica de negocio o una estrategia coherente reutilizable.
+
+La UI solo presenta.
+
+---
+
+# 26. STOCK VISIBLE DURANTE LA VENTA
+
+Al agregar un producto que maneja inventario debe poder conocerse:
 
 ```text
 StockActual
 StockReservado
 StockDisponible
-StockMinimo
 ```
 
-donde:
+según lo implementado actualmente.
+
+Mostrar al usuario principalmente:
 
 ```text
-StockDisponible = StockActual - StockReservado
+Disponible
 ```
 
-No necesariamente almacenes `StockDisponible` si puede calcularse.
-
-Revisa primero el modelo existente.
-
-No dupliques información derivada innecesariamente.
+si corresponde.
 
 ---
 
-# 11. PRODUCTOS SIN INVENTARIO
+# 27. BODEGA
 
-Respeta:
+La venta debe utilizar una bodega concreta.
 
-```text
-maneja_inventario
-```
-
-o la propiedad equivalente existente.
-
-Un servicio:
+Revisa la relación actual entre:
 
 ```text
-MANEJA_INVENTARIO = false
-```
-
-no debe generar movimientos de Kardex ni afectar existencias.
-
-Una operación puede contener simultáneamente:
-
-```text
-BIEN
-SERVICIO
-```
-
-y solamente los ítems que manejan inventario deben llegar al motor.
-
----
-
-# 12. TIPO DE CONTROL DE INVENTARIO
-
-Respeta todo lo que ya desarrollamos en Productos respecto a:
-
-* control normal;
-* control por lotes;
-* control por series;
-* control de caducidad;
-* fecha de elaboración;
-* fecha de caducidad;
-* días de anticipación;
-* conversión de tipo de control.
-
-No dupliques reglas.
-
-Busca primero dónde están implementadas actualmente.
-
-El motor de inventario debe validar estas mismas reglas.
-
----
-
-# 13. LOTES
-
-Cuando un producto maneje lotes:
-
-cada entrada debe poder indicar:
-
-```text
-Número de lote
-Fecha elaboración, si corresponde
-Fecha caducidad, si corresponde
-Cantidad
+Empresa
+Establecimiento
+Punto de emisión
 Bodega
-Costo
+Terminal
 ```
 
-Las cantidades por lote deben cuadrar con la existencia global del producto en la bodega.
+Si actualmente existe una bodega predeterminada por punto/establecimiento:
 
-Debe cumplirse conceptualmente:
+reutilízala.
 
-```text
-SUM(stock lotes activos de producto/bodega)
-=
-stock del producto/bodega
-```
-
-para productos controlados por lote.
-
-No permitas cantidades huérfanas fuera de lote cuando el producto obligue a utilizarlo.
+No pedir al cajero que seleccione la bodega en cada venta si ya está determinada por configuración.
 
 ---
 
-# 14. CADUCIDAD
+# 28. CONTROL DE STOCK
 
-Si el producto tiene habilitado control de caducidad:
-
-debe conservarse:
+No hagas únicamente:
 
 ```text
-fecha_elaboracion
-fecha_caducidad
+if Disponible >= Cantidad
 ```
 
-según las reglas actuales de Productos.
+en el ViewModel.
 
-Debe ser posible posteriormente consultar:
+La validación definitiva debe ocurrir dentro del motor de Inventario durante la confirmación.
 
-```text
-Por caducar
-Caducado
-Vigente
-```
-
-utilizando los días de anticipación configurados.
-
-No almacenes estados que puedan derivarse fácilmente de fechas salvo que la arquitectura actual justifique hacerlo.
+Recuerda que puede haber varias terminales simultáneamente.
 
 ---
 
-# 15. SERIES
-
-Cuando un producto maneja números de serie:
-
-una unidad serializada debe corresponder a una serie individual.
-
-Debe impedirse:
-
-* duplicar una serie activa para el mismo producto;
-* ingresar dos veces la misma serie incorrectamente;
-* sacar una serie que no existe;
-* sacar una serie de otra bodega;
-* vender posteriormente una serie ya utilizada;
-* tener más series activas que stock.
-
-Debe conservarse trazabilidad completa de la serie.
-
-Una serie debería permitir saber posteriormente:
-
-```text
-cómo ingresó;
-en qué compra;
-en qué fecha;
-en qué bodega;
-si fue transferida;
-si salió;
-en qué venta salió.
-```
-
-No desarrolles todavía Ventas, pero deja el modelo preparado para ello.
-
----
-
-# 16. COSTOS
-
-Revisa cuidadosamente el modelo actual de costos.
-
-KONTAXPRO contempla conceptualmente:
-
-```text
-ultimo_precio_compra
-ultimo_costo_efectivo
-costo_promedio
-```
-
-No sustituyas estas propiedades sin revisar antes lo implementado.
-
----
-
-# 17. COSTO PROMEDIO PONDERADO
-
-La entrada por compra debe actualizar correctamente el costo promedio.
-
-Para existencia previa mayor que cero:
-
-```text
-NuevoCostoPromedio =
-(
-    StockAnterior * CostoPromedioAnterior
-    +
-    CantidadEntrada * CostoEntrada
-)
-/
-(
-    StockAnterior + CantidadEntrada
-)
-```
-
-Debe trabajarse siempre en cantidad base.
+# 29. CONCURRENCIA
 
 Ejemplo:
 
 ```text
-Stock:
-10 unidades
-Costo promedio:
-$5
+Stock disponible = 1
 
-Nueva compra:
-20 unidades
-Costo efectivo:
-$7
+Terminal A vende 1
+Terminal B vende 1
 ```
 
-Resultado:
+No pueden confirmarse ambas accidentalmente si la política no permite stock negativo.
 
-```text
-(10 × 5) + (20 × 7)
---------------------
-      10 + 20
+Inventario V1 ya debe contener las protecciones.
 
-= 6.333333...
-```
+VENTAS debe utilizar esas APIs correctamente.
 
-Respeta la precisión existente en base de datos.
-
-No redondees anticipadamente.
+No crear un segundo mecanismo de concurrencia.
 
 ---
 
-# 18. CUANDO NO EXISTE STOCK ANTERIOR
+# 30. LOTES
 
-Si antes de la entrada:
+Si un producto maneja lotes:
 
-```text
-StockActual = 0
-```
+VENTAS debe respetar Inventario V1.
 
-el nuevo costo promedio debe tomar el costo efectivo de la nueva entrada.
+Debe poder seleccionar el lote correspondiente.
 
-No realizar divisiones innecesarias.
-
----
-
-# 19. SALIDAS
-
-Las salidas futuras, incluyendo Ventas, no deben recalcular el costo promedio.
-
-Deben utilizar el costo promedio vigente en el momento de la salida como costo del movimiento.
-
-Ejemplo:
-
-```text
-Stock = 100
-CostoPromedio = 4.25
-
-Venta = 5
-```
-
-Salida:
-
-```text
-CantidadBase = 5
-CostoUnitario = 4.25
-CostoTotal = 21.25
-```
-
-Después:
-
-```text
-Stock = 95
-CostoPromedio = 4.25
-```
-
-El costo promedio cambiará cuando exista una nueva entrada que deba afectarlo.
-
----
-
-# 20. COSTO DE ENTRADA DESDE COMPRAS
-
-No asumas que el precio de compra bruto siempre es igual al costo de inventario.
-
-Revisa cómo Compras V1 maneja actualmente:
-
-* descuento;
-* bonificación;
-* impuestos;
-* presentación;
-* cantidad;
-* factor de conversión;
-* costo efectivo;
-* valores que forman o no forman parte del costo.
-
-Si ya existe una regla de `costo_efectivo`, úsala.
-
-No implementes una segunda fórmula diferente en Inventario.
-
-Inventario debe recibir de Compras el costo que corresponda según las reglas actuales.
-
----
-
-# 21. BONIFICACIONES
-
-KONTAXPRO debe soportar compras como:
-
-```text
-100 + 10 de bonificación
-```
-
-La bonificación aumenta la cantidad disponible.
-
-El costo efectivo debe distribuirse correctamente sobre las unidades realmente recibidas según la lógica existente en Compras.
-
-Ejemplo conceptual:
-
-```text
-Cantidad pagada = 100
-Bonificación = 10
-Cantidad recibida = 110
-```
-
-El motor debe registrar correctamente las 110 unidades base correspondientes.
-
-Revisa primero cómo Compras V1 ya representa estos valores.
-
----
-
-# 22. COMPRAS V1 DEBE INTEGRARSE CON INVENTARIO
-
-Esta será la primera integración real del motor.
-
-Analiza el flujo actual de Compras.
-
-Identifica claramente en qué estado del proceso una compra pasa a ser definitiva y debe afectar inventario.
-
-No asumas nombres de estados; utiliza los actuales.
-
-Cuando corresponda:
-
-```text
-COMPRA CONFIRMADA
-        ↓
-INVENTARIO
-        ↓
-MOVIMIENTO ENTRADA COMPRA
-        ↓
-EXISTENCIAS
-        ↓
-LOTES / SERIES
-        ↓
-COSTOS
-```
-
----
-
-# 23. UNA COMPRA NO PUEDE AFECTAR INVENTARIO DOS VECES
-
-Este requisito es crítico.
-
-Si por cualquier motivo:
-
-* se hace doble clic;
-* se repite una petición;
-* se vuelve a abrir la operación;
-* se reinicia la aplicación;
-* ocurre un timeout;
-* se reintenta el proceso;
-
-la misma compra **no debe duplicar la entrada de inventario**.
-
-Debe existir idempotencia.
-
-Utiliza:
-
-```text
-OrigenTipo + OrigenId
-```
-
-o la estrategia equivalente más apropiada según el modelo actual.
-
-Idealmente también debe existir protección a nivel de base de datos cuando corresponda.
-
----
-
-# 24. MODIFICACIÓN DE UNA COMPRA YA APLICADA
-
-Revisa las reglas actuales de Compras.
-
-No permitas que editar una compra ya aplicada al inventario cambie silenciosamente:
-
-```text
-cantidad
-producto
-costo
-lote
-serie
-bodega
-```
-
-Si la arquitectura permite modificar una operación ya confirmada, debe existir una estrategia explícita:
-
-```text
-REVERTIR MOVIMIENTO ANTERIOR
-+
-APLICAR NUEVO MOVIMIENTO
-```
-
-o la regla que corresponda al diseño actual.
-
-No destruyas el historial.
-
----
-
-# 25. ANULACIÓN / REVERSO DE COMPRA
-
-Cuando una compra que ya afectó inventario deba anularse:
-
-no debes borrar la entrada original.
-
-Debe producirse un reverso controlado.
-
-Antes del reverso valida que sea posible.
-
-Ejemplo:
-
-```text
-Compra ingresó 10 unidades.
-Posteriormente ya se vendieron 8.
-Stock actual = 2.
-```
-
-No puede restarse automáticamente 10 dejando:
-
-```text
-Stock = -8
-```
-
-sin aplicar las reglas correspondientes.
-
-La operación debe detectar esta condición y devolver un resultado de negocio claro.
-
-Para lotes y series la validación debe ser todavía más estricta.
-
----
-
-# 26. OPERACIONES SIN COMPROBANTE
-
-El proyecto ya tiene el módulo de **Operaciones sin comprobante**.
-
-Analízalo antes de realizar cambios.
-
-Determina cuáles de esas operaciones:
-
-```text
-afectan inventario
-```
-
-y cuáles:
-
-```text
-no afectan inventario
-```
-
-No asumas que todas deben producir Kardex.
-
-Las operaciones que realmente tengan impacto físico deben utilizar **el mismo motor de inventario**.
-
-No implementes actualizaciones directas de stock dentro de ese módulo.
-
----
-
-# 27. RELACIÓN CON CONTABILIDAD
-
-Ya hemos ido preparando estructuras y relaciones con Contabilidad.
-
-No rompas ese diseño.
-
-Inventario debe mantener una separación clara entre:
-
-```text
-movimiento físico de inventario
-```
-
-y:
-
-```text
-asiento contable
-```
-
-Una compra puede provocar ambos efectos, pero eso no significa que Inventario deba duplicar el registro contable que ya gestione Compras/Contabilidad.
-
-Revisa el diseño actual.
-
-No generes asientos duplicados.
-
-Deja claramente identificado el origen del movimiento para que posteriormente Contabilidad pueda relacionar:
-
-```text
-Documento
-MovimientoInventario
-AsientoContable
-```
-
-cuando corresponda.
-
----
-
-# 28. MOVIMIENTOS MANUALES
-
-Implementa la infraestructura necesaria para movimientos manuales.
-
-Como mínimo necesitamos poder soportar:
-
-```text
-AJUSTE POSITIVO
-AJUSTE NEGATIVO
-```
-
-Un ajuste debe requerir:
-
-```text
-Bodega
-Producto
-Cantidad
-Motivo
-Observación
-Usuario
-Fecha
-```
-
-y cuando corresponda:
+Mostrar información útil:
 
 ```text
 Lote
-Serie
-Costo
+Caducidad
+Disponible
 ```
-
-No permitir ajustes sin una justificación.
 
 ---
 
-# 29. SALDO INICIAL
+# 31. SELECCIÓN DE LOTE
 
-Debe existir una forma controlada de registrar saldos iniciales cuando sea necesario.
+Diseña una UX sencilla.
 
-No confundir:
+Cuando un producto requiere lote:
 
 ```text
-saldo inicial
+Producto
+Cantidad
+        ↓
+Seleccionar lote(s)
+```
+
+Si la cantidad necesita distribuirse entre varios lotes, analiza si Inventario ya soporta esa operación.
+
+Reutiliza su diseño.
+
+---
+
+# 32. FEFO
+
+Analiza si Inventario implementó o preparó una política de:
+
+```text
+First Expired, First Out
+```
+
+para lotes con caducidad.
+
+Si ya existe:
+
+úsala.
+
+Si no existe y es una extensión natural, puedes sugerir/implementar selección recomendada por menor fecha de caducidad sin ocultar al usuario qué lote se utilizará.
+
+No alteres reglas existentes sin necesidad.
+
+---
+
+# 33. PRODUCTOS CADUCADOS
+
+No permitir salida normal de venta de lotes caducados cuando las reglas de negocio lo prohíban.
+
+La validación final debe vivir en Inventario, no exclusivamente en UI.
+
+---
+
+# 34. SERIES
+
+Para productos serializados:
+
+se debe identificar exactamente cada serie vendida.
+
+Ejemplo:
+
+```text
+Cantidad = 2
+
+Series:
+SN001
+SN007
+```
+
+No aceptar únicamente:
+
+```text
+Cantidad = 2
+```
+
+sin saber qué unidades físicas salieron.
+
+---
+
+# 35. LECTOR PARA SERIES
+
+Si resulta natural con la implementación actual:
+
+permitir escanear las series mediante código de barras.
+
+La cantidad puede derivarse del número de series seleccionadas.
+
+---
+
+# 36. FORMAS DE PAGO
+
+Revisa los catálogos actuales del proyecto y del motor SRI.
+
+Debe poder registrarse el medio/forma de pago requerido.
+
+Ejemplos funcionales pueden incluir:
+
+```text
+Efectivo
+Transferencia
+Tarjeta
+Crédito
+Otros
+```
+
+pero utiliza los códigos y entidades actuales.
+
+---
+
+# 37. PAGOS MIXTOS
+
+Si la arquitectura actual lo permite sin introducir complejidad desproporcionada, soportar:
+
+```text
+Total $100
+
+Efectivo     $60
+Transferencia $40
+```
+
+La suma debe cuadrar con el total.
+
+Esta funcionalidad es muy útil para Ventas.
+
+---
+
+# 38. VENTA A CRÉDITO
+
+Revisa lo que ya exista respecto a:
+
+```text
+cuentas por cobrar;
+plazos;
+pagos;
+operaciones financieras.
+```
+
+Si ya existe una infraestructura válida:
+
+úsala.
+
+Si todavía no existe Cuentas por Cobrar:
+
+VENTAS debe quedar preparada para una venta a crédito pero **no construir dentro de Ventas un módulo improvisado completo de cartera**.
+
+Documenta claramente la frontera.
+
+---
+
+# 39. NO CONFUNDIR FORMA DE PAGO SRI CON CAJA
+
+La forma de pago tributaria del XML no reemplaza:
+
+```text
+movimiento de caja;
+cuenta por cobrar;
+movimiento bancario.
+```
+
+Mantén esas responsabilidades separadas.
+
+---
+
+# 40. ESTABLECIMIENTO Y PUNTO DE EMISIÓN
+
+La venta debe utilizar la configuración existente.
+
+No permitir que una venta tome accidentalmente:
+
+```text
+Punto de emisión de otra empresa.
+```
+
+Validar en Application/Domain, no solo UI.
+
+---
+
+# 41. SECUENCIAL
+
+No implementes `ultimo + 1`.
+
+Reutiliza el mecanismo atómico que ya creó Facturación Electrónica/Puntos de emisión.
+
+La asignación debe ocurrir en el momento adecuado del ciclo de vida.
+
+---
+
+# 42. NÚMERO DE DOCUMENTO
+
+Debe construirse de la forma correspondiente:
+
+```text
+001-001-000000123
+```
+
+según:
+
+```text
+establecimiento
+punto emisión
+secuencial
+```
+
+No concatenar valores no validados.
+
+---
+
+# 43. CICLO DE VIDA DE LA VENTA
+
+Diseña estados explícitos.
+
+No necesariamente uses estos nombres exactos.
+
+Conceptualmente necesitamos distinguir:
+
+```text
+BORRADOR
+CONFIRMADA
+PENDIENTE_SRI
+RECIBIDA_SRI
+AUTORIZADA
+DEVUELTA
+NO_AUTORIZADA
+PENDIENTE_RECONCILIACION
+ANULADA
+```
+
+Revisa qué estructura ya existe.
+
+No crear un segundo catálogo si el proyecto ya dispone de uno adecuado.
+
+---
+
+# 44. ESTADO COMERCIAL VS ESTADO SRI
+
+No mezclar necesariamente:
+
+```text
+Venta confirmada
 ```
 
 con:
 
 ```text
-ajuste
+Factura autorizada
 ```
 
-Debe quedar claramente identificado en Kardex.
-
-Si el proyecto ya contempla migración de inventario desde KONTAX antiguo, deja esta operación preparada para ser usada posteriormente en ese proceso.
-
----
-
-# 30. TRANSFERENCIAS ENTRE BODEGAS
-
-Implementa la infraestructura de transferencia entre bodegas.
-
-Una transferencia debe representar una única operación de negocio, pero con impacto consistente en ambos lados:
-
-```text
-BODEGA ORIGEN
-    - cantidad
-        ↓
-TRANSFERENCIA
-        ↓
-BODEGA DESTINO
-    + cantidad
-```
-
-Debe ejecutarse de forma atómica.
-
-Nunca debe ocurrir:
-
-```text
-salió del origen
-pero no ingresó al destino
-```
-
-por un error parcial.
-
-Utiliza una transacción de base de datos.
-
----
-
-# 31. TRANSFERENCIAS Y COSTO
-
-Una transferencia no debe recalcular el costo promedio empresarial como si fuera una nueva compra.
-
-Debe conservar el costo correspondiente del inventario transferido según el modelo actual.
-
-No generar utilidad ni costo de compra ficticio.
-
----
-
-# 32. TRANSFERENCIAS CON LOTES
-
-Si el producto maneja lotes:
-
-debe transferirse explícitamente el lote.
+Son hechos distintos.
 
 Ejemplo:
 
 ```text
-Producto: X
-Lote: L24001
-Origen: Matriz
-Destino: Sucursal
-Cantidad: 5
+Venta confirmada
+Inventario descontado
+SRI temporalmente sin conexión
 ```
 
-Debe disminuir:
+La venta sigue existiendo.
+
+El comprobante puede quedar:
 
 ```text
-Lote L24001 / Matriz
-```
-
-y aumentar:
-
-```text
-Lote L24001 / Sucursal
-```
-
-sin crear un lote diferente artificialmente.
-
----
-
-# 33. TRANSFERENCIAS CON SERIES
-
-Si maneja series:
-
-deben seleccionarse las series concretas.
-
-No aceptar únicamente:
-
-```text
-Cantidad = 5
-```
-
-sin identificar qué cinco series se trasladaron.
-
-Cada serie debe cambiar de bodega conservando su trazabilidad.
-
----
-
-# 34. VENTA SIN STOCK
-
-El proyecto contempla una configuración similar a:
-
-```text
-Permitir venta sin stock
-```
-
-No desarrolles Ventas todavía.
-
-Pero el motor debe quedar preparado para consultar esta política posteriormente.
-
-No hardcodees:
-
-```text
-stock nunca puede ser negativo
-```
-
-si el diseño de KONTAXPRO permite configurarlo.
-
-Sin embargo, movimientos manuales, transferencias y series/lotes deben aplicar sus propias reglas de integridad aunque exista esa configuración.
-
-Una serie inexistente nunca puede “venderse con stock negativo”.
-
----
-
-# 35. STOCK RESERVADO
-
-Deja preparada correctamente la distinción:
-
-```text
-StockActual
-StockReservado
-StockDisponible
-```
-
-Ventas podrá utilizar reservas posteriormente si decidimos implementarlas.
-
-No es obligatorio construir todo el sistema de reservas ahora si no existe todavía en la arquitectura.
-
-Pero evita una implementación que haga imposible añadirlo después.
-
----
-
-# 36. CONCURRENCIA
-
-Este punto es crítico porque KONTAXPRO funcionará en red y puede tener varios puntos de facturación.
-
-Dos usuarios pueden operar el mismo producto simultáneamente.
-
-No confíes únicamente en:
-
-```text
-leer stock
-if stock >= cantidad
-actualizar stock
-```
-
-porque existe condición de carrera.
-
-Utiliza las capacidades transaccionales de PostgreSQL/EF Core y el patrón actual del proyecto para garantizar consistencia.
-
-Analiza cuál estrategia encaja mejor:
-
-* actualización atómica;
-* bloqueo adecuado;
-* control optimista;
-* concurrency token;
-* transacción con nivel apropiado.
-
-No introduzcas una estrategia compleja sin necesidad, pero **el stock no puede depender únicamente de validaciones en memoria**.
-
----
-
-# 37. TRANSACCIONES
-
-Una operación que afecte:
-
-```text
-movimiento
-detalle
-existencia
-costo
-lotes
-series
-```
-
-debe confirmarse como una sola unidad de trabajo.
-
-Si falla una parte:
-
-```text
-ROLLBACK COMPLETO
-```
-
-No deben quedar:
-
-```text
-movimiento sin existencia;
-existencia sin movimiento;
-serie sin movimiento;
-lote descuadrado;
-costo actualizado sin stock.
+PENDIENTE DE ENVÍO / AUTORIZACIÓN
 ```
 
 ---
 
-# 38. DISEÑO DEL MOVIMIENTO
+# 45. SRI ES UN SISTEMA EXTERNO
 
-Revisa primero las tablas existentes.
-
-Conceptualmente necesitamos una cabecera y detalle.
-
-La cabecera debería poder expresar algo equivalente a:
+No intentes envolver:
 
 ```text
-Id
-EmpresaId
-TipoMovimiento
-Fecha
-OrigenTipo
-OrigenId
-BodegaOrigenId nullable
-BodegaDestinoId nullable
-Estado
-Observacion
-UsuarioId
-FechaCreacion
-MovimientoReversadoId nullable
+PostgreSQL + SRI
 ```
 
-El detalle conceptualmente:
+dentro de una transacción ACID ficticia.
+
+Persistir estados intermedios.
+
+La aplicación debe recuperarse después de:
 
 ```text
-Id
-MovimientoId
-ProductoId
-PresentacionId nullable
-CantidadComercial
-FactorConversion
-CantidadBase
-TipoEntradaSalida
-CostoUnitarioBase
-CostoTotal
-LoteId nullable
-SerieId nullable
-```
-
-**NO crees automáticamente estas columnas.**
-
-Primero compara esto con las entidades/tablas actuales y utiliza la estructura existente siempre que sea válida.
-
-Modifica el esquema solamente cuando exista una necesidad real.
-
----
-
-# 39. EL MOVIMIENTO DEBE CONSERVAR INFORMACIÓN HISTÓRICA
-
-No dependas exclusivamente del valor actual de la presentación o producto para reconstruir un movimiento antiguo.
-
-Ejemplo:
-
-si posteriormente cambia:
-
-```text
-FactorConversión CAJA X 10
-```
-
-un movimiento histórico no puede cambiar de significado.
-
-Por ello, guarda en el movimiento los valores históricos necesarios, como:
-
-```text
-cantidad comercial;
-factor aplicado;
-cantidad base;
-costo aplicado.
-```
-
-Adapta esta regla a la estructura actual.
-
----
-
-# 40. KARDEX
-
-El Kardex debe construirse sobre los movimientos reales registrados.
-
-Debe poder consultar por producto y bodega.
-
-Como mínimo mostrar:
-
-```text
-Fecha
-Tipo movimiento
-Origen / documento
-Bodega
-Entrada cantidad
-Entrada costo unitario
-Entrada valor
-Salida cantidad
-Salida costo unitario
-Salida valor
-Saldo cantidad
-Costo promedio / costo vigente
-Saldo valorado
-Usuario
-```
-
-Cuando corresponda:
-
-```text
-Lote
-Serie
-Presentación
+timeout;
+pérdida de internet;
+cierre;
+caída del SRI.
 ```
 
 ---
 
-# 41. SALDO HISTÓRICO
+# 46. FLUJO DE CONFIRMACIÓN
 
-El Kardex debe ser capaz de mostrar saldo progresivo.
-
-Ejemplo:
-
-```text
-Fecha      Operación       Entrada   Salida   Saldo
----------------------------------------------------
-01/08      Saldo inicial       10               10
-02/08      Compra              20               30
-03/08      Venta                         5       25
-04/08      Ajuste +             2               27
-```
-
-El saldo histórico no debe confundirse con el stock actual.
-
-Debe poder reconstruirse correctamente desde movimientos.
-
----
-
-# 42. KARDEX VALORADO
-
-Cuando existan costos suficientes, mostrar además:
-
-```text
-Costo unitario
-Valor entrada
-Valor salida
-Costo promedio
-Saldo valorado
-```
-
-No recalcules valores históricos utilizando el costo actual.
-
-Cada movimiento debe conservar el costo utilizado en el momento de producirse.
-
----
-
-# 43. FILTROS DEL KARDEX
-
-Implementar filtros útiles:
-
-```text
-Producto
-Bodega
-Rango de fechas
-Tipo de movimiento
-Entrada / Salida
-Lote
-Serie
-Origen
-```
-
-No es necesario mostrar todos simultáneamente si perjudica la interfaz.
-
-Diseña una experiencia sencilla.
-
----
-
-# 44. NUEVO MÓDULO VISUAL INVENTARIO
-
-Crear el módulo visual siguiendo exactamente el Look & Feel actual de KONTAXPRO.
-
-No diseñar con base en KONTAX antiguo.
-
-Tomar como referencia directa:
-
-* ProductsView.
-* Compras.
-* Clientes.
-* Proveedores.
-* componentes visuales recientes.
-* estilos actuales.
-* Light/Dark.
-* controles actuales.
-* scrolls personalizados.
-* tablas.
-* botones.
-* tarjetas KPI.
-* drawers/paneles laterales si ya se están utilizando.
-
----
-
-# 45. PANTALLA PRINCIPAL DE INVENTARIO
-
-Quiero una pantalla moderna y práctica.
-
-Propongo conceptualmente:
-
-```text
-INVENTARIO
-────────────────────────────────────────────────────────
-
-[ Valor Inventario ] [ Productos sin stock ]
-[ Stock bajo       ] [ Por caducar          ]
-
-[Búsqueda........................] [Bodega ▼] [Filtros]
-
-Producto        Bodega       Stock      Disponible   Costo prom.
-----------------------------------------------------------------
-IVER...         PRINCIPAL     120           120         $5.34
-ARROZ...        PRINCIPAL      45            45        $31.20
-...
-```
-
-Al seleccionar un producto:
-
-```text
-Ver Kardex
-Ver lotes
-Ver series
-Ajustar
-Transferir
-```
-
-según las características del producto.
-
-No copies literalmente este diseño si el patrón visual actual recomienda una variante mejor.
-
----
-
-# 46. KPI: VALOR DEL INVENTARIO
-
-Calcular conceptualmente:
-
-```text
-SUM(
-    StockActual × CostoPromedio
-)
-```
-
-por empresa/bodega según filtro.
-
-Excluir servicios y productos que no manejan inventario.
-
-No mezclar bodegas de otras empresas.
-
----
-
-# 47. KPI: SIN STOCK
-
-Productos que manejan inventario y cumplen:
-
-```text
-StockActual <= 0
-```
-
-según el alcance/filtro seleccionado.
-
-Revisa cómo ProductsView ya calcula este KPI para no crear resultados inconsistentes entre módulos.
-
----
-
-# 48. KPI: STOCK BAJO
-
-Debe utilizar:
-
-```text
-StockMinimo
-```
-
-según la lógica ya existente.
-
-Idealmente:
-
-```text
-StockActual > 0
-AND
-StockActual <= StockMinimo
-```
-
-pero verifica la regla actual de Productos antes de duplicarla.
-
----
-
-# 49. KPI: POR CADUCAR
-
-Debe reutilizar exactamente las reglas actuales de:
-
-```text
-control caducidad
-días anticipación
-fecha caducidad
-```
-
-No inventar otra fórmula distinta de la utilizada en Productos.
-
----
-
-# 50. DETALLE DE INVENTARIO DEL PRODUCTO
-
-Debe ser posible abrir un detalle con:
-
-```text
-Stock total
-Stock reservado
-Stock disponible
-Costo promedio
-Último costo
-Última compra
-
-Stock por bodega
-Stock por lote
-Series disponibles
-Movimientos recientes
-```
-
-Mostrar únicamente las secciones aplicables.
-
-Ejemplo:
-
-Producto normal:
-
-```text
-no mostrar Series
-no mostrar Lotes
-```
-
-Producto por lote:
-
-```text
-mostrar Lotes
-```
-
-Producto serializado:
-
-```text
-mostrar Series
-```
-
----
-
-# 51. VENTANA / PANEL DE KARDEX
-
-Debe permitir revisar cómodamente movimientos.
-
-Mantén el diseño moderno y consistente.
-
-Idealmente mostrar:
-
-```text
-PRODUCTO
-Código
-Descripción
-Bodega
-Stock actual
-Costo promedio
-```
-
-y debajo:
-
-```text
-Fecha | Movimiento | Documento | Entrada | Salida | Saldo | Costo | Usuario
-```
-
-El usuario no debería necesitar conocimientos contables para entenderlo.
-
----
-
-# 52. AJUSTE DE INVENTARIO
-
-Crear UI para ajuste positivo/negativo.
-
-Debe ser sencilla.
-
-Ejemplo:
-
-```text
-Producto: IVERMEC 100 ML
-Bodega: Principal
-
-Stock actual: 25
-
-Tipo:
-( ) Entrada
-( ) Salida
-
-Cantidad:
-[      ]
-
-Motivo:
-[ Diferencia inventario ▼ ]
-
-Observación:
-[                         ]
-
-Nuevo stock:
-30
-```
-
-Para lote/serie adaptar automáticamente la UI.
-
----
-
-# 53. TRANSFERENCIA ENTRE BODEGAS
-
-Crear UI específica.
+Diseña cuidadosamente el flujo real.
 
 Conceptualmente:
 
 ```text
-Bodega origen
-Bodega destino
-Producto
+1. Validar venta.
+2. Validar cliente.
+3. Validar precios/impuestos.
+4. Validar inventario.
+5. Reservar/asignar secuencial cuando corresponda.
+6. Persistir operación comercial.
+7. Registrar salida de Inventario.
+8. Registrar consecuencias contables que correspondan.
+9. Crear comprobante electrónico.
+10. Firmar.
+11. Enviar.
+12. Consultar autorización.
+13. Persistir respuesta.
+```
+
+Pero:
+
+> NO implementes este orden ciegamente.
+
+Analiza los servicios ya existentes y define el orden correcto según las garantías transaccionales actuales.
+
+Especial cuidado con:
+
+```text
+qué ocurre si Inventario fue aplicado pero falla la firma;
+qué ocurre si se envió al SRI pero la respuesta se perdió;
+qué ocurre si la aplicación se cierra después de RECIBIDA.
+```
+
+---
+
+# 47. IDEMPOTENCIA
+
+Confirmar Venta debe ser idempotente.
+
+Doble clic:
+
+```text
+NO
+```
+
+puede generar dos ventas.
+
+Reintentar SRI:
+
+```text
+NO
+```
+
+puede generar otro secuencial/comprobante.
+
+Reabrir una venta:
+
+```text
+NO
+```
+
+debe volver a descontar stock.
+
+Debe existir protección tanto lógica como de persistencia cuando corresponda.
+
+---
+
+# 48. INVENTARIO
+
+La salida debe usar exclusivamente Inventario/Kardex V1.
+
+Conceptualmente:
+
+```text
+Venta confirmada
+       ↓
+InventoryService
+       ↓
+SALIDA VENTA
+       ↓
+Kardex
+       ↓
+Existencia
+```
+
+Debe quedar:
+
+```text
+OrigenTipo = Venta
+OrigenId = VentaId
+```
+
+o el equivalente real de la arquitectura actual.
+
+---
+
+# 49. COSTO DE VENTA
+
+VENTAS no debe inventar su propio costo.
+
+Inventario debe proporcionar/registrar el costo vigente correspondiente a la salida.
+
+Este costo será posteriormente necesario para Contabilidad y rentabilidad.
+
+---
+
+# 50. UTILIDAD
+
+Si el proyecto ya tiene permiso para visualizar utilidad:
+
+```text
+VENTAS_VER_UTILIDAD
+```
+
+o equivalente, reutilízalo.
+
+Conceptualmente:
+
+```text
+Utilidad = Venta - Costo
+```
+
+pero no expongas información de costo a usuarios sin permiso.
+
+---
+
+# 51. CONTABILIDAD
+
+Revisa cómo ha evolucionado la integración contable.
+
+VENTAS debe usar las estructuras existentes.
+
+Una venta puede conceptualmente provocar:
+
+```text
+Cuenta por cobrar / caja
+Ingreso
+IVA
+Costo de venta
+Inventario
+```
+
+pero:
+
+> NO implementes asientos duplicados.
+
+Reutiliza el motor/reglas actuales.
+
+Si Contabilidad todavía no ejecuta asientos automáticamente, deja el punto de integración correctamente preparado/documentado.
+
+---
+
+# 52. FACTURACIÓN ELECTRÓNICA
+
+Consume el motor SRI ya construido.
+
+VENTAS no debe conocer:
+
+```text
+SignedXml
+XAdES
+SOAP
+PKCS12
+RSA
+XSD
+```
+
+Debe enviar al servicio un modelo de comprobante apropiado.
+
+---
+
+# 53. MAPEO VENTA → FACTURA ELECTRÓNICA
+
+Crear una responsabilidad clara equivalente a:
+
+```text
+Venta
+    ↓
+ElectronicInvoiceRequest
+```
+
+o utilizar el patrón existente.
+
+Debe mapear:
+
+```text
+emisor
+cliente
+fecha
+establecimiento
+punto
+secuencial
+detalles
+impuestos
+descuentos
+pagos
+totales
+información adicional
+```
+
+No duplicar lógica XML.
+
+---
+
+# 54. RESPUESTAS SRI
+
+La interfaz debe poder mostrar:
+
+```text
+AUTORIZADA
+PENDIENTE
+DEVUELTA
+NO AUTORIZADA
+```
+
+con los mensajes correspondientes.
+
+No mostrar SOAP crudo al usuario.
+
+---
+
+# 55. VENTA AUTORIZADA
+
+Cuando esté autorizada mostrar:
+
+```text
+Número de documento
+Clave de acceso
+Número de autorización
+Fecha autorización
+```
+
+según corresponda.
+
+---
+
+# 56. VENTA DEVUELTA / NO AUTORIZADA
+
+Debe ser posible abrir los mensajes del SRI.
+
+Ejemplo amigable:
+
+```text
+Factura devuelta por el SRI
+
+35 — Documento inválido
+Información adicional: ...
+```
+
+No perder mensajes secundarios.
+
+---
+
+# 57. RECONCILIACIÓN SRI
+
+VENTAS debe permitir identificar comprobantes:
+
+```text
+pendientes;
+recibidos sin autorización final;
+con comunicación interrumpida.
+```
+
+y ejecutar el mecanismo de reconciliación existente en Facturación Electrónica.
+
+No volver a enviar ciegamente.
+
+---
+
+# 58. LISTADO DE VENTAS
+
+Crear una pantalla principal coherente con KONTAXPRO.
+
+Conceptualmente:
+
+```text
+VENTAS
+
+[ Ventas hoy ] [ Total hoy ] [ Autorizadas ] [ Pendientes SRI ]
+
+[Buscar................] [Fecha ▼] [Estado ▼] [+ Nueva venta]
+
+Fecha | Documento | Cliente | Total | Pago | Estado SRI
+```
+
+Adapta el diseño a las Views actuales.
+
+---
+
+# 59. KPI
+
+Utiliza indicadores útiles pero no sobrecargues.
+
+Podrían incluir:
+
+```text
+Ventas hoy
+Total vendido
+Pendientes SRI
+No autorizadas/devueltas
+```
+
+Evalúa qué aporta valor real.
+
+No calcular KPI descargando todo a memoria.
+
+---
+
+# 60. BÚSQUEDA
+
+Debe poder buscar ventas por:
+
+```text
+Número documento
+Cliente
+Identificación
+Clave acceso
+```
+
+según sea razonable.
+
+---
+
+# 61. FILTROS
+
+Como mínimo considera:
+
+```text
+Fecha / rango
+Estado venta
+Estado SRI
+Punto emisión
+```
+
+según necesidad.
+
+---
+
+# 62. PAGINACIÓN
+
+Implementar paginación real en base de datos.
+
+No cargar todas las ventas históricas en memoria.
+
+Reutiliza el patrón actual.
+
+---
+
+# 63. NUEVA VENTA — UX
+
+Esta será una de las pantallas de uso más frecuente de KONTAXPRO.
+
+Debe ser:
+
+```text
+rápida
+limpia
+moderna
+amigable
+usable con teclado
+usable con lector de código de barras
+```
+
+No crear un formulario administrativo lento y lleno de campos.
+
+---
+
+# 64. DISEÑO CONCEPTUAL DE NUEVA VENTA
+
+Podría organizarse:
+
+```text
+NUEVA VENTA
+────────────────────────────────────────
+
+Cliente:
+[ Consumidor Final                         🔎 ]
+
+Buscar producto:
+[ Código / código de barras / descripción     ]
+
+────────────────────────────────────────
+
+Producto     Present.   Cant.   Precio   Desc.   Total
+------------------------------------------------------
+IVER...      FRASCO      2       12.00     0      24.00
+ALIM...      SACO        1       28.00     0      28.00
+
+────────────────────────────────────────
+
+Subtotal                             $45.22
+Descuento                             $0.00
+IVA                                  $6.78
+TOTAL                                $52.00
+
+Forma de pago
+[ Efectivo ▼ ]
+
+                         [ Cancelar ] [ FACTURAR ]
+```
+
+Es una referencia funcional.
+
+No copies ciegamente el layout.
+
+Toma como referencia los componentes visuales actuales del proyecto.
+
+---
+
+# 65. VELOCIDAD DE OPERACIÓN
+
+El flujo ideal para una venta sencilla debería ser:
+
+```text
+Abrir Nueva Venta
+↓
+Escanear productos
+↓
+F12 / acción equivalente
+↓
+Seleccionar pago
+↓
+Facturar
+```
+
+No obligar a usar mouse para cada acción.
+
+---
+
+# 66. ATAJOS DE TECLADO
+
+Analiza si KONTAXPRO ya tiene convenciones.
+
+Sería útil preparar atajos para:
+
+```text
+buscar cliente;
+buscar producto;
+finalizar;
+cancelar;
+cantidad;
+eliminar línea.
+```
+
+No inventes atajos que entren en conflicto con los existentes.
+
+---
+
+# 67. FOCUS
+
+En nueva venta, el foco inicial debería quedar en el campo de búsqueda/escaneo de producto o cliente según la experiencia elegida.
+
+Después de agregar un producto:
+
+```text
+regresar automáticamente al buscador
+```
+
+si esto mejora el flujo de mostrador.
+
+---
+
+# 68. AGREGAR PRODUCTO
+
+Cuando se agregue:
+
+mostrar claramente:
+
+```text
 Presentación
+Stock
 Cantidad
-
-Stock disponible origen
-
-Lote / Series cuando corresponda
-
-Observación
+Precio
+Descuento
+IVA
+Total
 ```
 
-No permitir:
-
-```text
-Origen = Destino
-```
+sin saturar visualmente.
 
 ---
 
-# 54. VALIDACIONES VISUALES
+# 69. EDICIÓN DE CANTIDAD
 
-Mantener la filosofía actual:
+Debe poder modificarse rápidamente.
 
-* mensajes claros;
-* validación cerca del control;
-* no mostrar excepciones técnicas al usuario;
-* botones deshabilitados cuando la operación no es válida;
-* estados de carga;
-* evitar doble ejecución;
-* feedback al guardar;
-* diseño Light/Dark.
+Cada cambio debe recalcular:
+
+```text
+cantidad base
+stock requerido
+subtotal
+impuesto
+total
+```
+
+utilizando el motor central de cálculo.
 
 ---
 
-# 55. NO BLOQUEAR LA UI
+# 70. ELIMINAR LÍNEA
 
-Toda operación que involucre base de datos debe utilizar async adecuadamente según los patrones actuales.
+Mientras la venta está en edición:
 
-No utilizar:
+permitido.
 
-```text
-.Result
-.Wait()
-```
+Después de confirmada:
 
-en el hilo UI.
-
-No introducir deadlocks.
+no modificar directamente la venta histórica.
 
 ---
 
-# 56. MVVM
+# 71. MODIFICACIÓN DE VENTA CONFIRMADA
 
-Mantener estrictamente el patrón utilizado actualmente:
+Una venta confirmada no debe abrirse como si fuera un formulario editable normal.
 
-```text
-View
-ViewModel
-Application Service
-Infrastructure
-```
-
-No colocar lógica de inventario en:
+No permitir cambiar:
 
 ```text
-.xaml.cs
+cliente
+productos
+cantidades
+precios
+impuestos
 ```
 
-salvo comportamiento exclusivamente visual que realmente corresponda allí.
+silenciosamente después de que afectó:
 
-No colocar SQL ni EF directamente en ViewModels.
+```text
+Inventario
+SRI
+Contabilidad
+```
+
+Las correcciones posteriores corresponderán a:
+
+```text
+anulación
+nota de crédito
+devolución
+```
+
+según reglas futuras.
 
 ---
 
-# 57. SERVICIO CENTRAL DE INVENTARIO
+# 72. BORRADORES
 
-Después de analizar la arquitectura, crea o consolida una abstracción equivalente a:
+Si el diseño actual admite guardar ventas en borrador:
 
-```text
-IInventoryService
-```
+puede implementarse.
 
-o el nombre que encaje con las convenciones actuales.
-
-Debe centralizar las operaciones de negocio.
-
-Conceptualmente debería poder soportar:
+Un borrador:
 
 ```text
-RegistrarEntradaCompra
-RegistrarSalidaVenta        // preparado para futuro
-RegistrarAjuste
-RegistrarTransferencia
-RevertirMovimiento
-ConsultarExistencia
-ConsultarKardex
+NO afecta inventario;
+NO consume definitivamente un comprobante;
+NO se envía al SRI;
+NO genera contabilidad.
 ```
 
-No necesitas implementar Venta todavía si no corresponde, pero la arquitectura no debe obligarnos a modificar todo cuando llegue Ventas.
+Analiza cuidadosamente los secuenciales.
 
 ---
 
-# 58. NO CREAR UN "GOD SERVICE"
+# 73. ANULACIÓN
 
-No quiero:
+No implementes una anulación improvisada que borre datos.
 
-```text
-InventoryService.cs
-5000 líneas
-```
+Si el alcance actual y SRI permiten una anulación local antes de emisión:
 
-Si el dominio lo requiere, separa responsabilidades.
+diferénciala claramente.
 
-Por ejemplo:
+Para comprobantes ya autorizados:
 
-```text
-InventoryMovementService
-InventoryCostService
-InventoryQueryService
-InventoryTransferService
-InventoryReversalService
-```
+la corrección futura probablemente requiera Nota de Crédito según el caso.
 
-o una estructura equivalente.
-
-Pero tampoco sobrearquitectes creando decenas de interfaces triviales.
-
-Busca equilibrio y sigue el estilo actual.
+No desarrolles Nota de Crédito dentro de Ventas V1 salvo infraestructura mínima natural.
 
 ---
 
-# 59. COMMAND / RESULT
+# 74. PERMISOS
 
-Las operaciones importantes deberían devolver resultados explícitos.
+Revisa Seguridad actual.
 
-Ejemplo conceptual:
-
-```text
-InventoryOperationResult
-```
-
-con información como:
+VENTAS debería contemplar permisos equivalentes según la convención actual:
 
 ```text
-Success
-MovementId
-Warnings
-ValidationErrors
+VENTAS_VER
+VENTAS_CREAR
+VENTAS_MODIFICAR_PRECIO
+VENTAS_APLICAR_DESCUENTO
+VENTAS_VER_UTILIDAD
+VENTAS_REINTENTAR_SRI
 ```
 
-No utilices `bool` para representar todos los resultados.
+No necesariamente uses esos nombres.
 
-Utiliza el patrón de resultados que ya exista en KONTAXPRO si existe.
+No crear permisos duplicados si ya existen.
 
 ---
 
-# 60. AUDITORÍA
+# 75. AUDITORÍA
 
-Cada movimiento debe permitir conocer:
+Auditar operaciones sensibles:
 
 ```text
-Quién
-Cuándo
-Qué operación
-Qué documento la originó
-Qué cantidades cambió
-Qué bodega
+crear venta
+confirmar
+cambiar precio manual
+aplicar descuento especial
+reintentar SRI
+anular cuando corresponda
 ```
 
-Reutiliza la infraestructura de auditoría existente.
-
-No implementes una segunda auditoría paralela.
+No duplicar infraestructura.
 
 ---
 
-# 61. FECHA DEL MOVIMIENTO
+# 76. FECHAS
 
-Diferencia correctamente:
-
-```text
-fecha de la operación de negocio
-```
-
-de:
+Diferenciar:
 
 ```text
-fecha/hora de registro
+FechaEmision
+FechaRegistro
+FechaAutorizacion
 ```
 
-si el modelo actual lo requiere.
+según corresponda.
 
-No uses únicamente `DateTime.Now` repartido por todo el código.
-
-Sigue el patrón actual de tiempo del proyecto si existe.
+Utiliza las abstracciones actuales de tiempo.
 
 ---
 
-# 62. ELIMINACIÓN
+# 77. TRANSACCIONES LOCALES
 
-No agregar botones:
+La parte local de confirmación debe garantizar coherencia entre lo que deba ejecutarse transaccionalmente.
 
-```text
-Eliminar movimiento
-```
-
-para movimientos aplicados.
-
-La corrección debe hacerse mediante:
+No deben existir estados como:
 
 ```text
-Reversar
-```
-
-cuando corresponda.
-
----
-
-# 63. RECONCILIACIÓN
-
-Implementa al menos internamente una forma de verificar inconsistencias.
-
-Debe poder detectarse:
-
-```text
-Existencia != suma esperada de movimientos
+venta confirmada
+pero sin detalles
 ```
 
 o:
 
 ```text
-Existencia por lote != existencia producto
+stock descontado
+sin referencia de venta
 ```
 
-o:
+por errores parciales.
 
-```text
-Cantidad de series activas != stock
-```
-
-cuando corresponda.
-
-No necesariamente debe ser una pantalla de usuario V1.
-
-Puede ser un servicio/test de integridad.
-
-Esto será muy útil para soporte técnico.
+Reutiliza los mecanismos de Inventario y persistencia existentes.
 
 ---
 
-# 64. NO CALCULAR TODO EL STOCK DESDE CERO EN CADA CONSULTA
+# 78. FALLO DE FIRMA
 
-El movimiento es la fuente histórica.
+Si la operación comercial quedó confirmada pero el certificado no puede firmar:
 
-La tabla de existencias debe ser la proyección actual optimizada para consulta.
+el estado debe permitir comprender y recuperar la situación.
 
-Por tanto:
-
-```text
-MOVIMIENTOS = historial
-EXISTENCIAS = estado actual
-```
-
-No hagas un `SUM` de millones de movimientos cada vez que abrimos Productos.
-
-Ambos deben mantenerse consistentes transaccionalmente.
+No volver a descontar stock en un reintento.
 
 ---
 
-# 65. ÍNDICES
+# 79. FALLO DE INTERNET
 
-Revisa los índices actuales de PostgreSQL.
+Si no hay internet:
 
-Asegúrate de que consultas habituales tengan índices adecuados:
+analiza las capacidades actuales del motor de facturación.
 
-```text
-Empresa
-Producto
-Bodega
-Fecha
-OrigenTipo + OrigenId
-Lote
-Serie
-```
+VENTAS debe manejarlo de acuerdo con esa arquitectura.
 
-No agregues índices indiscriminadamente.
+No perder la venta.
 
-Justifica los nuevos según consultas reales.
+No crear otra factura al reintentar.
 
 ---
 
-# 66. CONSTRAINTS
+# 80. DOBLE CLIC EN FACTURAR
 
-Utiliza constraints de base de datos para reforzar invariantes importantes cuando sea apropiado.
+Deshabilitar temporalmente el comando en UI mientras procesa.
 
-Ejemplos conceptuales:
+Pero eso es solo UX.
 
-```text
-cantidad > 0
-factor_conversion > 0
-```
-
-unicidad de series, relaciones válidas, etc.
-
-Pero no dupliques constraints existentes.
+Debe existir además idempotencia en Application/Infrastructure.
 
 ---
 
-# 67. MIGRACIONES
+# 81. RIDE
 
-Si necesitas modificar la base:
+Revisa si el motor actual ya implementó RIDE.
 
-1. revisa migraciones anteriores;
-2. crea una migración limpia;
-3. no edites migraciones ya aplicadas salvo que exista una razón extraordinaria;
-4. revisa el SQL generado;
-5. confirma que no elimina información accidentalmente.
+Si existe:
 
-Después ejecuta nuevamente pruebas.
+integrarlo.
 
----
+Si todavía no:
 
-# 68. INTEGRACIÓN CON PRODUCTS VIEW
+dejar la acción preparada sin bloquear Ventas V1.
 
-ProductsView ya muestra información de stock.
-
-Después de implementar el nuevo motor:
-
-asegúrate de que sus KPI y cantidades provengan de la fuente correcta.
-
-No mantengas dos formas diferentes de calcular stock.
-
-Si se requiere refactorizar ProductsView para usar el nuevo servicio de consultas, hazlo cuidadosamente y cubre con pruebas.
+No construir un nuevo motor PDF si ya hay uno o si forma parte de una etapa posterior.
 
 ---
 
-# 69. INTEGRACIÓN CON COMPRAS
+# 82. IMPRESIÓN
 
-Después de crear el motor:
+Si existe RIDE:
 
-modifica Compras para utilizarlo.
-
-No dejes:
+permitir:
 
 ```text
-CompraService actualizando stock
-+
-InventoryService actualizando stock
+Ver RIDE
+Imprimir
 ```
 
-simultáneamente.
-
-Debe quedar una única vía.
-
-Realiza pruebas de regresión completas del módulo Compras.
+sin acoplar generación PDF al ViewModel.
 
 ---
 
-# 70. PRUEBAS UNITARIAS DEL MOTOR
+# 83. XML
 
-Crear pruebas exhaustivas.
-
-Como mínimo:
-
-### Entrada simple
+Desde detalle de una venta autorizada, usuarios con el contexto apropiado deberían poder acceder a:
 
 ```text
-Stock 0
-Entrada 10
-Resultado 10
+XML autorizado
 ```
 
-### Entrada sobre stock existente
+si ya existe esa funcionalidad/almacenamiento.
 
-```text
-Stock 10
-Entrada 5
-Resultado 15
-```
-
-### Presentación
-
-```text
-2 cajas × factor 10
-Resultado +20 base
-```
-
-### Costo promedio
-
-```text
-10 @ 5
-+
-20 @ 7
-=
-30 @ 6.333333...
-```
-
-### Stock cero + primera compra
-
-Costo promedio = costo de entrada.
-
-### Entrada con bonificación
-
-Cantidad final correcta.
-
-### Servicio
-
-No genera inventario.
-
-### Lote
-
-Stock producto = stock lote.
-
-### Serie
-
-Una serie = una unidad.
-
-### Serie duplicada
-
-Rechazada.
-
-### Transferencia
-
-```text
-Origen -10
-Destino +10
-Total empresa sin cambio
-```
-
-### Transferencia con lote
-
-Lote correcto en ambas bodegas.
-
-### Transferencia con series
-
-Las mismas series cambian de bodega.
-
-### Ajuste positivo
-
-Aumenta.
-
-### Ajuste negativo
-
-Disminuye.
-
-### Reverso
-
-Restaura correctamente el estado cuando procede.
-
-### Idempotencia
-
-Ejecutar dos veces la misma compra:
-
-```text
-NO duplica stock
-```
-
-### Rollback
-
-Provocar error durante la operación:
-
-```text
-ninguna tabla queda parcialmente modificada
-```
-
-### Empresa
-
-Una empresa no afecta a otra.
-
-### Bodega
-
-Una bodega no afecta a otra.
+No mostrar detalles técnicos innecesarios en la pantalla principal.
 
 ---
 
-# 71. PRUEBAS DE CONCURRENCIA
+# 84. VALIDACIONES
 
-Crear al menos pruebas de integración relevantes para escenarios concurrentes.
+Mensajes claros.
 
 Ejemplo:
 
 ```text
-Stock = 10
-
-Operación A intenta sacar 8
-Operación B intenta sacar 7
+No hay stock suficiente para IVERMEC 100 ML.
+Disponible: 3
+Solicitado: 5
 ```
 
-No debe producirse silenciosamente:
-
-```text
-Stock = -5
-```
-
-si la política de esa operación no lo permite.
-
-La validación debe ocurrir también a nivel transaccional, no solamente en ViewModel.
-
----
-
-# 72. PRUEBAS DE COMPRAS + INVENTARIO
-
-Crear pruebas end-to-end/integración para:
-
-```text
-Crear/confirmar compra
-→ movimiento
-→ stock
-→ costo
-```
-
-incluyendo:
-
-* presentación base;
-* presentación con factor;
-* lote;
-* serie;
-* bonificación;
-* múltiples productos;
-* servicio que no maneja inventario;
-* compra repetida;
-* reverso/anulación cuando corresponda.
-
----
-
-# 73. PRUEBAS DE OPERACIONES SIN COMPROBANTE
-
-Para aquellas operaciones que realmente afecten stock:
-
-comprobar:
-
-```text
-Operación
-→ Movimiento Inventario
-→ Existencia
-```
-
-y que una operación que no afecta inventario:
-
-```text
-NO genere movimiento.
-```
-
----
-
-# 74. DATOS REALES DE PRUEBA
-
-Utiliza los productos/presentaciones de fixtures o datos de pruebas existentes.
-
-No dependas de datos manuales en la base local del desarrollador.
-
-Las pruebas deben poder ejecutarse repetidamente.
-
----
-
-# 75. NO ROMPER MÓDULOS TERMINADOS
-
-Después de cada etapa ejecuta:
-
-```powershell
-dotnet build
-dotnet test
-```
-
-Especial atención a regresiones en:
-
-```text
-Productos
-Clientes
-Proveedores
-Compras
-Operaciones sin comprobante
-Contabilidad
-Seguridad
-Multiempresa
-```
-
----
-
-# 76. ORDEN DE IMPLEMENTACIÓN
-
-No intentes hacerlo todo de una sola vez.
-
-Trabaja en este orden.
-
-## FASE 1 — Auditoría técnica
-
-Analiza todo lo existente.
-
-Entrega internamente un mapa de:
-
-```text
-qué ya existe;
-qué sirve;
-qué falta;
-qué debe modificarse;
-qué NO debe duplicarse.
-```
-
-Luego continúa directamente.
-
-No te detengas esperando confirmación salvo que encuentres una decisión funcional verdaderamente imposible de inferir del proyecto.
-
----
-
-## FASE 2 — Motor base
-
-Implementa:
-
-* movimientos;
-* existencias;
-* unidad base;
-* presentaciones;
-* costos;
-* transacciones;
-* idempotencia;
-* concurrencia.
-
-Pruebas.
-
-Build.
-
----
-
-## FASE 3 — Lotes y series
-
-Implementa:
-
-* lotes;
-* caducidad;
-* series;
-* reglas de integridad;
-* existencias por bodega.
-
-Pruebas.
-
-Build.
-
----
-
-## FASE 4 — Integración Compras
-
-Conecta Compras V1 con el motor.
-
-Elimina cualquier actualización directa redundante de stock.
-
-Pruebas de regresión.
-
-Build.
-
----
-
-## FASE 5 — Operaciones sin comprobante
-
-Integra exclusivamente las operaciones que realmente deban afectar inventario.
-
-Pruebas.
-
-Build.
-
----
-
-## FASE 6 — Ajustes y saldos iniciales
-
-Implementa motor + UI.
-
-Pruebas.
-
-Build.
-
----
-
-## FASE 7 — Transferencias
-
-Implementa:
-
-* motor;
-* atomicidad;
-* lotes;
-* series;
-* UI.
-
-Pruebas.
-
-Build.
-
----
-
-## FASE 8 — Consultas y Kardex
-
-Implementa:
-
-* consultas;
-* saldo progresivo;
-* valoración;
-* filtros;
-* detalle.
-
-Optimiza consultas.
-
-Pruebas.
-
-Build.
-
----
-
-## FASE 9 — UI Inventario
-
-Implementa:
-
-* pantalla principal;
-* KPI;
-* detalle;
-* Kardex;
-* lotes;
-* series;
-* ajustes;
-* transferencias.
-
-Mantén consistencia visual.
-
----
-
-## FASE 10 — Revisión general
-
-Ejecuta:
-
-```powershell
-dotnet build
-dotnet test
-```
-
-Revisa warnings nuevos.
-
-Haz revisión completa de:
-
-```text
-concurrencia;
-transacciones;
-multiempresa;
-idempotencia;
-costos;
-lotes;
-series;
-auditoría;
-Compras.
-```
-
----
-
-# 77. RENDIMIENTO
-
-Evita problemas típicos como:
-
-```text
-N+1 queries
-Include gigantescos
-cargar todo el Kardex en memoria
-```
-
-El Kardex debe soportar paginación.
-
-Las búsquedas deben ejecutarse en base de datos.
-
-No cargar miles de movimientos y después filtrar en memoria.
-
----
-
-# 78. PAGINACIÓN
-
-Implementar paginación real para:
-
-```text
-Kardex
-movimientos
-```
-
-siguiendo el patrón que actualmente utilice el proyecto.
-
-No inventes un segundo componente si ya existe uno.
-
----
-
-# 79. UI RESPONSIVA
-
-Mantener buena experiencia al menos en resoluciones habituales que ya hemos venido utilizando:
-
-```text
-1920 × 1080
-1366 × 768
-1280 × 1024
-```
-
-No fijar anchos/altos innecesarios.
-
-Evitar ventanas que necesiten una resolución grande para ser utilizables.
-
----
-
-# 80. LIGHT / DARK
-
-Todo control nuevo debe respetar:
-
-```text
-Light Theme
-Dark Theme
-```
-
-No hardcodear colores que rompan el sistema de temas.
-
-Reutiliza recursos existentes.
-
----
-
-# 81. SCROLLS
-
-Utiliza los estilos de scrollbar ya implementados.
-
-No permitir que aparezcan scrollbars WPF por defecto que rompan el Look & Feel.
-
----
-
-# 82. BOTONES Y HOVER
-
-Reutiliza estilos actuales.
-
-No crear variantes visuales innecesarias.
-
-Acciones peligrosas:
-
-```text
-Reversar
-Ajuste negativo
-```
-
-deben diferenciarse visualmente de acciones normales sin exagerar.
-
----
-
-# 83. MENSAJES AL USUARIO
-
-Ejemplos:
-
-En vez de:
+No:
 
 ```text
 InvalidOperationException
 ```
 
-mostrar:
+---
+
+# 85. VALIDACIÓN DE SERIES
+
+Ejemplo:
 
 ```text
-No es posible realizar la salida porque la bodega dispone de 3 unidades y se solicitaron 5.
+Debe seleccionar 2 números de serie para completar esta venta.
 ```
-
-Para serie:
-
-```text
-La serie ABC123 no está disponible en la bodega seleccionada.
-```
-
-Para reverso:
-
-```text
-No es posible revertir completamente esta entrada porque parte del stock ya fue utilizado.
-```
-
-Los detalles técnicos deben quedar en logs.
 
 ---
 
-# 84. LOGGING
+# 86. VALIDACIÓN DE LOTES
 
-Registrar los eventos relevantes.
-
-Por ejemplo:
+Ejemplo:
 
 ```text
-MovimientoId
-EmpresaId
-ProductoId
+La cantidad seleccionada supera el stock disponible del lote L-24011.
+```
+
+---
+
+# 87. VALIDACIÓN DE PAGO
+
+Ejemplo:
+
+```text
+El valor registrado en las formas de pago debe coincidir con el total de la venta.
+```
+
+---
+
+# 88. VALIDACIÓN DE CONFIGURACIÓN SRI
+
+Antes de confirmar debe detectarse oportunamente si:
+
+```text
+no existe punto emisión;
+certificado caducado;
+empresa no está lista para facturar;
+```
+
+utilizando el diagnóstico/configuración ya implementado.
+
+No descubrirlo recién después de haber realizado trabajo innecesario.
+
+---
+
+# 89. NO BLOQUEAR UI
+
+Toda operación de base/SRI:
+
+```text
+async
+```
+
+según patrones actuales.
+
+No utilizar:
+
+```csharp
+.Result
+.Wait()
+```
+
+en UI.
+
+---
+
+# 90. INDICADORES DE PROCESO
+
+Mientras factura:
+
+mostrar estados amigables como:
+
+```text
+Validando venta...
+Registrando...
+Generando comprobante...
+Firmando...
+Enviando al SRI...
+Consultando autorización...
+```
+
+No necesariamente cada paso necesita un modal.
+
+Evita que la UI parezca congelada.
+
+---
+
+# 91. LIGHT / DARK
+
+Toda la UI nueva debe funcionar correctamente en ambos temas.
+
+No hardcodear colores innecesariamente.
+
+---
+
+# 92. SCROLLBARS / DATAGRID / HOVER
+
+Reutilizar estilos actuales.
+
+No introducir controles WPF con apariencia por defecto que rompan el Look & Feel.
+
+---
+
+# 93. RESOLUCIONES
+
+Diseñar considerando al menos:
+
+```text
+1920x1080
+1366x768
+1280x1024
+```
+
+La pantalla de venta debe seguir siendo práctica en 1366×768.
+
+---
+
+# 94. TESTS — CÁLCULOS
+
+Crear pruebas para:
+
+```text
+precio
+cantidad
+presentación
+factor
+descuento
+IVA
+subtotal
+total
+redondeo
+```
+
+---
+
+# 95. TESTS — CLIENTE
+
+Probar:
+
+```text
+cliente normal;
+RUC;
+cédula;
+consumidor final;
+cliente de otra empresa cuando la relación comercial lo impida.
+```
+
+Adapta a las reglas actuales.
+
+---
+
+# 96. TESTS — PRESENTACIONES
+
+Ejemplo:
+
+```text
+Venta 2 CAJAS
+Factor 10
+Salida inventario = 20 base
+```
+
+---
+
+# 97. TESTS — PRODUCTO SERVICIO
+
+Un servicio:
+
+```text
+entra en factura
+NO sale de inventario
+```
+
+---
+
+# 98. TESTS — LOTES
+
+Probar:
+
+```text
+lote correcto;
+lote sin stock;
+lote de otra bodega;
+lote caducado;
+múltiples lotes si está soportado.
+```
+
+---
+
+# 99. TESTS — SERIES
+
+Probar:
+
+```text
+serie disponible;
+serie inexistente;
+serie de otra bodega;
+serie duplicada;
+serie ya vendida.
+```
+
+---
+
+# 100. TESTS — INVENTARIO
+
+Venta confirmada:
+
+```text
+stock antes = 10
+venta = 3
+stock después = 7
+```
+
+Debe existir:
+
+```text
+movimiento de Kardex
+Origen = Venta
+```
+
+---
+
+# 101. TESTS — IDEMPOTENCIA
+
+Ejecutar dos veces la confirmación de la misma venta.
+
+Resultado:
+
+```text
+1 venta
+1 movimiento inventario
+1 comprobante
+```
+
+No:
+
+```text
+2 salidas
+2 secuenciales
+```
+
+---
+
+# 102. TESTS — CONCURRENCIA
+
+Ejemplo:
+
+```text
+stock = 5
+
+Terminal A vende 4
+Terminal B vende 4
+```
+
+El resultado debe respetar la política de Inventario.
+
+No confiar en una validación antigua de UI.
+
+---
+
+# 103. TESTS — SRI
+
+Usar el motor existente con clientes simulados cuando corresponda.
+
+Probar:
+
+```text
+RECIBIDA + AUTORIZADO
+DEVUELTA
+NO AUTORIZADO
+PENDIENTE
+timeout
+```
+
+---
+
+# 104. TESTS — FALLO DESPUÉS DE INVENTARIO
+
+Simula una excepción después de aplicar la operación local cuando sea técnicamente posible.
+
+Comprueba que el estado permite recuperación sin duplicar stock.
+
+---
+
+# 105. TESTS — PAGOS
+
+Probar:
+
+```text
+efectivo total;
+pago mixto;
+monto menor;
+monto mayor;
+crédito si está soportado.
+```
+
+---
+
+# 106. TEST END-TO-END
+
+Debe existir como mínimo un flujo completo simulado:
+
+```text
+Seleccionar cliente
+↓
+Agregar producto
+↓
+Aplicar precio
+↓
+Calcular impuestos
+↓
+Registrar pago
+↓
+Confirmar
+↓
+Salida Inventario
+↓
+Factura electrónica
+↓
+RECIBIDA
+↓
+AUTORIZADA
+↓
+Venta finalizada
+```
+
+---
+
+# 107. PRUEBA REAL
+
+Cuando el motor SRI y la configuración actual lo permitan:
+
+realizar una prueba controlada en:
+
+```text
+AMBIENTE DE CERTIFICACIÓN
+```
+
+con una venta/factura de prueba.
+
+Nunca emitir automáticamente en Producción durante tests.
+
+---
+
+# 108. NO CAMBIAR DIRECTAMENTE A PRODUCCIÓN
+
+La selección de ambiente debe provenir de Configuración.
+
+VENTAS no debe tener un switch independiente:
+
+```text
+Pruebas / Producción
+```
+
+---
+
+# 109. INTEGRACIÓN CON MENÚ
+
+Agregar Ventas al menú siguiendo la estructura actual.
+
+No asumir que la organización inicial del menú sigue vigente.
+
+Explora cómo Codex lo ha reorganizado.
+
+---
+
+# 110. NAVEGACIÓN
+
+Reutiliza `INavigationService` o la abstracción vigente.
+
+No crear navegación manual innecesaria.
+
+---
+
+# 111. PERFORMANCE
+
+Evitar:
+
+```text
+N+1
+Include gigantes
+cargar todos los productos
+cargar todas las ventas
+filtrar en memoria
+```
+
+Búsquedas y listados deben ser eficientes.
+
+---
+
+# 112. BÚSQUEDA DE PRODUCTOS PARA POS
+
+Debe responder rápido incluso con miles de productos.
+
+Utilizar consulta paginada/limitada.
+
+El escaneo de código de barras exacto debe ser especialmente eficiente.
+
+Revisa índices.
+
+---
+
+# 113. ÍNDICES DE VENTAS
+
+Si se requieren nuevos índices, justificar según consultas reales.
+
+Probables criterios:
+
+```text
+Empresa
+Fecha
+Cliente
+NumeroDocumento
+ClaveAcceso
+Estado
+PuntoEmision
+```
+
+No agregarlos indiscriminadamente.
+
+---
+
+# 114. CONSTRAINTS
+
+Utilizar restricciones de base cuando refuercen invariantes:
+
+```text
+clave acceso única;
+secuencial único en su ámbito;
+cantidades válidas;
+```
+
+solo cuando no existan ya.
+
+---
+
+# 115. MIGRACIONES
+
+Si necesitas modificaciones:
+
+1. no alteres migraciones aplicadas;
+2. genera una nueva;
+3. inspecciona SQL;
+4. comprueba datos existentes;
+5. evita eliminaciones destructivas.
+
+---
+
+# 116. INTEGRIDAD MULTIEMPRESA
+
+Audita específicamente que:
+
+```text
+Cliente
+Producto
 Bodega
-Origen
-Usuario
-Cantidad
-Resultado
+Punto emisión
+Secuencial
+Venta
+Comprobante
 ```
 
-No generar logs excesivos por cada consulta visual.
+pertenezcan al ámbito correcto.
 
-Diferencia operación de negocio de consulta.
+La UI no es frontera de seguridad.
 
 ---
 
-# 85. DOCUMENTACIÓN
+# 117. DOCUMENTACIÓN
 
-Al finalizar crea:
+Al finalizar crear o actualizar:
 
 ```text
-/docs/INVENTARIO_KARDEX_V1.md
+/docs/VENTAS_V1.md
 ```
 
-Este documento debe describir el estado **real implementado**, no el plan inicial.
+Debe documentar lo que REALMENTE quedó implementado.
 
-Debe incluir:
+Incluir:
 
 1. Objetivo.
 2. Arquitectura.
-3. Entidades/tablas utilizadas.
-4. Flujo de movimientos.
-5. Existencias.
-6. Presentaciones.
-7. Costos.
-8. Lotes.
-9. Series.
-10. Ajustes.
-11. Transferencias.
-12. Integración Compras.
-13. Operaciones sin comprobante.
-14. Relación con Contabilidad.
-15. Concurrencia.
-16. Idempotencia.
-17. Reversos.
-18. UI.
-19. Pruebas.
-20. Decisiones técnicas.
-21. Pendientes reales para Ventas.
+3. Entidades/tablas.
+4. Ciclo de vida.
+5. Clientes.
+6. Productos.
+7. Presentaciones.
+8. Precios.
+9. Descuentos.
+10. Impuestos.
+11. Lotes.
+12. Series.
+13. Pagos.
+14. Inventario.
+15. Facturación electrónica.
+16. Contabilidad.
+17. Estados.
+18. Idempotencia.
+19. Concurrencia.
+20. Multiempresa.
+21. UI.
+22. Permisos.
+23. Auditoría.
+24. Pruebas.
+25. Pendientes reales.
 
-Incluye diagramas Mermaid cuando ayuden.
+Usa diagramas Mermaid donde aporten valor.
 
 ---
 
-# 86. PREPARAR EL CAMINO PARA VENTAS
+# 118. FASES DE IMPLEMENTACIÓN
 
-Inventario V1 debe quedar diseñado de modo que el próximo módulo pueda hacer:
+Trabaja incrementalmente.
+
+## FASE 1 — Auditoría del repositorio
+
+Determina:
 
 ```text
-VENTA
-   ↓
-Validar stock
-   ↓
-Seleccionar lote/serie
-   ↓
-Registrar documento
-   ↓
-InventoryService
-   ↓
-SALIDA
-   ↓
-Existencia
-   ↓
-Kardex
-   ↓
-Costo de venta
+qué existe;
+qué reutilizar;
+qué falta;
+qué NO debemos duplicar.
 ```
 
-No desarrolles Ventas ahora.
+Continúa automáticamente.
 
-Pero evita cualquier decisión que nos obligue a reconstruir Inventario cuando lleguemos a ella.
+No pidas confirmación salvo que exista una decisión imposible de inferir.
 
 ---
 
-# 87. PREPARAR EL CAMINO PARA DEVOLUCIONES
+## FASE 2 — Dominio / modelo Venta
 
-También debe poder soportar posteriormente:
+Completa únicamente lo necesario.
+
+Pruebas.
+
+```powershell
+dotnet build
+dotnet test
+```
+
+---
+
+## FASE 3 — Motor de cálculo
+
+Implementa/reutiliza:
 
 ```text
-DEVOLUCIÓN DE VENTA
-→ entrada
-
-DEVOLUCIÓN A PROVEEDOR
-→ salida
+precios
+descuentos
+impuestos
+totales
 ```
 
-sin crear un segundo mecanismo.
+Pruebas.
 
 ---
 
-# 88. PREPARAR EL CAMINO PARA CONTABILIDAD
+## FASE 4 — Integración Clientes / Productos
 
-Inventario debe poder proporcionar posteriormente información como:
+Búsquedas y selección.
+
+Pruebas.
+
+---
+
+## FASE 5 — Inventario
+
+Integra:
 
 ```text
-Costo de inventario ingresado
-Costo de inventario vendido
-Costo de ajustes
-Transferencias
-Saldos valorizados
+stock
+presentaciones
+lotes
+series
+salida
+costo
 ```
 
-pero no implementes lógica contable duplicada dentro de Inventario.
-
-Respeta la arquitectura actual de Contabilidad.
+Pruebas.
 
 ---
 
-# 89. NO IMPLEMENTAR TODAVÍA
+## FASE 6 — Pagos
 
-No quiero que esta tarea se expanda innecesariamente a:
+Implementar según infraestructura actual.
 
-* Ventas.
-* Facturación electrónica SRI.
-* Nota de crédito.
-* Cuentas por cobrar.
-* Caja.
-* Contabilidad completa.
-* RIDE.
-* Reportes avanzados.
-* Migración completa desde KONTAX antiguo.
-
-Solo prepara correctamente los puntos de extensión.
+Pruebas.
 
 ---
 
-# 90. CRITERIOS DE ACEPTACIÓN
+## FASE 7 — Confirmación / persistencia
 
-Inventario/Kardex V1 estará listo cuando:
+Implementar:
 
-* [ ] Existe un único motor responsable de modificar existencias.
-* [ ] Compras utiliza ese motor.
-* [ ] Una compra no puede duplicar inventario.
-* [ ] Se mantiene stock por bodega.
-* [ ] Las presentaciones convierten correctamente a cantidad base.
-* [ ] El costo promedio ponderado funciona correctamente.
-* [ ] Los costos históricos de movimientos permanecen inmutables.
-* [ ] Productos sin inventario no generan movimientos.
-* [ ] Lotes funcionan por bodega.
-* [ ] Caducidades respetan las reglas existentes.
-* [ ] Series tienen trazabilidad y unicidad.
-* [ ] Ajustes positivos/negativos funcionan.
-* [ ] Transferencias son atómicas.
-* [ ] Transferencias de lotes funcionan.
-* [ ] Transferencias de series funcionan.
-* [ ] Los reversos no eliminan el movimiento original.
-* [ ] Existe protección contra concurrencia.
-* [ ] Existe idempotencia.
+```text
+transacción local
+idempotencia
+concurrencia
+estados
+```
+
+Pruebas.
+
+---
+
+## FASE 8 — Facturación electrónica
+
+Mapeo Venta → Factura.
+
+Integrar motor existente.
+
+Pruebas simuladas.
+
+---
+
+## FASE 9 — Contabilidad
+
+Conectar exclusivamente con infraestructura existente.
+
+No duplicar.
+
+Pruebas.
+
+---
+
+## FASE 10 — Listado Ventas
+
+Implementar:
+
+```text
+KPI
+búsqueda
+filtros
+paginación
+detalle
+```
+
+---
+
+## FASE 11 — Nueva Venta
+
+Construir UI POS/venta.
+
+Optimizar para velocidad de uso.
+
+---
+
+## FASE 12 — Recuperación SRI
+
+Integrar pendientes/reconciliación.
+
+---
+
+## FASE 13 — Prueba integral
+
+Ejecutar flujo completo.
+
+---
+
+## FASE 14 — Auditoría final
+
+Revisar:
+
+```text
+Integridad
+Stock
+Lotes
+Series
+Precios
+Impuestos
+SRI
+Contabilidad
+Idempotencia
+Concurrencia
+Multiempresa
+Permisos
+Auditoría
+Performance
+UI
+```
+
+---
+
+# 119. BUILD / TEST CONSTANTE
+
+Después de cada fase:
+
+```powershell
+dotnet build
+dotnet test
+```
+
+No acumules cambios durante muchas fases sin compilar.
+
+---
+
+# 120. CRITERIOS DE ACEPTACIÓN
+
+VENTAS V1 estará terminado cuando:
+
+* [ ] Codex exploró primero el repositorio actual.
+* [ ] No se duplicaron servicios/entidades existentes.
+* [ ] Existe listado de ventas.
+* [ ] Existe Nueva Venta.
+* [ ] Cliente funciona.
+* [ ] Consumidor final funciona.
+* [ ] Productos funcionan.
+* [ ] Servicios funcionan.
+* [ ] Código de barras funciona.
+* [ ] Presentaciones funcionan.
+* [ ] Factores funcionan.
+* [ ] Precios funcionan.
+* [ ] Lista del cliente funciona cuando corresponda.
+* [ ] Descuentos funcionan.
+* [ ] IVA/impuestos funcionan.
+* [ ] Totales son consistentes con XML SRI.
+* [ ] Stock se consulta correctamente.
+* [ ] La confirmación usa Inventario V1.
+* [ ] Una venta genera una única salida.
+* [ ] Lotes funcionan.
+* [ ] Series funcionan.
+* [ ] Pagos funcionan.
+* [ ] Pago mixto funciona si fue incluido.
+* [ ] Punto emisión correcto.
+* [ ] Secuencial atómico.
+* [ ] Venta → Factura electrónica funciona.
+* [ ] Factura se firma usando el motor existente.
+* [ ] Recepción SRI funciona.
+* [ ] Autorización SRI funciona.
+* [ ] Se gestionan pendientes.
+* [ ] Se preservan mensajes SRI.
+* [ ] La venta puede recuperarse después de fallos.
+* [ ] No se duplica stock al reintentar.
+* [ ] No se duplica comprobante al reintentar.
 * [ ] Multiempresa está protegida.
-* [ ] El Kardex muestra entradas, salidas y saldo histórico.
-* [ ] Existe Kardex valorado.
-* [ ] Existe pantalla principal de Inventario.
-* [ ] Los KPI son consistentes con ProductsView.
-* [ ] Existe detalle de stock por bodega.
-* [ ] Existe consulta de lotes.
-* [ ] Existe consulta de series.
-* [ ] La UI funciona Light/Dark.
-* [ ] No se introdujeron dependencias innecesarias.
-* [ ] `dotnet build` finaliza correctamente.
-* [ ] `dotnet test` finaliza sin regresiones.
-* [ ] Existe `/docs/INVENTARIO_KARDEX_V1.md`.
+* [ ] Contabilidad no se duplica.
+* [ ] Permisos funcionan.
+* [ ] Auditoría funciona.
+* [ ] Listados son paginados.
+* [ ] UI funciona Light/Dark.
+* [ ] UX es adecuada para mostrador.
+* [ ] `dotnet build` correcto.
+* [ ] `dotnet test` sin regresiones.
+* [ ] Existe `/docs/VENTAS_V1.md`.
 
 ---
 
-# 91. REVISIÓN DE CALIDAD FINAL
+# 121. REVISIÓN CRÍTICA FINAL
 
-Antes de considerar terminada la tarea, realiza una revisión crítica buscando específicamente:
+Antes de declarar terminado VENTAS V1, comprueba específicamente:
 
-### Integridad
-
-```text
-¿Existe alguna ruta que modifique stock sin crear movimiento?
-```
-
-### Duplicidad
+### DUPLICIDAD
 
 ```text
-¿Una compra puede aplicarse dos veces?
+¿Un doble clic puede crear dos ventas?
 ```
 
-### Costos
+Debe ser:
 
 ```text
-¿Algún cálculo utiliza costo actual para alterar un movimiento histórico?
+NO
 ```
 
-### Presentaciones
+### INVENTARIO
 
 ```text
-¿Toda operación utiliza correctamente factor_conversion?
+¿Existe alguna ruta donde Ventas cambie stock directamente?
 ```
 
-### Lotes
+Debe ser:
 
 ```text
-¿Puede existir stock sin lote en un producto que obliga lote?
+NO
 ```
 
-### Series
+### PRESENTACIONES
 
 ```text
-¿Puede duplicarse o salir dos veces una serie?
+¿Cantidad comercial y cantidad base siempre cuadran?
 ```
 
-### Transacciones
+### LOTES
 
 ```text
-¿Puede quedar una operación parcialmente aplicada?
+¿Puede venderse stock de un lote inexistente?
 ```
 
-### Concurrencia
+Debe ser:
 
 ```text
-¿Dos terminales pueden generar un stock incorrecto simultáneamente?
+NO
 ```
 
-### Multiempresa
+### SERIES
 
 ```text
-¿Existe cualquier consulta o comando sin filtro/validación de empresa?
+¿Puede una serie venderse dos veces?
 ```
 
-### Reversos
+Debe ser:
 
 ```text
-¿Se elimina o modifica información histórica?
+NO
 ```
 
-### Compras
+### SECUENCIAL
 
 ```text
-¿Compra e Inventario tienen dos implementaciones distintas de stock/costo?
+¿Dos terminales pueden recibir el mismo secuencial?
 ```
 
-Si encuentras cualquiera de estos problemas, corrígelo antes de dar por finalizado el módulo.
+Debe ser:
+
+```text
+NO
+```
+
+### SRI
+
+```text
+¿Un timeout puede provocar que reenviemos ciegamente una factura ya recibida?
+```
+
+Debe ser:
+
+```text
+NO
+```
+
+### MULTIEMPRESA
+
+```text
+¿Una venta puede utilizar una bodega, punto de emisión o certificado de otra empresa?
+```
+
+Debe ser:
+
+```text
+NO
+```
+
+### HISTÓRICO
+
+```text
+¿Cambiar un producto hoy altera una venta de ayer?
+```
+
+Debe ser:
+
+```text
+NO
+```
+
+### CÁLCULOS
+
+```text
+¿Pantalla, persistencia y XML utilizan reglas diferentes?
+```
+
+Debe ser:
+
+```text
+NO
+```
+
+### CONTABILIDAD
+
+```text
+¿Se genera dos veces el mismo efecto contable?
+```
+
+Debe ser:
+
+```text
+NO
+```
+
+Corrige cualquier problema antes de cerrar el módulo.
 
 ---
 
-# 92. INFORME FINAL DE CODEX
+# 122. INFORME FINAL DE CODEX
 
-Cuando termines, dame un resumen claro.
+Al terminar entrega:
 
 ## Estado
 
 ```text
-INVENTARIO / KARDEX V1
+VENTAS V1
 COMPLETADO / PARCIAL
+```
+
+## Exploración inicial
+
+Describe qué piezas existentes encontraste y reutilizaste.
+
+Especialmente:
+
+```text
+Productos
+Clientes
+Inventario
+Facturación electrónica
+Puntos de emisión
+Contabilidad
+Seguridad
+Auditoría
 ```
 
 ## Arquitectura resultante
 
-Explica brevemente cómo quedó organizado el motor.
+Explica cómo quedó el flujo de Venta.
 
 ## Archivos creados
 
@@ -2651,81 +2777,121 @@ Cambio
 
 ## Base de datos
 
-Indica:
+Reporta únicamente cambios reales:
 
 ```text
-tablas creadas;
-tablas modificadas;
-índices;
-constraints;
-migraciones.
+tablas
+columnas
+índices
+constraints
+migraciones
 ```
 
 ## Integraciones
 
-Confirma explícitamente:
+Describe expresamente:
 
 ```text
+Clientes
 Productos
-Compras
-Operaciones sin comprobante
+Inventario/Kardex
+Facturación Electrónica
 Contabilidad
+Operaciones sin comprobante si existe relación
 ```
-
-y qué relación quedó implementada con cada una.
 
 ## Pruebas
 
-Indica:
+Indicar:
 
 ```text
-cantidad de pruebas nuevas;
+pruebas nuevas;
 dotnet build;
 dotnet test;
 resultado.
 ```
 
-## Reglas verificadas
+## Flujo SRI
 
-Confirma:
+Confirmar:
 
 ```text
-unidad base;
-presentaciones;
-costo promedio;
-lotes;
-series;
-caducidad;
-ajustes;
-transferencias;
-reversos;
-idempotencia;
-concurrencia;
-multiempresa.
+Venta
+→ XML
+→ Firma
+→ Recepción
+→ Autorización
+```
+
+## Concurrencia
+
+Indicar cómo se protege:
+
+```text
+stock;
+secuenciales;
+confirmación.
+```
+
+## Idempotencia
+
+Indicar cómo se evita:
+
+```text
+doble venta;
+doble salida;
+doble comprobante.
 ```
 
 ## Pendientes
 
-Menciona únicamente pendientes reales y justificados.
+Solo pendientes reales y justificados.
 
 ---
 
-# 93. REGLA FINAL
+# 123. REGLA FINAL
 
-No quiero simplemente “hacer que funcione”.
+VENTAS es un módulo orquestador.
 
-Quiero que **Inventario/Kardex sea una base sólida para Ventas**.
+No debe reemplazar los motores que ya construimos.
 
-Toma como referencia todo lo que ya hemos aprendido y construido en KONTAXPRO durante Productos, Clientes, Proveedores, Compras, Operaciones sin comprobante y Contabilidad.
+Debe unir correctamente:
 
-No reconstruyas lo que ya está bien.
+```text
+CLIENTE
++
+PRODUCTO
++
+PRECIO
++
+INVENTARIO
++
+PAGO
++
+CONTABILIDAD
++
+FACTURACIÓN ELECTRÓNICA
+```
 
-No introduzcas una arquitectura paralela.
+y convertirlos en una operación comercial:
 
-No sacrifiques trazabilidad por simplicidad.
+```text
+TRAZABLE
+CONSISTENTE
+RECUPERABLE
+AUDITABLE
+```
 
-No sacrifiques integridad de inventario por comodidad de implementación.
+Recuerda siempre:
 
-Y mantén siempre el principio de KONTAXPRO:
+> **Antes de modificar cualquier parte, comprende el estado ACTUAL del proyecto.**
 
-> **Robustez por dentro, simplicidad por fuera.**
+No hagas retroceder decisiones arquitectónicas que hayan sido mejoradas desde las primeras versiones.
+
+No construyas lo que ya existe.
+
+No sacrifiques integridad por rapidez.
+
+Y mantén la filosofía de KONTAXPRO:
+
+> # ROBUSTEZ POR DENTRO, SIMPLICIDAD POR FUERA.

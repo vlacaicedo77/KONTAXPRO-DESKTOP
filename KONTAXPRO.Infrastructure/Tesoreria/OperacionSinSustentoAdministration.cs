@@ -37,6 +37,7 @@ public sealed partial class OperacionSinSustentoService
             throw new InvalidOperationException("No tienes permiso para consultar operaciones sin sustento.");
         var source = context.OperacionesSinSustento.AsNoTracking()
             .Where(x => x.EmpresaId == request.EmpresaId &&
+                x.EstablecimientoId == request.EstablecimientoId &&
                 authorizedEstablishments.Contains(x.EstablecimientoId));
         var result = await source.GroupBy(_ => 1).Select(g => new OperacionSinSustentoCatalogoDto
         {

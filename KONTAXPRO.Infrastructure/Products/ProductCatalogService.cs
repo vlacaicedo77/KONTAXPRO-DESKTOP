@@ -125,6 +125,7 @@ public class ProductCatalogService : IProductCatalogService
 
     public async Task<List<ProductoExistenciaDto>> ObtenerBodegasAsync(
         long empresaId,
+        long? establecimientoId = null,
         CancellationToken cancellationToken = default)
     {
         await using var context =
@@ -132,7 +133,9 @@ public class ProductCatalogService : IProductCatalogService
 
         return await context.Bodegas.AsNoTracking()
             .Where(x => x.Estado == 1 &&
-                        x.Establecimiento!.EmpresaId == empresaId)
+                        x.Establecimiento!.EmpresaId == empresaId &&
+                        (!establecimientoId.HasValue ||
+                         x.EstablecimientoId == establecimientoId.Value))
             .OrderBy(x => x.Codigo)
             .ThenBy(x => x.Nombre)
             .Select(x => new ProductoExistenciaDto

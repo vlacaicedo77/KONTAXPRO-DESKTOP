@@ -230,7 +230,8 @@ public sealed class StructuralSeeder
             context.EstadosComprobanteElectronico,
             [
                 "PENDIENTE", "PROCESANDO", "GENERADO", "FIRMADO", "ENVIADO",
-                "RECIBIDO", "AUTORIZADO", "NO_AUTORIZADO", "ERROR"
+                "RECIBIDO", "PENDIENTE_AUTORIZACION", "AUTORIZADO",
+                "NO_AUTORIZADO", "DEVUELTO", "ERROR_TECNICO", "ERROR"
             ],
             now,
             cancellationToken);
@@ -376,7 +377,12 @@ public sealed class StructuralSeeder
             ("CONTABILIDAD_REABRIR_PERIODO", "CONTABILIDAD"),
             ("CONTABILIDAD_CREAR_ASIENTO_MANUAL", "CONTABILIDAD"),
             ("CONTABILIDAD_ANULAR_ASIENTO", "CONTABILIDAD"),
-            ("VENTAS_FACTURAR_A_TERCERO_DISTINTO", "VENTAS")
+            ("VENTAS_FACTURAR_A_TERCERO_DISTINTO", "VENTAS"),
+            ("SRI_CONFIGURAR_FACTURACION", "SRI"),
+            ("SRI_CAMBIAR_CERTIFICADO", "SRI"),
+            ("SRI_CAMBIAR_AMBIENTE", "SRI"),
+            ("SRI_ADMINISTRAR_SECUENCIALES", "SRI"),
+            ("SRI_EJECUTAR_DIAGNOSTICO", "SRI")
         ];
 
         var roles = await context.Roles

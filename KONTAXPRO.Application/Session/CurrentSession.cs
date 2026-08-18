@@ -8,10 +8,21 @@ public sealed class EmpresaActivaChangedEventArgs(
     public long EmpresaActualId { get; } = empresaActualId;
 }
 
+public sealed class EstablecimientoActivoChangedEventArgs(
+    long? establecimientoAnteriorId,
+    long establecimientoActualId) : EventArgs
+{
+    public long? EstablecimientoAnteriorId { get; } =
+        establecimientoAnteriorId;
+    public long EstablecimientoActualId { get; } = establecimientoActualId;
+}
+
 public class CurrentSession
 {
     public event EventHandler<EmpresaActivaChangedEventArgs>?
         EmpresaActivaChanged;
+    public event EventHandler<EstablecimientoActivoChangedEventArgs>?
+        EstablecimientoActivoChanged;
 
     public long UsuarioId { get; set; }
 
@@ -54,8 +65,13 @@ public class CurrentSession
 
     public int CantidadEmpresasDisponibles { get; set; }
 
+    public int CantidadEstablecimientosDisponibles { get; set; }
+
     public bool PuedeCambiarEmpresa =>
         CantidadEmpresasDisponibles > 1;
+
+    public bool PuedeCambiarEstablecimiento =>
+        EmpresaId.HasValue && CantidadEstablecimientosDisponibles > 1;
 
     public bool HasPermission(string permiso)
     {
@@ -81,6 +97,20 @@ public class CurrentSession
             new EmpresaActivaChangedEventArgs(
                 empresaAnteriorId,
                 EmpresaId.Value));
+    }
+
+    public void NotifyEstablecimientoActivoChanged(
+        long? establecimientoAnteriorId)
+    {
+        if (!EstablecimientoId.HasValue ||
+            EstablecimientoId == establecimientoAnteriorId)
+            return;
+
+        EstablecimientoActivoChanged?.Invoke(
+            this,
+            new EstablecimientoActivoChangedEventArgs(
+                establecimientoAnteriorId,
+                EstablecimientoId.Value));
     }
 
     public void Clear()
@@ -110,5 +140,6 @@ public class CurrentSession
         CajaSesionId = null;
         NumeroIdentificacion = string.Empty;
         CantidadEmpresasDisponibles = 0;
+        CantidadEstablecimientosDisponibles = 0;
     }
 }

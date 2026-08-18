@@ -35,6 +35,7 @@ public sealed class OperacionSinSustentoRequest
 public sealed class OperacionSinSustentoCatalogoRequest
 {
     public long EmpresaId { get; set; }
+    public long EstablecimientoId { get; set; }
     public long UsuarioId { get; set; }
     public string? Busqueda { get; set; }
     public string Estado { get; set; } = "TODAS";

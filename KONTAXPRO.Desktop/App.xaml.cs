@@ -8,6 +8,7 @@ using KONTAXPRO.Desktop.ViewModels.Proveedores;
 using KONTAXPRO.Desktop.ViewModels.Compras;
 using KONTAXPRO.Desktop.ViewModels.Tesoreria;
 using KONTAXPRO.Desktop.ViewModels.Inventory;
+using KONTAXPRO.Desktop.ViewModels.FacturacionElectronica;
 using KONTAXPRO.Desktop.Views;
 using KONTAXPRO.Desktop.Views.Products;
 using KONTAXPRO.Desktop.Views.Clientes;
@@ -25,6 +26,8 @@ using KONTAXPRO.Infrastructure.Tesoreria;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using KONTAXPRO.Application.FacturacionElectronica;
 using System;
 using System.Windows;
 
@@ -34,6 +37,7 @@ namespace KONTAXPRO.Desktop
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly IConfiguration _configuration;
+        private IFacturacionElectronicaWorkerScheduler? _sriWorkerScheduler;
 
         public App()
         {
@@ -54,6 +58,7 @@ namespace KONTAXPRO.Desktop
 
             // Registrar configuración
             services.AddSingleton(_configuration);
+            services.AddLogging();
 
             // Registrar conexión a PostgreSQL mediante DbContextFactory
             var connectionString = Environment.GetEnvironmentVariable(
@@ -88,6 +93,12 @@ namespace KONTAXPRO.Desktop
             {
                 DirectorioBase = documentsPath
             });
+            services.AddSingleton<IContextoInstalacion>(new ContextoInstalacionLocal(
+                documentsPath,
+                Environment.GetEnvironmentVariable("KONTAXPRO_INSTALLATION_TYPE") ??
+                _configuration["Installation:Type"] ?? "SERVIDOR",
+                Environment.GetEnvironmentVariable("KONTAXPRO_INSTALLATION_ID") ??
+                _configuration["Installation:Id"]));
             services.AddSingleton<IArchivoCompraStorage,
                 ArchivoCompraFileStorage>();
             services.AddSingleton<ISoporteSinSustentoStorage,
@@ -142,6 +153,48 @@ namespace KONTAXPRO.Desktop
                 OperacionSinSustentoService>();
             services.AddTransient<IEstadoComprobanteElectronicoService,
                 EstadoComprobanteElectronicoService>();
+            var sriElectronicOptions = new SriEndpointsOptions
+            {
+                RecepcionPruebas = _configuration["Sri:FacturacionElectronica:RecepcionPruebas"] ?? new SriEndpointsOptions().RecepcionPruebas,
+                AutorizacionPruebas = _configuration["Sri:FacturacionElectronica:AutorizacionPruebas"] ?? new SriEndpointsOptions().AutorizacionPruebas,
+                RecepcionProduccion = _configuration["Sri:FacturacionElectronica:RecepcionProduccion"] ?? new SriEndpointsOptions().RecepcionProduccion,
+                AutorizacionProduccion = _configuration["Sri:FacturacionElectronica:AutorizacionProduccion"] ?? new SriEndpointsOptions().AutorizacionProduccion,
+                TimeoutSeconds = int.TryParse(_configuration["Sri:FacturacionElectronica:TimeoutSeconds"], out var electronicTimeout) ? Math.Clamp(electronicTimeout, 5, 120) : 45
+            };
+            services.AddSingleton(Options.Create(sriElectronicOptions));
+            services.AddHttpClient<IClienteRecepcionSri, ClienteRecepcionSri>(client =>
+                client.Timeout = TimeSpan.FromSeconds(sriElectronicOptions.TimeoutSeconds));
+            services.AddHttpClient<IClienteAutorizacionSri, ClienteAutorizacionSri>(client =>
+                client.Timeout = TimeSpan.FromSeconds(sriElectronicOptions.TimeoutSeconds));
+            services.AddHttpClient<IDiagnosticoComunicacionSri, DiagnosticoComunicacionSri>(client =>
+                client.Timeout = TimeSpan.FromSeconds(sriElectronicOptions.TimeoutSeconds));
+            services.AddSingleton<IGeneradorClaveAccesoSri, GeneradorClaveAccesoSri>();
+            services.AddSingleton<IGeneradorCodigoNumericoSri, GeneradorCodigoNumericoSri>();
+            services.AddSingleton<IGeneradorXmlFacturaSri, GeneradorXmlFacturaSri>();
+            services.AddSingleton<IValidadorXmlSri, ValidadorXmlSri>();
+            services.AddSingleton<IValidadorCertificadoSri, ValidadorCertificadoSri>();
+            services.AddSingleton<IFirmadorXadesSri, FirmadorXadesSri>();
+            services.AddSingleton<IProtectorSecretosLocal, ProtectorSecretosWindows>();
+            services.AddSingleton<IAlmacenamientoCertificadoSri, AlmacenamientoCertificadoSri>();
+            services.AddSingleton<IAlmacenamientoDocumentosElectronicos, AlmacenamientoDocumentosElectronicos>();
+            services.AddSingleton<IFirmadorXmlComprobanteElectronico, FirmadorXmlComprobanteElectronico>();
+            services.AddSingleton<IClienteSriComprobantesElectronicos, ClienteSriComprobantesElectronicos>();
+            services.AddTransient<IGeneradorXmlComprobanteElectronico, GeneradorXmlComprobanteElectronico>();
+            services.AddTransient<IConfiguracionFacturacionElectronicaService, ConfiguracionFacturacionElectronicaService>();
+            services.AddTransient<IAsignadorSecuencialComprobanteSri, AsignadorSecuencialComprobanteSri>();
+            services.AddTransient<IMotorFacturaElectronicaSri, MotorFacturaElectronicaSri>();
+            services.AddTransient<IProcesadorFacturacionElectronica, ProcesadorFacturacionElectronica>();
+            services.AddSingleton<IWorkerFacturacionElectronica, WorkerFacturacionElectronica>();
+            services.AddSingleton(new FacturacionElectronicaWorkerOptions
+            {
+                Intervalo = TimeSpan.FromSeconds(int.TryParse(
+                    _configuration["Sri:FacturacionElectronica:WorkerIntervalSeconds"],
+                    out var workerInterval)
+                    ? Math.Clamp(workerInterval, 5, 300)
+                    : 15)
+            });
+            services.AddSingleton<IFacturacionElectronicaWorkerScheduler,
+                FacturacionElectronicaWorkerScheduler>();
             services.AddTransient<ProductsViewModel>();
             services.AddTransient<ProductFormViewModel>();
             services.AddTransient<ClienteFormViewModel>();
@@ -152,6 +205,7 @@ namespace KONTAXPRO.Desktop
             services.AddTransient<OperacionSinSustentoViewModel>();
             services.AddTransient<OperacionesSinSustentoViewModel>();
             services.AddTransient<InventoryViewModel>();
+            services.AddTransient<FacturacionElectronicaConfiguracionViewModel>();
 
             var interoperabilidadOptions =
                 CreateInteroperabilidadOptions(_configuration);
@@ -190,10 +244,12 @@ namespace KONTAXPRO.Desktop
             services.AddTransient<LoginViewModel>();
             services.AddTransient<LoginWindow>();
             services.AddTransient<SeleccionarEmpresaViewModel>();
+            services.AddTransient<SeleccionarEstablecimientoViewModel>();
 
             // Ventanas
             services.AddSingleton<MainWindow>();
             services.AddTransient<SeleccionarEmpresaWindow>();
+            services.AddTransient<SeleccionarEstablecimientoWindow>();
 
             // Secretos y Auth
             services.AddSingleton<IPasswordHasher, PasswordHasher>();
@@ -270,6 +326,19 @@ namespace KONTAXPRO.Desktop
                 ShutdownMode =
                     ShutdownMode.OnExplicitShutdown;
 
+                var environmentName =
+                    Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
+                    ?? Environment.GetEnvironmentVariable(
+                        "ASPNETCORE_ENVIRONMENT");
+                var initializeDevelopmentDatabase = e.Args.Any(x =>
+                    string.Equals(x, "--initialize-development-database",
+                        StringComparison.OrdinalIgnoreCase));
+                if (initializeDevelopmentDatabase &&
+                    !string.Equals(environmentName, "Development",
+                        StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException(
+                        "La inicialización automática solo está disponible en Development.");
+
                 // Verificar conexión con PostgreSQL
                 var dbContextFactory =
                     _serviceProvider.GetRequiredService<
@@ -277,6 +346,9 @@ namespace KONTAXPRO.Desktop
 
                 await using var context =
                     await dbContextFactory.CreateDbContextAsync();
+
+                if (initializeDevelopmentDatabase)
+                    await context.Database.MigrateAsync();
 
                 var puedeConectar =
                     await context.Database.CanConnectAsync();
@@ -302,10 +374,6 @@ namespace KONTAXPRO.Desktop
 
                 await seeder.SeedAsync();
 
-                var environmentName =
-                    Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
-                    ?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-
                 if (string.Equals(
                         environmentName,
                         "Development",
@@ -316,6 +384,16 @@ namespace KONTAXPRO.Desktop
 
                     await demoSeeder.SeedAsync(environmentName);
                 }
+
+                if (initializeDevelopmentDatabase)
+                {
+                    Shutdown(0);
+                    return;
+                }
+
+                _sriWorkerScheduler = _serviceProvider.GetRequiredService<
+                    IFacturacionElectronicaWorkerScheduler>();
+                await _sriWorkerScheduler.IniciarAsync();
 
                 // Ejecutar Login y selección automática/manual de empresa
                 var sessionFlowService =
@@ -357,6 +435,20 @@ namespace KONTAXPRO.Desktop
 
                 Shutdown();
             }
+        }
+
+        protected override void OnExit(ExitEventArgs e)
+        {
+            try
+            {
+                _sriWorkerScheduler?.DetenerAsync()
+                    .GetAwaiter().GetResult();
+            }
+            catch (Exception exception)
+            {
+                System.Diagnostics.Debug.WriteLine(exception);
+            }
+            base.OnExit(e);
         }
 
     }

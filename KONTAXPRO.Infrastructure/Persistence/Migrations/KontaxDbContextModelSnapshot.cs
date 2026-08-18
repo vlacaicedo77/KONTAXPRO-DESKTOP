@@ -5273,6 +5273,11 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(150)")
                         .HasColumnName("nombre");
 
+                    b.Property<string>("NombreComercial")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("nombre_comercial");
+
                     b.Property<string>("Prefijo")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -5316,14 +5321,38 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<string>("CertificadoEmisor")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("certificado_emisor");
+
                     b.Property<DateOnly?>("CertificadoFechaCaducidad")
                         .HasColumnType("date")
                         .HasColumnName("certificado_fecha_caducidad");
+
+                    b.Property<DateOnly?>("CertificadoFechaInicio")
+                        .HasColumnType("date")
+                        .HasColumnName("certificado_fecha_inicio");
 
                     b.Property<string>("CertificadoNombre")
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
                         .HasColumnName("certificado_nombre");
+
+                    b.Property<string>("CertificadoNumeroSerie")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("certificado_numero_serie");
+
+                    b.Property<string>("CertificadoReferencia")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("certificado_referencia");
+
+                    b.Property<string>("CertificadoTitular")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("certificado_titular");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -5352,6 +5381,12 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -6044,9 +6079,23 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("empresa_id");
 
+                    b.Property<long?>("EstablecimientoId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("establecimiento_id");
+
+                    b.Property<string>("EstadoAutorizacion")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("estado_autorizacion");
+
                     b.Property<long>("EstadoComprobanteElectronicoId")
                         .HasColumnType("bigint")
                         .HasColumnName("estado_comprobante_electronico_id");
+
+                    b.Property<string>("EstadoRecepcion")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("estado_recepcion");
 
                     b.Property<DateTime?>("FechaAutorizacion")
                         .HasColumnType("timestamp with time zone")
@@ -6055,6 +6104,22 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("FechaEnvio")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("fecha_envio");
+
+                    b.Property<DateTime?>("FechaUltimaConsulta")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_ultima_consulta");
+
+                    b.Property<int>("IntentosAutorizacion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("intentos_autorizacion");
+
+                    b.Property<int>("IntentosEnvio")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("intentos_envio");
 
                     b.Property<string>("NumeroAutorizacion")
                         .HasMaxLength(64)
@@ -6073,9 +6138,17 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("procesamiento_iniciado_at");
 
+                    b.Property<long?>("PuntoEmisionId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("punto_emision_id");
+
                     b.Property<DateTime?>("RideGeneradoAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("ride_generado_at");
+
+                    b.Property<int?>("Secuencial")
+                        .HasColumnType("integer")
+                        .HasColumnName("secuencial");
 
                     b.Property<long>("TipoAmbienteId")
                         .HasColumnType("bigint")
@@ -6097,17 +6170,40 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
+                    b.Property<string>("VersionXml")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("2.1.0")
+                        .HasColumnName("version_xml");
+
                     b.Property<DateTime?>("XmlAutorizadoAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("xml_autorizado_at");
+
+                    b.Property<string>("XmlAutorizadoReferencia")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("xml_autorizado_referencia");
 
                     b.Property<DateTime?>("XmlFirmadoAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("xml_firmado_at");
 
+                    b.Property<string>("XmlFirmadoReferencia")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("xml_firmado_referencia");
+
                     b.Property<DateTime?>("XmlGeneradoAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("xml_generado_at");
+
+                    b.Property<string>("XmlGeneradoReferencia")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("xml_generado_referencia");
 
                     b.HasKey("Id");
 
@@ -6123,14 +6219,28 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("TipoEmisionId");
 
+                    b.HasIndex("EstablecimientoId", "EmpresaId");
+
                     b.HasIndex("EstadoComprobanteElectronicoId", "ProcesamientoIniciadoAt")
                         .HasDatabaseName("ix_comprobantes_electronicos_procesamiento");
+
+                    b.HasIndex("PuntoEmisionId", "EstablecimientoId");
 
                     b.HasIndex("TipoOrigenComprobanteElectronicoId", "OrigenId")
                         .IsUnique()
                         .HasDatabaseName("ux_comprobantes_electronicos_origen");
 
-                    b.ToTable("comprobantes_electronicos", "s_facturacion_electronica");
+                    b.HasIndex("PuntoEmisionId", "TipoComprobanteId", "TipoAmbienteId", "Secuencial")
+                        .IsUnique()
+                        .HasDatabaseName("ux_comprobantes_electronicos_emision")
+                        .HasFilter("punto_emision_id IS NOT NULL AND secuencial IS NOT NULL");
+
+                    b.ToTable("comprobantes_electronicos", "s_facturacion_electronica", t =>
+                        {
+                            t.HasCheckConstraint("ck_comprobantes_electronicos_intentos", "intentos_envio >= 0 AND intentos_autorizacion >= 0");
+
+                            t.HasCheckConstraint("ck_comprobantes_electronicos_secuencial", "secuencial IS NULL OR secuencial BETWEEN 1 AND 999999999");
+                        });
                 });
 
             modelBuilder.Entity("KONTAXPRO.Domain.Entities.FacturacionElectronica.ComprobanteElectronicoEvento", b =>
@@ -6858,8 +6968,8 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("EmpresaId", "OrigenTipoId", "OrigenId", "BodegaId", "TipoMovimientoId")
                         .IsUnique()
-                        .HasFilter("origen_id > 0")
-                        .HasDatabaseName("ux_movimientos_inventario_origen_bodega_tipo");
+                        .HasDatabaseName("ux_movimientos_inventario_origen_bodega_tipo")
+                        .HasFilter("origen_id > 0");
 
                     b.ToTable("movimientos_inventario", "s_inventario");
                 });
@@ -13036,9 +13146,25 @@ namespace KONTAXPRO.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("KONTAXPRO.Domain.Entities.Configuracion.Establecimiento", "Establecimiento")
+                        .WithMany()
+                        .HasForeignKey("EstablecimientoId", "EmpresaId")
+                        .HasPrincipalKey("Id", "EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("KONTAXPRO.Domain.Entities.Configuracion.PuntoEmision", "PuntoEmision")
+                        .WithMany()
+                        .HasForeignKey("PuntoEmisionId", "EstablecimientoId")
+                        .HasPrincipalKey("Id", "EstablecimientoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Empresa");
 
+                    b.Navigation("Establecimiento");
+
                     b.Navigation("EstadoComprobanteElectronico");
+
+                    b.Navigation("PuntoEmision");
 
                     b.Navigation("TipoAmbiente");
 

@@ -171,11 +171,24 @@ public sealed class FacturacionElectronicaConfiguration
             .HasColumnName("tipo_emision_id").IsRequired();
         builder.Property(x => x.CertificadoNombre)
             .HasColumnName("certificado_nombre").HasMaxLength(255);
+        builder.Property(x => x.CertificadoReferencia)
+            .HasColumnName("certificado_referencia").HasMaxLength(255);
+        builder.Property(x => x.CertificadoTitular)
+            .HasColumnName("certificado_titular").HasMaxLength(300);
+        builder.Property(x => x.CertificadoEmisor)
+            .HasColumnName("certificado_emisor").HasMaxLength(300);
+        builder.Property(x => x.CertificadoNumeroSerie)
+            .HasColumnName("certificado_numero_serie").HasMaxLength(128);
+        builder.Property(x => x.CertificadoFechaInicio)
+            .HasColumnName("certificado_fecha_inicio")
+            .HasColumnType("date");
         builder.Property(x => x.CertificadoFechaCaducidad)
             .HasColumnName("certificado_fecha_caducidad")
             .HasColumnType("date");
         builder.Property(x => x.Habilitada)
             .HasColumnName("habilitada").HasDefaultValue(false).IsRequired();
+        builder.Property(x => x.Version)
+            .IsRowVersion();
         SecuencialComprobanteConfiguration.ConfigurarTimestamps(builder);
         builder.HasIndex(x => x.EmpresaId)
             .IsUnique()

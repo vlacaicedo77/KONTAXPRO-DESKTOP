@@ -29,7 +29,8 @@ public sealed class CompraService(
         CancellationToken cancellationToken = default)
     {
         if (!currentSession.IsAuthenticated ||
-            !currentSession.EmpresaId.HasValue)
+            !currentSession.EmpresaId.HasValue ||
+            !currentSession.EstablecimientoId.HasValue)
             return new CompraCatalogoDto();
         var companyId = currentSession.EmpresaId.Value;
         await using var context =
@@ -38,7 +39,10 @@ public sealed class CompraService(
                 ComprasPermissions.Ver, cancellationToken))
             return new CompraCatalogoDto();
         var query = context.Compras.AsNoTracking()
-            .Where(x => x.EmpresaId == companyId);
+            .Where(x => x.EmpresaId == companyId &&
+                        (!currentSession.EstablecimientoId.HasValue ||
+                         x.EstablecimientoId ==
+                         currentSession.EstablecimientoId.Value));
         if (!string.IsNullOrWhiteSpace(busqueda))
         {
             var pattern = $"%{busqueda.Trim()}%";
@@ -119,7 +123,10 @@ public sealed class CompraService(
                         !debt.Movimientos.Any(m => m.Secuencia > 1))
             }).ToListAsync(cancellationToken);
         var all = context.Compras.AsNoTracking()
-            .Where(x => x.EmpresaId == companyId && x.Estado != "ANULADA");
+            .Where(x => x.EmpresaId == companyId && x.Estado != "ANULADA" &&
+                        (!currentSession.EstablecimientoId.HasValue ||
+                         x.EstablecimientoId ==
+                         currentSession.EstablecimientoId.Value));
         return new CompraCatalogoDto
         {
             Items = items,
@@ -140,14 +147,17 @@ public sealed class CompraService(
         long compraId,
         CancellationToken cancellationToken = default)
     {
-        if (!currentSession.EmpresaId.HasValue) return null;
+        if (!currentSession.EmpresaId.HasValue ||
+            !currentSession.EstablecimientoId.HasValue) return null;
         var companyId = currentSession.EmpresaId.Value;
+        var establishmentId = currentSession.EstablecimientoId.Value;
         await using var context =
             await dbContextFactory.CreateDbContextAsync(cancellationToken);
         if (!await HasPermissionAsync(context, companyId,
                 ComprasPermissions.Ver, cancellationToken)) return null;
         return await context.Compras.AsNoTracking()
-            .Where(x => x.Id == compraId && x.EmpresaId == companyId)
+            .Where(x => x.Id == compraId && x.EmpresaId == companyId &&
+                        x.EstablecimientoId == establishmentId)
             .Select(x => new CompraDetalleDto
              {
                  Id = x.Id,
@@ -187,9 +197,11 @@ public sealed class CompraService(
         long compraId, CancellationToken cancellationToken = default)
     {
         if (!currentSession.IsAuthenticated ||
-            !currentSession.EmpresaId.HasValue || compraId <= 0)
+            !currentSession.EmpresaId.HasValue ||
+            !currentSession.EstablecimientoId.HasValue || compraId <= 0)
             return null;
         var companyId = currentSession.EmpresaId.Value;
+        var establishmentId = currentSession.EstablecimientoId.Value;
         await using var context =
             await dbContextFactory.CreateDbContextAsync(cancellationToken);
         if (!await HasPermissionAsync(context, companyId,
@@ -197,6 +209,7 @@ public sealed class CompraService(
             return null;
         return await context.Compras.AsNoTracking()
             .Where(x => x.Id == compraId && x.EmpresaId == companyId &&
+                        x.EstablecimientoId == establishmentId &&
                         x.DocumentoRecibidoSriId == null &&
                         x.Estado != "ANULADA" &&
                         !x.Recepciones.Any(r => r.Estado == "CONFIRMADA") &&
@@ -244,9 +257,11 @@ public sealed class CompraService(
         ObtenerCatalogosFormularioAsync(
             CancellationToken cancellationToken = default)
     {
-        if (!currentSession.EmpresaId.HasValue)
+        if (!currentSession.EmpresaId.HasValue ||
+            !currentSession.EstablecimientoId.HasValue)
             return new CompraFormularioCatalogosDto();
         var companyId = currentSession.EmpresaId.Value;
+        var establishmentId = currentSession.EstablecimientoId.Value;
         await using var context =
             await dbContextFactory.CreateDbContextAsync(cancellationToken);
         if (!await HasPermissionAsync(context, companyId,
@@ -265,16 +280,24 @@ public sealed class CompraService(
                     Nombre = x.RazonSocial
                 }).Take(1000).ToListAsync(cancellationToken),
             Establecimientos = await context.Establecimientos.AsNoTracking()
-                .Where(x => x.EmpresaId == companyId && x.Estado == 1)
+                .Where(x => x.EmpresaId == companyId && x.Estado == 1 &&
+                            x.Id == establishmentId &&
+                            context.UsuariosEmpresasEstablecimientos.Any(a =>
+                                a.UsuarioEmpresa!.UsuarioId ==
+                                    currentSession.UsuarioId &&
+                                a.UsuarioEmpresa.EmpresaId == companyId &&
+                                a.UsuarioEmpresa.Estado == 1 &&
+                                a.EstablecimientoId == x.Id))
                 .OrderBy(x => x.Codigo)
                 .Select(x => new CompraCatalogoItemBasicoDto
                 {
                     Id = x.Id,
                     Codigo = x.Codigo,
-                    Nombre = x.Nombre
+                    Nombre = x.NombreComercial ?? x.Nombre
                 }).ToListAsync(cancellationToken),
             Bodegas = await context.Bodegas.AsNoTracking()
-                .Where(x => x.Establecimiento!.EmpresaId == companyId &&
+                .Where(x => x.EstablecimientoId == establishmentId &&
+                            x.Establecimiento!.EmpresaId == companyId &&
                             x.Estado == 1)
                 .OrderBy(x => x.Codigo)
                 .Select(x => new CompraCatalogoItemBasicoDto
@@ -366,7 +389,8 @@ public sealed class CompraService(
         CancellationToken cancellationToken = default)
     {
         if (!currentSession.IsAuthenticated ||
-            !currentSession.EmpresaId.HasValue)
+            !currentSession.EmpresaId.HasValue ||
+            !currentSession.EstablecimientoId.HasValue)
             return CompraOperationResult.Fail(
                 "No existe una sesión empresarial activa.");
         var companyId = currentSession.EmpresaId.Value;
@@ -419,7 +443,13 @@ public sealed class CompraService(
 
             var establishment = await context.Establecimientos.AsNoTracking()
                 .SingleOrDefaultAsync(x => x.Id == request.EstablecimientoId &&
-                    x.EmpresaId == companyId && x.Estado == 1,
+                    x.Id == currentSession.EstablecimientoId!.Value &&
+                    x.EmpresaId == companyId && x.Estado == 1 &&
+                    context.UsuariosEmpresasEstablecimientos.Any(a =>
+                        a.UsuarioEmpresa!.UsuarioId == currentSession.UsuarioId &&
+                        a.UsuarioEmpresa.EmpresaId == companyId &&
+                        a.UsuarioEmpresa.Estado == 1 &&
+                        a.EstablecimientoId == x.Id),
                     cancellationToken);
             if (establishment is null)
                 return CompraOperationResult.Fail(
@@ -636,7 +666,8 @@ public sealed class CompraService(
     {
         var type = request.TipoCompra.Trim().ToUpperInvariant();
         if (!currentSession.IsAuthenticated ||
-            !currentSession.EmpresaId.HasValue)
+            !currentSession.EmpresaId.HasValue ||
+            !currentSession.EstablecimientoId.HasValue)
             return CompraOperationResult.Fail(
                 "No existe una sesión empresarial activa.");
         if (request.TerceroProveedorId <= 0 ||
@@ -705,7 +736,13 @@ public sealed class CompraService(
                     "La relación del proveedor con la empresa está inactiva.");
             if (!await context.Establecimientos.AsNoTracking().AnyAsync(x =>
                     x.Id == request.EstablecimientoId &&
-                    x.EmpresaId == companyId && x.Estado == 1,
+                    x.Id == currentSession.EstablecimientoId.Value &&
+                    x.EmpresaId == companyId && x.Estado == 1 &&
+                    context.UsuariosEmpresasEstablecimientos.Any(a =>
+                        a.UsuarioEmpresa!.UsuarioId == currentSession.UsuarioId &&
+                        a.UsuarioEmpresa.EmpresaId == companyId &&
+                        a.UsuarioEmpresa.Estado == 1 &&
+                        a.EstablecimientoId == x.Id),
                     cancellationToken))
                 return CompraOperationResult.Fail(
                     "El establecimiento no pertenece a la empresa.");
@@ -908,7 +945,8 @@ public sealed class CompraService(
         CancellationToken cancellationToken = default)
     {
         if (!currentSession.IsAuthenticated ||
-            !currentSession.EmpresaId.HasValue || compraId <= 0 ||
+            !currentSession.EmpresaId.HasValue ||
+            !currentSession.EstablecimientoId.HasValue || compraId <= 0 ||
             string.IsNullOrWhiteSpace(motivo))
             return CompraOperationResult.Fail(
                 "Compra y motivo de anulación son obligatorios.");
@@ -928,6 +966,10 @@ public sealed class CompraService(
                 .SingleOrDefaultAsync(cancellationToken);
             if (purchase is null)
                 return CompraOperationResult.Fail("No se encontró la compra.");
+            if (purchase.EstablecimientoId !=
+                currentSession.EstablecimientoId.Value)
+                return CompraOperationResult.Fail(
+                    "La compra pertenece a otro establecimiento.");
             if (purchase.Estado == "ANULADA")
                 return CompraOperationResult.Ok(purchase.Id,
                     "La compra ya estaba anulada.");
@@ -990,7 +1032,8 @@ public sealed class CompraService(
         if (validation is not null)
             return CompraOperationResult.Fail(validation);
         if (!currentSession.IsAuthenticated ||
-            !currentSession.EmpresaId.HasValue || compraId <= 0)
+            !currentSession.EmpresaId.HasValue ||
+            !currentSession.EstablecimientoId.HasValue || compraId <= 0)
             return CompraOperationResult.Fail(
                 "No existe una sesión empresarial activa.");
 
@@ -1011,6 +1054,12 @@ public sealed class CompraService(
                 .SingleOrDefaultAsync(cancellationToken);
             if (original is null)
                 return CompraOperationResult.Fail("No se encontró la compra.");
+            if (original.EstablecimientoId !=
+                    currentSession.EstablecimientoId.Value ||
+                request.EstablecimientoId !=
+                    currentSession.EstablecimientoId.Value)
+                return CompraOperationResult.Fail(
+                    "La compra pertenece a otro establecimiento.");
             if (original.DocumentoRecibidoSriId.HasValue)
                 return CompraOperationResult.Fail(
                     "Una compra importada desde XML es un documento recibido inmutable y no puede sustituirse manualmente.");

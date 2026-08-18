@@ -26,4 +26,8 @@
     <ProjectReference Include="..\KONTAXPRO.Domain\KONTAXPRO.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="FacturacionElectronica\Schemas\*.xsd" />
+  </ItemGroup>
+
 </Project>

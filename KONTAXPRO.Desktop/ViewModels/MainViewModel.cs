@@ -20,12 +20,19 @@ namespace KONTAXPRO.Desktop.ViewModels
         private readonly IMessageDialogService _messageDialogService;
 
         public event Action? CambioEmpresaRequested;
+        public event Action? CambioEstablecimientoRequested;
         public event Action? CerrarSesionRequested;
 
         [RelayCommand]
         private void CambiarEmpresa()
         {
             CambioEmpresaRequested?.Invoke();
+        }
+
+        [RelayCommand]
+        private void CambiarEstablecimiento()
+        {
+            CambioEstablecimientoRequested?.Invoke();
         }
 
         [RelayCommand]
@@ -57,6 +64,9 @@ namespace KONTAXPRO.Desktop.ViewModels
         [ObservableProperty]
         private bool mostrarCambiarEmpresa;
 
+        [ObservableProperty]
+        private bool mostrarCambiarEstablecimiento;
+
         public MainViewModel(
             ThemeService themeService,
             INavigationService navigationService,
@@ -75,6 +85,7 @@ namespace KONTAXPRO.Desktop.ViewModels
 
             // Crear menú principal
             MenuItems = CrearMenu();
+            ActualizarPermisosMenu(MenuItems);
 
             var inicio = MenuItems
                 .FirstOrDefault(x =>
@@ -101,6 +112,14 @@ namespace KONTAXPRO.Desktop.ViewModels
         {
             if (item == null)
                 return;
+
+            if (!TienePermiso(item))
+            {
+                await _messageDialogService.ShowWarningAsync(
+                    "Permiso requerido",
+                    "No tienes permisos para abrir esta opción en la empresa activa.");
+                return;
+            }
 
             if (string.IsNullOrWhiteSpace(
                 item.ComandoNavegacion))
@@ -187,7 +206,8 @@ namespace KONTAXPRO.Desktop.ViewModels
                 System.Diagnostics.Debug.WriteLine(exception);
                 await _messageDialogService.ShowErrorAsync(
                     "No fue posible abrir la opción",
-                    "La pantalla no pudo cargarse. Puedes volver a intentarlo.");
+                    "La pantalla no pudo cargarse. Puedes volver a intentarlo.",
+                    exception.GetBaseException().Message);
             }
         }
 
@@ -204,6 +224,9 @@ namespace KONTAXPRO.Desktop.ViewModels
                     "Estamos preparando las operaciones registradas."),
                 "Inventario" => ("Cargando inventario",
                     "Estamos consultando existencias, bodegas y costos."),
+                "FacturacionElectronica" =>
+                    ("Cargando configuración SRI",
+                        "Estamos verificando certificado, ambiente y numeraciones."),
                 "Compras/Xml" => null,
                 _ when route.StartsWith("Compras",
                     StringComparison.OrdinalIgnoreCase) =>
@@ -281,6 +304,40 @@ namespace KONTAXPRO.Desktop.ViewModels
                     : "Sin establecimiento configurado";
             MostrarCambiarEmpresa =
                 _currentSession.PuedeCambiarEmpresa;
+            MostrarCambiarEstablecimiento =
+                _currentSession.PuedeCambiarEstablecimiento;
+        }
+
+        public async Task RestablecerNavegacionAsync()
+        {
+            ActualizarContexto();
+            ActualizarPermisosMenu(MenuItems);
+            DesactivarTodos(MenuItems);
+            var inicio = MenuItems.FirstOrDefault(x =>
+                x.ComandoNavegacion == "Inicio");
+            if (inicio is not null) inicio.EstaActivo = true;
+            ModuloActivo = "Inicio";
+            await _navigationService.NavigateToAsync("Inicio");
+        }
+
+        private void ActualizarPermisosMenu(
+            IEnumerable<MenuItemModel> items)
+        {
+            foreach (var item in items)
+            {
+                item.EsVisible = TienePermiso(item);
+                if (item.Hijos.Count > 0)
+                    ActualizarPermisosMenu(item.Hijos);
+            }
+        }
+
+        private bool TienePermiso(MenuItemModel item)
+        {
+            if (string.IsNullOrWhiteSpace(item.Permiso)) return true;
+            return item.Permiso.Split('|',
+                    StringSplitOptions.RemoveEmptyEntries |
+                    StringSplitOptions.TrimEntries)
+                .Any(_currentSession.HasPermission);
         }
 
         private ObservableCollection<MenuItemModel> CrearMenu()
@@ -708,8 +765,10 @@ namespace KONTAXPRO.Desktop.ViewModels
                  */
                 new MenuItemModel
                 {
-                    Titulo = "Factura electrónica",
-                    Icono = "ReceiptTextCheck"
+                    Titulo = "Configuración SRI",
+                    Icono = "ReceiptTextCheck",
+                    Permiso = "SRI_CONFIGURAR_FACTURACION|SRI_CAMBIAR_CERTIFICADO|SRI_ADMINISTRAR_SECUENCIALES|SRI_EJECUTAR_DIAGNOSTICO",
+                    ComandoNavegacion = "FacturacionElectronica"
                 },
 
                 new MenuItemModel
@@ -928,12 +987,6 @@ namespace KONTAXPRO.Desktop.ViewModels
                 {
                     Titulo = "Permisos",
                     Icono = "ShieldKeyOutline"
-                },
-
-                new MenuItemModel
-                {
-                    Titulo = "Certificado digital",
-                    Icono = "CertificateOutline"
                 },
 
                 new MenuItemModel

@@ -111,28 +111,40 @@ public sealed class ProductService(
                     .FirstOrDefault(),
                 StockDisponible = x.Existencias
                     .Where(e => e.Bodega!.Estado == 1 &&
-                                e.Bodega.Establecimiento!.Estado == 1 &&
-                                e.Bodega.Establecimiento.EmpresaId ==
-                                    request.EmpresaId)
+                                 e.Bodega.Establecimiento!.Estado == 1 &&
+                                 e.Bodega.Establecimiento.EmpresaId ==
+                                     request.EmpresaId &&
+                                 (!request.EstablecimientoId.HasValue ||
+                                  e.Bodega.EstablecimientoId ==
+                                      request.EstablecimientoId.Value))
                     .Sum(e => e.StockActual - e.StockReservado),
                 StockMinimo = x.Existencias
                     .Where(e => e.Bodega!.Estado == 1 &&
-                                e.Bodega.Establecimiento!.Estado == 1 &&
-                                e.Bodega.Establecimiento.EmpresaId ==
-                                    request.EmpresaId)
+                                 e.Bodega.Establecimiento!.Estado == 1 &&
+                                 e.Bodega.Establecimiento.EmpresaId ==
+                                     request.EmpresaId &&
+                                 (!request.EstablecimientoId.HasValue ||
+                                  e.Bodega.EstablecimientoId ==
+                                      request.EstablecimientoId.Value))
                     .Sum(e => e.StockMinimo),
                 TieneStockBajo = x.Existencias.Any(e =>
                     e.Bodega!.Estado == 1 &&
-                    e.Bodega.Establecimiento!.Estado == 1 &&
-                    e.Bodega.Establecimiento.EmpresaId == request.EmpresaId &&
+                     e.Bodega.Establecimiento!.Estado == 1 &&
+                     e.Bodega.Establecimiento.EmpresaId == request.EmpresaId &&
+                     (!request.EstablecimientoId.HasValue ||
+                      e.Bodega.EstablecimientoId ==
+                          request.EstablecimientoId.Value) &&
                     e.StockMinimo > 0 &&
                     e.StockActual - e.StockReservado > 0 &&
                     e.StockActual - e.StockReservado <= e.StockMinimo),
                 SinStock = x.Existencias
                     .Where(e => e.Bodega!.Estado == 1 &&
-                                e.Bodega.Establecimiento!.Estado == 1 &&
-                                e.Bodega.Establecimiento.EmpresaId ==
-                                    request.EmpresaId)
+                                 e.Bodega.Establecimiento!.Estado == 1 &&
+                                 e.Bodega.Establecimiento.EmpresaId ==
+                                     request.EmpresaId &&
+                                 (!request.EstablecimientoId.HasValue ||
+                                  e.Bodega.EstablecimientoId ==
+                                      request.EstablecimientoId.Value))
                     .Sum(e => e.StockActual - e.StockReservado) <= 0,
                 CostoPromedio = x.Costo == null ? 0 : x.Costo.CostoPromedio,
                 PrecioBase = x.Presentaciones
@@ -168,10 +180,13 @@ public sealed class ProductService(
                                     x.DiasAlertaCaducidad ?? 0))
                             .SelectMany(l => l.Existencias)
                             .Where(e => e.StockActual > 0 &&
-                                e.Bodega!.Estado == 1 &&
-                                e.Bodega.Establecimiento!.Estado == 1 &&
-                                e.Bodega.Establecimiento.EmpresaId ==
-                                    request.EmpresaId)
+                                 e.Bodega!.Estado == 1 &&
+                                 e.Bodega.Establecimiento!.Estado == 1 &&
+                                 e.Bodega.Establecimiento.EmpresaId ==
+                                     request.EmpresaId &&
+                                 (!request.EstablecimientoId.HasValue ||
+                                  e.Bodega.EstablecimientoId ==
+                                      request.EstablecimientoId.Value))
                             .Sum(e => e.StockActual)
                         : 0,
                 PorCaducar = x.ManejaFechaCaducidad &&
@@ -182,14 +197,24 @@ public sealed class ProductService(
                         l.FechaCaducidad.Value <= hoy.AddDays(
                             x.DiasAlertaCaducidad ?? 0) &&
                         l.Existencias.Any(e => e.StockActual > 0 &&
-                            e.Bodega!.Estado == 1 &&
-                            e.Bodega.Establecimiento!.Estado == 1 &&
-                            e.Bodega.Establecimiento.EmpresaId ==
-                                request.EmpresaId)),
+                             e.Bodega!.Estado == 1 &&
+                             e.Bodega.Establecimiento!.Estado == 1 &&
+                             e.Bodega.Establecimiento.EmpresaId ==
+                                 request.EmpresaId &&
+                             (!request.EstablecimientoId.HasValue ||
+                              e.Bodega.EstablecimientoId ==
+                                  request.EstablecimientoId.Value))),
                 ProximaCaducidad = x.Lotes
                     .Where(l => l.Estado == 1 &&
                                 l.FechaCaducidad.HasValue &&
-                                l.Existencias.Any(e => e.StockActual > 0))
+                                l.Existencias.Any(e => e.StockActual > 0 &&
+                                    e.Bodega!.Estado == 1 &&
+                                    e.Bodega.Establecimiento!.Estado == 1 &&
+                                    e.Bodega.Establecimiento.EmpresaId ==
+                                        request.EmpresaId &&
+                                    (!request.EstablecimientoId.HasValue ||
+                                     e.Bodega.EstablecimientoId ==
+                                         request.EstablecimientoId.Value)))
                     .Min(l => l.FechaCaducidad),
                 Estado = (short)x.Estado,
                 CoincidenciaExactaCodigoBarras = texto != null &&

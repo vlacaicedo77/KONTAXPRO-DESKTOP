@@ -318,14 +318,20 @@
 
                     <!-- Empresa y establecimiento -->
                     <StackPanel Grid.Column="0"
-                                Orientation="Horizontal"
                                 VerticalAlignment="Center"
                                 HorizontalAlignment="Center">
 
                         <TextBlock Text="{Binding EmpresaActiva}"
-                                   FontSize="17"
+                                   FontSize="15"
                                    FontWeight="Bold"
                                    Foreground="{DynamicResource TextPrimaryBrush}" />
+
+                        <TextBlock Text="{Binding EstablecimientoActivo}"
+                                   Margin="0,3,0,0"
+                                   HorizontalAlignment="Center"
+                                   FontSize="10"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource BrandProBrush}" />
 
                     </StackPanel>
 
@@ -557,6 +563,28 @@
 
 
                                     <StackPanel>
+
+                                        <StackPanel Visibility="{Binding MostrarCambiarEstablecimiento,
+        Converter={StaticResource BooleanToVisibilityConverter}}">
+                                            <Button Command="{Binding CambiarEstablecimientoCommand}"
+                                                    AutomationProperties.Name="Cambiar establecimiento"
+                                                    Style="{StaticResource UserMenuOptionButtonStyle}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="Store"
+                                                                             Width="21" Height="21"
+                                                                             Margin="0,0,12,0"
+                                                                             Foreground="{Binding Foreground,
+                    RelativeSource={RelativeSource AncestorType=Button}}" />
+                                                    <TextBlock Text="Cambiar establecimiento"
+                                                               FontSize="13" FontWeight="Medium"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="{Binding Foreground,
+                    RelativeSource={RelativeSource AncestorType=Button}}" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Separator Margin="10,5"
+                                                       Background="{DynamicResource BorderBrush}" />
+                                        </StackPanel>
 
                                         <!-- Cambiar empresa -->
                                         <StackPanel Visibility="{Binding MostrarCambiarEmpresa,

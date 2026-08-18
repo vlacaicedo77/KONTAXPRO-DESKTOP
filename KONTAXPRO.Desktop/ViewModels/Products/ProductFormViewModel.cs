@@ -1676,7 +1676,9 @@ public partial class ProductFormViewModel : ObservableObject
 
         var bodegas =
             await _catalogService
-                .ObtenerBodegasAsync(empresaId);
+                .ObtenerBodegasAsync(
+                    empresaId,
+                    _currentSession.EstablecimientoId);
 
         ReemplazarColeccion(
             Categorias,

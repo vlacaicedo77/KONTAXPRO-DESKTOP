@@ -25,6 +25,7 @@ public interface IProductCatalogService
     Task<List<global::KONTAXPRO.Application.Models.Productos.ProductoExistenciaDto>>
         ObtenerBodegasAsync(
         long empresaId,
+        long? establecimientoId = null,
         CancellationToken cancellationToken = default);
 
     Task<CatalogCreateResult> CrearCategoriaAsync(

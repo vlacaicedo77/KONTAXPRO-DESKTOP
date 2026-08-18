@@ -13,6 +13,9 @@ public static class EstadosComprobanteElectronico
     public const string Recibido = "RECIBIDO";
     public const string Autorizado = "AUTORIZADO";
     public const string NoAutorizado = "NO_AUTORIZADO";
+    public const string Devuelto = "DEVUELTO";
+    public const string PendienteAutorizacion = "PENDIENTE_AUTORIZACION";
+    public const string ErrorTecnico = "ERROR_TECNICO";
     public const string Error = "ERROR";
 }
 
@@ -36,6 +39,10 @@ public sealed class ComprobanteElectronico
     public long OrigenId { get; set; }
     public long TipoAmbienteId { get; set; }
     public long TipoEmisionId { get; set; }
+    public long? EstablecimientoId { get; set; }
+    public long? PuntoEmisionId { get; set; }
+    public int? Secuencial { get; set; }
+    public string VersionXml { get; set; } = "2.1.0";
     public string ClaveAcceso { get; set; } = string.Empty;
     public long EstadoComprobanteElectronicoId { get; set; }
     public DateTime? ProcesamientoIniciadoAt { get; set; }
@@ -43,6 +50,14 @@ public sealed class ComprobanteElectronico
     public DateTime? XmlGeneradoAt { get; set; }
     public DateTime? XmlFirmadoAt { get; set; }
     public DateTime? FechaEnvio { get; set; }
+    public DateTime? FechaUltimaConsulta { get; set; }
+    public int IntentosEnvio { get; set; }
+    public int IntentosAutorizacion { get; set; }
+    public string? EstadoRecepcion { get; set; }
+    public string? EstadoAutorizacion { get; set; }
+    public string? XmlGeneradoReferencia { get; set; }
+    public string? XmlFirmadoReferencia { get; set; }
+    public string? XmlAutorizadoReferencia { get; set; }
     public DateTime? FechaAutorizacion { get; set; }
     public string? NumeroAutorizacion { get; set; }
     public DateTime? XmlAutorizadoAt { get; set; }
@@ -55,6 +70,8 @@ public sealed class ComprobanteElectronico
         { get; set; }
     public TipoAmbiente? TipoAmbiente { get; set; }
     public TipoEmision? TipoEmision { get; set; }
+    public Establecimiento? Establecimiento { get; set; }
+    public PuntoEmision? PuntoEmision { get; set; }
     public EstadoComprobanteElectronico? EstadoComprobanteElectronico
         { get; set; }
     public ICollection<ComprobanteElectronicoEvento> Eventos { get; set; } = [];
@@ -76,10 +93,25 @@ public sealed class ComprobanteElectronico
                 EstadosComprobanteElectronico.Enviado) => true,
             (EstadosComprobanteElectronico.Enviado,
                 EstadosComprobanteElectronico.Recibido) => true,
+            (EstadosComprobanteElectronico.Enviado,
+                EstadosComprobanteElectronico.Devuelto) => true,
             (EstadosComprobanteElectronico.Recibido,
                 EstadosComprobanteElectronico.Autorizado) => true,
             (EstadosComprobanteElectronico.Recibido,
+                EstadosComprobanteElectronico.PendienteAutorizacion) => true,
+            (EstadosComprobanteElectronico.PendienteAutorizacion,
+                EstadosComprobanteElectronico.Autorizado) => true,
+            (EstadosComprobanteElectronico.PendienteAutorizacion,
                 EstadosComprobanteElectronico.NoAutorizado) => true,
+            (EstadosComprobanteElectronico.PendienteAutorizacion,
+                EstadosComprobanteElectronico.PendienteAutorizacion) => true,
+            (EstadosComprobanteElectronico.Recibido,
+                EstadosComprobanteElectronico.NoAutorizado) => true,
+            (_, EstadosComprobanteElectronico.ErrorTecnico) => true,
+            (EstadosComprobanteElectronico.ErrorTecnico,
+                EstadosComprobanteElectronico.Procesando) => true,
+            (EstadosComprobanteElectronico.ErrorTecnico,
+                EstadosComprobanteElectronico.PendienteAutorizacion) => true,
             (_, EstadosComprobanteElectronico.Error) => true,
             (EstadosComprobanteElectronico.Error,
                 EstadosComprobanteElectronico.Procesando) => true,

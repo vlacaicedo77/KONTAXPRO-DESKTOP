@@ -9,7 +9,13 @@ public sealed class ComprobanteElectronicoConfiguration
 {
     public void Configure(EntityTypeBuilder<ComprobanteElectronico> b)
     {
-        b.ToTable("comprobantes_electronicos", "s_facturacion_electronica");
+        b.ToTable("comprobantes_electronicos", "s_facturacion_electronica", t =>
+        {
+            t.HasCheckConstraint("ck_comprobantes_electronicos_secuencial",
+                "secuencial IS NULL OR secuencial BETWEEN 1 AND 999999999");
+            t.HasCheckConstraint("ck_comprobantes_electronicos_intentos",
+                "intentos_envio >= 0 AND intentos_autorizacion >= 0");
+        });
         b.HasKey(x => x.Id);
         b.Property(x => x.Id).HasColumnName("id").UseIdentityByDefaultColumn();
         b.Property(x => x.EmpresaId).HasColumnName("empresa_id").IsRequired();
@@ -22,6 +28,11 @@ public sealed class ComprobanteElectronicoConfiguration
             .HasColumnName("tipo_ambiente_id").IsRequired();
         b.Property(x => x.TipoEmisionId)
             .HasColumnName("tipo_emision_id").IsRequired();
+        b.Property(x => x.EstablecimientoId).HasColumnName("establecimiento_id");
+        b.Property(x => x.PuntoEmisionId).HasColumnName("punto_emision_id");
+        b.Property(x => x.Secuencial).HasColumnName("secuencial");
+        b.Property(x => x.VersionXml).HasColumnName("version_xml")
+            .HasMaxLength(16).HasDefaultValue("2.1.0").IsRequired();
         b.Property(x => x.ClaveAcceso).HasColumnName("clave_acceso")
             .HasMaxLength(49).IsRequired();
         b.Property(x => x.EstadoComprobanteElectronicoId)
@@ -34,6 +45,21 @@ public sealed class ComprobanteElectronicoConfiguration
         Timestamp(b, x => x.XmlGeneradoAt, "xml_generado_at");
         Timestamp(b, x => x.XmlFirmadoAt, "xml_firmado_at");
         Timestamp(b, x => x.FechaEnvio, "fecha_envio");
+        Timestamp(b, x => x.FechaUltimaConsulta, "fecha_ultima_consulta");
+        b.Property(x => x.IntentosEnvio).HasColumnName("intentos_envio")
+            .HasDefaultValue(0).IsRequired();
+        b.Property(x => x.IntentosAutorizacion)
+            .HasColumnName("intentos_autorizacion").HasDefaultValue(0).IsRequired();
+        b.Property(x => x.EstadoRecepcion).HasColumnName("estado_recepcion")
+            .HasMaxLength(32);
+        b.Property(x => x.EstadoAutorizacion).HasColumnName("estado_autorizacion")
+            .HasMaxLength(32);
+        b.Property(x => x.XmlGeneradoReferencia)
+            .HasColumnName("xml_generado_referencia").HasMaxLength(512);
+        b.Property(x => x.XmlFirmadoReferencia)
+            .HasColumnName("xml_firmado_referencia").HasMaxLength(512);
+        b.Property(x => x.XmlAutorizadoReferencia)
+            .HasColumnName("xml_autorizado_referencia").HasMaxLength(512);
         Timestamp(b, x => x.FechaAutorizacion, "fecha_autorizacion");
         b.Property(x => x.NumeroAutorizacion)
             .HasColumnName("numero_autorizacion").HasMaxLength(64);
@@ -53,6 +79,10 @@ public sealed class ComprobanteElectronicoConfiguration
         b.HasIndex(x => new
             { x.EstadoComprobanteElectronicoId, x.ProcesamientoIniciadoAt })
             .HasDatabaseName("ix_comprobantes_electronicos_procesamiento");
+        b.HasIndex(x => new
+            { x.PuntoEmisionId, x.TipoComprobanteId, x.TipoAmbienteId, x.Secuencial })
+            .IsUnique().HasFilter("punto_emision_id IS NOT NULL AND secuencial IS NOT NULL")
+            .HasDatabaseName("ux_comprobantes_electronicos_emision");
         b.HasOne(x => x.Empresa).WithMany()
             .HasForeignKey(x => x.EmpresaId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.TipoComprobante).WithMany()
@@ -66,6 +96,14 @@ public sealed class ComprobanteElectronicoConfiguration
             .OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.TipoEmision).WithMany()
             .HasForeignKey(x => x.TipoEmisionId)
+            .OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(x => x.Establecimiento).WithMany()
+            .HasForeignKey(x => new { x.EstablecimientoId, x.EmpresaId })
+            .HasPrincipalKey(x => new { x.Id, x.EmpresaId })
+            .OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(x => x.PuntoEmision).WithMany()
+            .HasForeignKey(x => new { x.PuntoEmisionId, x.EstablecimientoId })
+            .HasPrincipalKey(x => new { x.Id, x.EstablecimientoId })
             .OnDelete(DeleteBehavior.Restrict);
         b.HasOne(x => x.EstadoComprobanteElectronico).WithMany()
             .HasForeignKey(x => x.EstadoComprobanteElectronicoId)

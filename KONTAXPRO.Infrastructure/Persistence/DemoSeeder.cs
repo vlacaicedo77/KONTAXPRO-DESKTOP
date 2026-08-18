@@ -1,4 +1,5 @@
 using KONTAXPRO.Application.Interfaces;
+using KONTAXPRO.Domain.Entities.Catalogos;
 using KONTAXPRO.Domain.Entities.Comercial;
 using KONTAXPRO.Domain.Entities.Configuracion;
 using KONTAXPRO.Domain.Entities.Contabilidad;
@@ -45,8 +46,10 @@ public sealed class DemoSeeder
             .SingleAsync(x => x.Codigo == "GENERAL", cancellationToken);
         var rolAdministrador = await db.Roles
             .SingleAsync(x => x.Codigo == "ADMINISTRADOR", cancellationToken);
-        var ambientePruebas = await db.TiposAmbiente
-            .SingleAsync(x => x.Codigo == 1, cancellationToken);
+        var tiposAmbiente = await db.TiposAmbiente
+            .Where(x => x.Estado == 1)
+            .ToListAsync(cancellationToken);
+        var ambientePruebas = tiposAmbiente.Single(x => x.Codigo == 1);
         var emisionNormal = await db.TiposEmision
             .SingleAsync(x => x.Codigo == 1, cancellationToken);
         var tiposComprobante = await db.TiposComprobante
@@ -91,15 +94,39 @@ public sealed class DemoSeeder
         var companies = new[]
         {
             new DemoCompany(
-                "1799999999001",
-                "KONTAXPRO DEMO UNO S.A.S.",
-                "KONTAXPRO DEMO UNO",
-                "Quito - dirección exclusiva para desarrollo"),
+                "1724204787001",
+                "ZAMBRANO PANTOJA LEIDY ALEXANDRA",
+                "MULTISERVICIOS JR",
+                false,
+                "vlacaicedo77@gmail.com",
+                "0989213593",
+                [
+                    new DemoEstablishment("001", "MATRIZ",
+                        "MULTISERVICIOS JR",
+                        "VIA LAS MERCEDES A LOS BANCOS S/N Y MARGEN DERECHO",
+                        true),
+                    new DemoEstablishment("002", "ESTABLECIMIENTO 002",
+                        "AGROVETERINARIA JR",
+                        "VIA LAS MERCEDES A LOS BANCOS S/N Y MARGEN DERECHO",
+                        false)
+                ]),
             new DemoCompany(
-                "1799999999002",
-                "KONTAXPRO DEMO DOS S.A.S.",
-                "KONTAXPRO DEMO DOS",
-                "Guayaquil - dirección exclusiva para desarrollo")
+                "1716017940001",
+                "REQUELME MORENO JOSE MIGUEL",
+                "AGROVETERINARIA JR",
+                false,
+                "vlacaicedo77@gmail.com",
+                "0989213593",
+                [
+                    new DemoEstablishment("001", "MATRIZ",
+                        "AGROVETERINARIA JR",
+                        "VIA A MAR DE LA TRANQUILIDAD S/N Y MARGEN IZQUIERDO",
+                        true),
+                    new DemoEstablishment("002", "ESTABLECIMIENTO 002",
+                        "BALANCEADOS JR",
+                        "VIA LAS MERCEDES A LOS BANCOS S/N Y MARGEN DERECHO",
+                        false)
+                ])
         };
 
         foreach (var definition in companies)
@@ -116,8 +143,9 @@ public sealed class DemoSeeder
                     NumeroIdentificacion = definition.Identification,
                     RazonSocial = definition.LegalName,
                     NombreComercial = definition.TradeName,
-                    ObligadoContabilidad = true,
-                    Correo = "demo@kontaxpro.local",
+                    ObligadoContabilidad = definition.RequiredAccounting,
+                    Correo = definition.Email,
+                    Telefono = definition.Phone,
                     Estado = 1,
                     CreatedAt = now,
                     UpdatedAt = now
@@ -125,26 +153,42 @@ public sealed class DemoSeeder
                 db.Empresas.Add(empresa);
                 await db.SaveChangesAsync(cancellationToken);
             }
+            else
+            {
+                empresa.RegimenTributarioId = regimenGeneral.Id;
+                empresa.RazonSocial = definition.LegalName;
+                empresa.NombreComercial = definition.TradeName;
+                empresa.ObligadoContabilidad = definition.RequiredAccounting;
+                empresa.Correo = definition.Email;
+                empresa.Telefono = definition.Phone;
+                empresa.Estado = 1;
+                empresa.UpdatedAt = now;
+            }
 
+            var primaryDefinition = definition.Establishments
+                .Single(x => x.IsHeadOffice);
             var establecimiento = await db.Establecimientos.SingleOrDefaultAsync(
-                x => x.EmpresaId == empresa.Id && x.Codigo == "001",
+                x => x.EmpresaId == empresa.Id &&
+                     x.Codigo == primaryDefinition.Code,
                 cancellationToken);
             if (establecimiento is null)
             {
                 establecimiento = new Establecimiento
                 {
                     EmpresaId = empresa.Id,
-                    Codigo = "001",
-                    Prefijo = "001",
-                    Nombre = "MATRIZ",
-                    Direccion = definition.Address,
-                    EsMatriz = true,
+                    Codigo = primaryDefinition.Code,
+                    Prefijo = primaryDefinition.Code,
                     Estado = 1,
                     CreatedAt = now,
-                    UpdatedAt = now
                 };
                 db.Establecimientos.Add(establecimiento);
             }
+            establecimiento.Nombre = primaryDefinition.Name;
+            establecimiento.NombreComercial = primaryDefinition.TradeName;
+            establecimiento.Direccion = primaryDefinition.Address;
+            establecimiento.EsMatriz = true;
+            establecimiento.Estado = 1;
+            establecimiento.UpdatedAt = now;
 
             var listasDefinidas = new[]
             {
@@ -400,17 +444,21 @@ public sealed class DemoSeeder
 
             foreach (var tipoComprobante in tiposComprobante)
             {
-                if (!await db.SecuencialesComprobantes.AnyAsync(
-                        x => x.PuntoEmisionId == puntoEmision.Id
-                             && x.TipoComprobanteId == tipoComprobante.Id
-                             && x.TipoAmbienteId == ambientePruebas.Id,
-                        cancellationToken))
+                foreach (var tipoAmbiente in tiposAmbiente)
                 {
-                    db.SecuencialesComprobantes.Add(new SecuencialComprobante
+                    if (await db.SecuencialesComprobantes.AnyAsync(
+                            x => x.PuntoEmisionId == puntoEmision.Id
+                                 && x.TipoComprobanteId == tipoComprobante.Id
+                                 && x.TipoAmbienteId == tipoAmbiente.Id,
+                            cancellationToken))
+                        continue;
+
+                    db.SecuencialesComprobantes.Add(
+                        new SecuencialComprobante
                     {
                         PuntoEmisionId = puntoEmision.Id,
                         TipoComprobanteId = tipoComprobante.Id,
-                        TipoAmbienteId = ambientePruebas.Id,
+                        TipoAmbienteId = tipoAmbiente.Id,
                         UltimoSecuencial = 0,
                         CreatedAt = now,
                         UpdatedAt = now
@@ -527,14 +575,207 @@ public sealed class DemoSeeder
             }
 
             await db.SaveChangesAsync(cancellationToken);
+
+            foreach (var additional in definition.Establishments
+                         .Where(x => !x.IsHeadOffice))
+            {
+                await SeedAdditionalEstablishmentAsync(
+                    db,
+                    empresa,
+                    usuarioEmpresa,
+                    cuentaCaja,
+                    additional,
+                    tiposComprobante,
+                    tiposAmbiente,
+                    tiposDocumentoInterno,
+                    now,
+                    cancellationToken);
+            }
         }
 
         await transaction.CommitAsync(cancellationToken);
+    }
+
+    private static async Task SeedAdditionalEstablishmentAsync(
+        KontaxDbContext db,
+        Empresa company,
+        UsuarioEmpresa userCompany,
+        PlanCuenta cashAccount,
+        DemoEstablishment definition,
+        IReadOnlyCollection<TipoComprobante> documentTypes,
+        IReadOnlyCollection<TipoAmbiente> environmentTypes,
+        IReadOnlyCollection<TipoDocumentoInterno> internalDocumentTypes,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var establishment = await db.Establecimientos.SingleOrDefaultAsync(
+            x => x.EmpresaId == company.Id && x.Codigo == definition.Code,
+            cancellationToken);
+        if (establishment is null)
+        {
+            establishment = new Establecimiento
+            {
+                EmpresaId = company.Id,
+                Codigo = definition.Code,
+                Prefijo = definition.Code,
+                CreatedAt = now
+            };
+            db.Establecimientos.Add(establishment);
+        }
+
+        establishment.Nombre = definition.Name;
+        establishment.NombreComercial = definition.TradeName;
+        establishment.Direccion = definition.Address;
+        establishment.EsMatriz = false;
+        establishment.Estado = 1;
+        establishment.UpdatedAt = now;
+        await db.SaveChangesAsync(cancellationToken);
+
+        var issuePoint = await db.PuntosEmision.SingleOrDefaultAsync(
+            x => x.EstablecimientoId == establishment.Id && x.Codigo == "001",
+            cancellationToken);
+        if (issuePoint is null)
+        {
+            issuePoint = new PuntoEmision
+            {
+                EstablecimientoId = establishment.Id,
+                Codigo = "001",
+                Nombre = "PUNTO PRINCIPAL",
+                Estado = 1,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            db.PuntosEmision.Add(issuePoint);
+        }
+
+        await EnsureWarehouseAsync(
+            db, establishment.Id, "FAC", "PRODUCTOS CON FACTURA", true,
+            now, cancellationToken);
+        await EnsureWarehouseAsync(
+            db, establishment.Id, "SFA", "PRODUCTOS SIN FACTURA", false,
+            now, cancellationToken);
+
+        var cashCode = $"EST{definition.Code}";
+        var cash = await db.Cajas.SingleOrDefaultAsync(
+            x => x.EmpresaId == company.Id && x.Codigo == cashCode,
+            cancellationToken);
+        if (cash is null)
+        {
+            cash = new Caja
+            {
+                EmpresaId = company.Id,
+                Codigo = cashCode,
+                CreatedAt = now
+            };
+            db.Cajas.Add(cash);
+        }
+        cash.EstablecimientoId = establishment.Id;
+        cash.Nombre = $"CAJA {definition.TradeName}";
+        cash.CuentaContableId = cashAccount.Id;
+        cash.Estado = 1;
+        cash.UpdatedAt = now;
+        await db.SaveChangesAsync(cancellationToken);
+
+        foreach (var documentType in documentTypes)
+        foreach (var environmentType in environmentTypes)
+        {
+            if (await db.SecuencialesComprobantes.AnyAsync(x =>
+                    x.PuntoEmisionId == issuePoint.Id &&
+                    x.TipoComprobanteId == documentType.Id &&
+                    x.TipoAmbienteId == environmentType.Id,
+                    cancellationToken))
+                continue;
+            db.SecuencialesComprobantes.Add(new SecuencialComprobante
+            {
+                PuntoEmisionId = issuePoint.Id,
+                TipoComprobanteId = documentType.Id,
+                TipoAmbienteId = environmentType.Id,
+                UltimoSecuencial = 0,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        }
+
+        foreach (var internalDocumentType in internalDocumentTypes)
+        {
+            if (await db.SecuencialesInternos.AnyAsync(x =>
+                    x.EmpresaId == company.Id &&
+                    x.EstablecimientoId == establishment.Id &&
+                    x.TipoDocumentoInternoId == internalDocumentType.Id,
+                    cancellationToken))
+                continue;
+            db.SecuencialesInternos.Add(new SecuencialInterno
+            {
+                EmpresaId = company.Id,
+                EstablecimientoId = establishment.Id,
+                TipoDocumentoInternoId = internalDocumentType.Id,
+                UltimoSecuencial = 0,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        }
+
+        if (!await db.UsuariosEmpresasEstablecimientos.AnyAsync(x =>
+                x.UsuarioEmpresaId == userCompany.Id &&
+                x.EstablecimientoId == establishment.Id,
+                cancellationToken))
+        {
+            db.UsuariosEmpresasEstablecimientos.Add(
+                new UsuarioEmpresaEstablecimiento
+                {
+                    UsuarioEmpresaId = userCompany.Id,
+                    EstablecimientoId = establishment.Id,
+                    CreatedAt = now
+                });
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    private static async Task<Bodega> EnsureWarehouseAsync(
+        KontaxDbContext db,
+        long establishmentId,
+        string code,
+        string name,
+        bool allowsInvoicedSale,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var warehouse = await db.Bodegas.SingleOrDefaultAsync(
+            x => x.EstablecimientoId == establishmentId && x.Codigo == code,
+            cancellationToken);
+        if (warehouse is null)
+        {
+            warehouse = new Bodega
+            {
+                EstablecimientoId = establishmentId,
+                Codigo = code,
+                CreatedAt = now
+            };
+            db.Bodegas.Add(warehouse);
+        }
+        warehouse.Nombre = name;
+        warehouse.PermiteTransferenciasInternas = true;
+        warehouse.PermiteVentaFacturada = allowsInvoicedSale;
+        warehouse.Estado = 1;
+        warehouse.UpdatedAt = now;
+        await db.SaveChangesAsync(cancellationToken);
+        return warehouse;
     }
 
     private sealed record DemoCompany(
         string Identification,
         string LegalName,
         string TradeName,
-        string Address);
+        bool RequiredAccounting,
+        string Email,
+        string Phone,
+        IReadOnlyCollection<DemoEstablishment> Establishments);
+
+    private sealed record DemoEstablishment(
+        string Code,
+        string Name,
+        string TradeName,
+        string Address,
+        bool IsHeadOffice);
 }

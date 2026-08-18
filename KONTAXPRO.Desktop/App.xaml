@@ -15,7 +15,9 @@
              xmlns:treasuryViews="clr-namespace:KONTAXPRO.Desktop.Views.Tesoreria"
              xmlns:treasuryViewModels="clr-namespace:KONTAXPRO.Desktop.ViewModels.Tesoreria"
              xmlns:inventoryViews="clr-namespace:KONTAXPRO.Desktop.Views.Inventory"
-             xmlns:inventoryViewModels="clr-namespace:KONTAXPRO.Desktop.ViewModels.Inventory">
+             xmlns:inventoryViewModels="clr-namespace:KONTAXPRO.Desktop.ViewModels.Inventory"
+             xmlns:sriViews="clr-namespace:KONTAXPRO.Desktop.Views.FacturacionElectronica"
+             xmlns:sriViewModels="clr-namespace:KONTAXPRO.Desktop.ViewModels.FacturacionElectronica">
 
     <Application.Resources>
         
@@ -76,6 +78,10 @@
 
             <DataTemplate DataType="{x:Type inventoryViewModels:InventoryViewModel}">
                 <inventoryViews:InventoryView/>
+            </DataTemplate>
+
+            <DataTemplate DataType="{x:Type sriViewModels:FacturacionElectronicaConfiguracionViewModel}">
+                <sriViews:FacturacionElectronicaConfiguracionView/>
             </DataTemplate>
 
         </ResourceDictionary>

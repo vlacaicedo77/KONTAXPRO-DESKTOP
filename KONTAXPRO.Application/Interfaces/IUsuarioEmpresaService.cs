@@ -9,4 +9,12 @@ public interface IUsuarioEmpresaService
 
     Task SeleccionarEmpresaAsync(
         long usuarioEmpresaId);
+
+    Task<List<EstablecimientoDisponible>>
+        ObtenerEstablecimientosUsuarioAsync(
+            long usuarioId,
+            long empresaId);
+
+    Task SeleccionarEstablecimientoAsync(
+        long establecimientoId);
 }

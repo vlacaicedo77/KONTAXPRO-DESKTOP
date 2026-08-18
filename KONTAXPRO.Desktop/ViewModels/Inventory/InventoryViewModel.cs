@@ -251,15 +251,19 @@ public partial class InventoryViewModel : ObservableObject,
         _suppressReload = true;
         try
         {
+            var warehouses = data.Bodegas.Where(x =>
+                !_session.EstablecimientoId.HasValue ||
+                x.EstablecimientoId == _session.EstablecimientoId.Value)
+                .ToList();
             Warehouses.Clear();
-            foreach (var item in data.Bodegas) Warehouses.Add(item);
+            foreach (var item in warehouses) Warehouses.Add(item);
             WarehouseFilters.Clear();
             WarehouseFilters.Add(new InventarioOpcionDto
             {
                 Id = 0,
                 Nombre = "TODAS LAS BODEGAS"
             });
-            foreach (var item in data.Bodegas) WarehouseFilters.Add(item);
+            foreach (var item in warehouses) WarehouseFilters.Add(item);
             SelectedWarehouse = WarehouseFilters[0];
         }
         finally

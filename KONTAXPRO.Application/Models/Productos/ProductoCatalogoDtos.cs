@@ -30,6 +30,7 @@ public enum ProductoCatalogoOrden
 public sealed class ProductoCatalogoQuery
 {
     public long EmpresaId { get; init; }
+    public long? EstablecimientoId { get; init; }
     public string? Busqueda { get; init; }
     public ProductoCatalogoKpi Kpi { get; init; } = ProductoCatalogoKpi.Todos;
     public ProductoCatalogoEstado Estado { get; init; } = ProductoCatalogoEstado.Activos;

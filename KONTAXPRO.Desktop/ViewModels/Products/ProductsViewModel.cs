@@ -413,6 +413,7 @@ public partial class ProductsViewModel : ObservableObject,
                 new ProductoCatalogoQuery
                 {
                     EmpresaId = empresaId,
+                    EstablecimientoId = _currentSession.EstablecimientoId,
                     Busqueda = TextoBusqueda,
                     Kpi = KpiActivo,
                     Estado = EstadoSeleccionado,

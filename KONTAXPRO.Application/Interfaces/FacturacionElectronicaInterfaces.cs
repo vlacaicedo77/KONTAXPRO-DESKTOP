@@ -9,6 +9,16 @@ public interface IContextoInstalacion
     string DirectorioBase { get; }
     bool EsServidor => string.Equals(
         TipoInstalacion, "SERVIDOR", StringComparison.OrdinalIgnoreCase);
+    bool EsCliente => !EsServidor;
+}
+
+public interface IFacturacionElectronicaWorkerScheduler
+{
+    bool EstaEjecutandose { get; }
+
+    Task IniciarAsync(CancellationToken cancellationToken = default);
+
+    Task DetenerAsync(CancellationToken cancellationToken = default);
 }
 
 public interface IAlmacenamientoDocumentosElectronicos

@@ -111,7 +111,8 @@ public partial class OperacionesSinSustentoViewModel : ObservableObject,
     [RelayCommand]
     private async Task LoadAsync(CancellationToken cancellationToken = default)
     {
-        if (_disposed || !_session.EmpresaId.HasValue) return;
+        if (_disposed || !_session.EmpresaId.HasValue ||
+            !_session.EstablecimientoId.HasValue) return;
         _loadCancellation?.Cancel(); _loadCancellation?.Dispose();
         _loadCancellation = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken);
@@ -120,7 +121,9 @@ public partial class OperacionesSinSustentoViewModel : ObservableObject,
         try
         {
             var result = await _service.ListarAsync(new OperacionSinSustentoCatalogoRequest
-            { EmpresaId = _session.EmpresaId.Value, UsuarioId = _session.UsuarioId,
+            { EmpresaId = _session.EmpresaId.Value,
+              EstablecimientoId = _session.EstablecimientoId.Value,
+              UsuarioId = _session.UsuarioId,
               Busqueda = SearchText, Estado = SelectedState, Tipo = SelectedType,
               Orden = OperationOrder,
               OrdenDescendente = OperationOrderDescending,

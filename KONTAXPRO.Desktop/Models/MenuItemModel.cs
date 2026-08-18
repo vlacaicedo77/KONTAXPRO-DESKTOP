@@ -22,5 +22,8 @@ namespace KONTAXPRO.Desktop.Models
 
         [ObservableProperty]
         private bool estaActivo;
+
+        [ObservableProperty]
+        private bool esVisible = true;
     }
 }

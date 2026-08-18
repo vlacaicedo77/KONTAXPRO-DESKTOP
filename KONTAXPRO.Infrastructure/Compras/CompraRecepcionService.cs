@@ -23,7 +23,8 @@ public sealed class CompraRecepcionService(
             CancellationToken cancellationToken = default)
     {
         if (!currentSession.IsAuthenticated ||
-            !currentSession.EmpresaId.HasValue || compraId <= 0)
+            !currentSession.EmpresaId.HasValue ||
+            !currentSession.EstablecimientoId.HasValue || compraId <= 0)
             return [];
         var companyId = currentSession.EmpresaId.Value;
         await using var context =
@@ -33,6 +34,8 @@ public sealed class CompraRecepcionService(
             return [];
         return await context.ComprasRecepciones.AsNoTracking()
             .Where(x => x.EmpresaId == companyId && x.CompraId == compraId &&
+                        x.Compra!.EstablecimientoId ==
+                            currentSession.EstablecimientoId.Value &&
                         x.Estado == "CONFIRMADA")
             .OrderByDescending(x => x.FechaRecepcion)
             .ThenByDescending(x => x.Id)
@@ -52,7 +55,9 @@ public sealed class CompraRecepcionService(
         CancellationToken cancellationToken = default)
     {
         if (!currentSession.IsAuthenticated ||
-            !currentSession.EmpresaId.HasValue || request.CompraId <= 0 ||
+            !currentSession.EmpresaId.HasValue ||
+            !currentSession.EstablecimientoId.HasValue ||
+            request.CompraId <= 0 ||
             request.BodegaId <= 0 || request.OperacionUuid == Guid.Empty ||
             request.Lineas.Count == 0)
             return CompraOperationResult.Fail(
@@ -92,6 +97,10 @@ public sealed class CompraRecepcionService(
                 .SingleOrDefaultAsync(cancellationToken);
             if (purchase is null)
                 return CompraOperationResult.Fail("No se encontró la compra.");
+            if (purchase.EstablecimientoId !=
+                currentSession.EstablecimientoId.Value)
+                return CompraOperationResult.Fail(
+                    "La compra pertenece a otro establecimiento.");
             if (purchase.Estado is "ANULADA" or "RECIBIDA")
                 return CompraOperationResult.Fail(
                     "La compra ya no admite nuevas recepciones.");

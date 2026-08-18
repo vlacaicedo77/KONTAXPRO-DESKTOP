@@ -6,6 +6,7 @@ using KONTAXPRO.Desktop.ViewModels.Proveedores;
 using KONTAXPRO.Desktop.ViewModels.Compras;
 using KONTAXPRO.Desktop.ViewModels.Tesoreria;
 using KONTAXPRO.Desktop.ViewModels.Inventory;
+using KONTAXPRO.Desktop.ViewModels.FacturacionElectronica;
 
 namespace KONTAXPRO.Desktop.Services
 {
@@ -128,6 +129,10 @@ namespace KONTAXPRO.Desktop.Services
                 "Inventario" => _serviceProvider.GetService(
                                   typeof(InventoryViewModel))
                               as ObservableObject,
+
+                "FacturacionElectronica" => _serviceProvider.GetService(
+                    typeof(FacturacionElectronicaConfiguracionViewModel))
+                    as ObservableObject,
 
                 _ => null
             };

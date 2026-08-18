@@ -33,11 +33,14 @@ namespace KONTAXPRO.Desktop
             _viewModel.CambioEmpresaRequested +=
                 OnCambioEmpresaRequested;
 
+            _viewModel.CambioEstablecimientoRequested +=
+                OnCambioEstablecimientoRequested;
+
             _viewModel.CerrarSesionRequested +=
                 OnCerrarSesionRequested;
         }
 
-        private void OnCambioEmpresaRequested()
+        private async void OnCambioEmpresaRequested()
         {
             var seleccionarEmpresaWindow =
                 _serviceProvider.GetRequiredService<
@@ -50,8 +53,17 @@ namespace KONTAXPRO.Desktop
 
             if (resultado == true)
             {
-                _viewModel.ActualizarContexto();
+                await _viewModel.RestablecerNavegacionAsync();
             }
+        }
+
+        private async void OnCambioEstablecimientoRequested()
+        {
+            var window = _serviceProvider.GetRequiredService<
+                SeleccionarEstablecimientoWindow>();
+            window.Owner = this;
+            if (window.ShowDialog() == true)
+                await _viewModel.RestablecerNavegacionAsync();
         }
 
         private void OnCerrarSesionRequested()
@@ -122,6 +134,9 @@ namespace KONTAXPRO.Desktop
         {
             _viewModel.CambioEmpresaRequested -=
                 OnCambioEmpresaRequested;
+
+            _viewModel.CambioEstablecimientoRequested -=
+                OnCambioEstablecimientoRequested;
 
             _viewModel.CerrarSesionRequested -=
                 OnCerrarSesionRequested;
